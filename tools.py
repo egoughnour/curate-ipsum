@@ -80,6 +80,18 @@ async def run_command(command: str, working_directory: str, timeout: Optional[fl
     )
 
 
+def _parse_extended_timeout(value: Optional[float]) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("extended_timeout must be a number of seconds") from exc
+    if parsed <= 0:
+        return None
+    return parsed
+
+
 def _ensure_data_dir() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -298,11 +310,13 @@ async def _execute_test_run(
     working_directory: str,
     region_id: Optional[str],
     framework: str,
+    extended_timeout: Optional[float] = None,
 ) -> TestRunResult:
     if kind not in (RunKind.UNIT, RunKind.INTEGRATION):
         raise ValueError("Invalid test run kind")
 
-    result = await run_command(command, working_directory)
+    timeout = _parse_extended_timeout(extended_timeout)
+    result = await run_command(command, working_directory, timeout=timeout)
     total_tests, passed_tests, failed_tests, failing_tests = parse_test_output(result.stdout, result.stderr)
 
     if total_tests == 0:
@@ -336,6 +350,7 @@ async def run_unit_tests(
     workingDirectory: str,
     regionId: Optional[str] = None,
     framework: str = "generic",
+    extended_timeout: Optional[float] = None,
 ) -> TestRunResult:
     return await _execute_test_run(
         kind=RunKind.UNIT,
@@ -345,6 +360,7 @@ async def run_unit_tests(
         working_directory=workingDirectory,
         region_id=regionId,
         framework=framework,
+        extended_timeout=extended_timeout,
     )
 
 
@@ -355,6 +371,7 @@ async def run_integration_tests(
     workingDirectory: str,
     regionId: Optional[str] = None,
     framework: str = "generic",
+    extended_timeout: Optional[float] = None,
 ) -> TestRunResult:
     return await _execute_test_run(
         kind=RunKind.INTEGRATION,
@@ -364,6 +381,7 @@ async def run_integration_tests(
         working_directory=workingDirectory,
         region_id=regionId,
         framework=framework,
+        extended_timeout=extended_timeout,
     )
 
 
@@ -375,8 +393,10 @@ async def run_mutation_tests(
     regionId: Optional[str] = None,
     tool: str = "stryker",
     reportPath: Optional[str] = None,
+    extended_timeout: Optional[float] = None,
 ) -> MutationRunResult:
-    result = await run_command(command, workingDirectory)
+    timeout = _parse_extended_timeout(extended_timeout)
+    result = await run_command(command, workingDirectory, timeout=timeout)
     try:
         total_mutants, killed, survived, no_coverage, mutation_score, by_file = parse_stryker_output(
             report_path=reportPath,
@@ -407,7 +427,10 @@ async def run_mutation_tests(
     return mutation_run
 
 
-def history_tool(projectId: str, regionId: Optional[str] = None, limit: Optional[int] = None) -> RunHistory:
+def history_tool(
+    projectId: str, regionId: Optional[str] = None, limit: Optional[int] = None, extended_timeout: Optional[float] = None
+) -> RunHistory:
+    _parse_extended_timeout(extended_timeout)
     parsed_limit: Optional[int]
     if limit is None:
         parsed_limit = None
@@ -421,6 +444,9 @@ def history_tool(projectId: str, regionId: Optional[str] = None, limit: Optional
     return get_run_history(projectId, regionId, parsed_limit)
 
 
-def region_metrics_tool(projectId: str, commitSha: str, regionId: str) -> RegionMetrics:
+def region_metrics_tool(
+    projectId: str, commitSha: str, regionId: str, extended_timeout: Optional[float] = None
+) -> RegionMetrics:
+    _parse_extended_timeout(extended_timeout)
     history = get_run_history(projectId, regionId, None).runs
     return compute_region_metrics(projectId, commitSha, regionId, history)

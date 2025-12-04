@@ -54,6 +54,7 @@ def build_server() -> "FastMCP":
         workingDirectory: str,
         regionId: Optional[str] = None,
         framework: str = "generic",
+        extended_timeout: Optional[float] = None,
     ) -> dict:
         _validate_required("projectId", projectId)
         _validate_required("commitSha", commitSha)
@@ -66,6 +67,7 @@ def build_server() -> "FastMCP":
             workingDirectory=workingDirectory,
             regionId=regionId,
             framework=framework,
+            extended_timeout=extended_timeout,
         )
         return _json_payload(run)
 
@@ -79,6 +81,7 @@ def build_server() -> "FastMCP":
         workingDirectory: str,
         regionId: Optional[str] = None,
         framework: str = "generic",
+        extended_timeout: Optional[float] = None,
     ) -> dict:
         _validate_required("projectId", projectId)
         _validate_required("commitSha", commitSha)
@@ -91,6 +94,7 @@ def build_server() -> "FastMCP":
             workingDirectory=workingDirectory,
             regionId=regionId,
             framework=framework,
+            extended_timeout=extended_timeout,
         )
         return _json_payload(run)
 
@@ -105,6 +109,7 @@ def build_server() -> "FastMCP":
         regionId: Optional[str] = None,
         tool: str = "stryker",
         reportPath: Optional[str] = None,
+        extended_timeout: Optional[float] = None,
     ) -> dict:
         _validate_required("projectId", projectId)
         _validate_required("commitSha", commitSha)
@@ -118,25 +123,32 @@ def build_server() -> "FastMCP":
             regionId=regionId,
             tool=tool,
             reportPath=reportPath,
+            extended_timeout=extended_timeout,
         )
         return _json_payload(run)
 
     @server.tool(
             description="Return recent unit, integration, and mutation runs for a project and optional region."
     )
-    def get_run_history_tool(projectId: str, regionId: Optional[str] = None, limit: Optional[int] = None) -> dict:
+    def get_run_history_tool(
+        projectId: str, regionId: Optional[str] = None, limit: Optional[int] = None, extended_timeout: Optional[float] = None
+    ) -> dict:
         _validate_required("projectId", projectId)
-        history = history_tool(projectId=projectId, regionId=regionId, limit=limit)
+        history = history_tool(projectId=projectId, regionId=regionId, limit=limit, extended_timeout=extended_timeout)
         return _json_payload(history)
 
     @server.tool(
             description="Compute PID-like metrics and mutation score for a specific region within a project."
                  )
-    def get_region_metrics_tool(projectId: str, commitSha: str, regionId: str) -> dict:
+    def get_region_metrics_tool(
+        projectId: str, commitSha: str, regionId: str, extended_timeout: Optional[float] = None
+    ) -> dict:
         _validate_required("projectId", projectId)
         _validate_required("commitSha", commitSha)
         _validate_required("regionId", regionId)
-        metrics = region_metrics_tool(projectId=projectId, commitSha=commitSha, regionId=regionId)
+        metrics = region_metrics_tool(
+            projectId=projectId, commitSha=commitSha, regionId=regionId, extended_timeout=extended_timeout
+        )
         return _json_payload(metrics)
 
     return server
