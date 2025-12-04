@@ -1,0 +1,15 @@
+{
+	"servers": {
+		"mutation-tool-server": {
+			"command": "/Users/erikgoughnour/gh_dt/curate-ipsum/.venv/bin/python3",
+			"args": [
+				"/Users/erikgoughnour/gh_dt/curate-ipsum/server.py"
+			],
+			"cwd": "/Users/erikgoughnour/gh_dt/curate-ipsum",
+			"env": {
+				"MUTATION_TOOL_DATA_DIR": "/Users/erikgoughnour/gh_dt/curate-ipsum/.mutation_tool_data"
+			},
+			"type": "stdio"
+		}
+	}
+}
