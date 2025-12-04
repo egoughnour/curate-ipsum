@@ -44,7 +44,9 @@ def _json_payload(model) -> dict:
 def build_server() -> "FastMCP":
     server = _require_server()
 
-    @server.tool()
+    @server.tool(
+            description="Run unit tests for a project and return a summarized result."
+    )
     async def run_unit_tests_tool(
         projectId: str,
         commitSha: str,
@@ -67,7 +69,9 @@ def build_server() -> "FastMCP":
         )
         return _json_payload(run)
 
-    @server.tool()
+    @server.tool(
+            description="Run integration tests for a project and return a summarized result."
+    )
     async def run_integration_tests_tool(
         projectId: str,
         commitSha: str,
@@ -90,7 +94,9 @@ def build_server() -> "FastMCP":
         )
         return _json_payload(run)
 
-    @server.tool()
+    @server.tool(
+            description="Run mutation tests (e.g., Stryker) and return summarized mutation statistics."
+    )
     async def run_mutation_tests_tool(
         projectId: str,
         commitSha: str,
@@ -115,13 +121,17 @@ def build_server() -> "FastMCP":
         )
         return _json_payload(run)
 
-    @server.tool()
+    @server.tool(
+            description="Return recent unit, integration, and mutation runs for a project and optional region."
+    )
     def get_run_history_tool(projectId: str, regionId: Optional[str] = None, limit: Optional[int] = None) -> dict:
         _validate_required("projectId", projectId)
         history = history_tool(projectId=projectId, regionId=regionId, limit=limit)
         return _json_payload(history)
 
-    @server.tool()
+    @server.tool(
+            description="Compute PID-like metrics and mutation score for a specific region within a project."
+                 )
     def get_region_metrics_tool(projectId: str, commitSha: str, regionId: str) -> dict:
         _validate_required("projectId", projectId)
         _validate_required("commitSha", commitSha)
