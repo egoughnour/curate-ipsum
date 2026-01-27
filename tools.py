@@ -424,18 +424,32 @@ async def run_mutation_tests(
     command: str,
     workingDirectory: str,
     regionId: Optional[str] = None,
-    tool: str = "stryker",
+    tool: Optional[str] = None,  # Now optional - auto-detected if None
     reportPath: Optional[str] = None,
 ) -> MutationRunResult:
+    """
+    Run mutation tests and parse results.
+
+    If tool is not specified, auto-detects based on project structure
+    and available mutation output.
+    """
     result = await run_command(command, workingDirectory)
+
+    # Use unified parser with auto-detection
+    from parsers import parse_mutation_output, get_detected_tool
+
     try:
-        total_mutants, killed, survived, no_coverage, mutation_score, by_file = parse_stryker_output(
-            report_path=reportPath,
+        total_mutants, killed, survived, no_coverage, mutation_score, by_file = parse_mutation_output(
             working_directory=workingDirectory,
+            tool=tool,
+            report_path=reportPath,
         )
     except Exception as exc:  # noqa: BLE001
-        LOG.error("Failed to parse Stryker output: %s", exc, exc_info=True)
+        LOG.error("Failed to parse mutation output: %s", exc, exc_info=True)
         raise
+
+    # Get the actual tool used (important when auto-detected)
+    actual_tool = tool or get_detected_tool(workingDirectory) or "unknown"
 
     mutation_run = MutationRunResult(
         id=str(uuid4()),
@@ -444,7 +458,7 @@ async def run_mutation_tests(
         regionId=regionId,
         timestamp=datetime.now(timezone.utc),
         kind=RunKind.MUTATION,
-        tool=tool,
+        tool=actual_tool,
         totalMutants=total_mutants,
         killed=killed,
         survived=survived,

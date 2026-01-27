@@ -97,7 +97,11 @@ def build_server() -> "FastMCP":
         return _json_payload(run)
 
     @server.tool(
-            description="Run mutation tests (e.g., Stryker) and return summarized mutation statistics."
+        description=(
+            "Run mutation tests and return summarized mutation statistics. "
+            "Supports multiple frameworks: stryker (JS/TS), mutmut (Python). "
+            "If tool is not specified, auto-detects based on project structure."
+        )
     )
     async def run_mutation_tests_tool(
         projectId: str,
@@ -105,7 +109,7 @@ def build_server() -> "FastMCP":
         command: str,
         workingDirectory: str,
         regionId: Optional[str] = None,
-        tool: str = "stryker",
+        tool: Optional[str] = None,  # Now optional - auto-detected
         reportPath: Optional[str] = None,
     ) -> dict:
         _validate_required("projectId", projectId)
@@ -140,6 +144,150 @@ def build_server() -> "FastMCP":
         _validate_required("regionId", regionId)
         metrics = region_metrics_tool(projectId=projectId, commitSha=commitSha, regionId=regionId)
         return _json_payload(metrics)
+
+    # =========================================================================
+    # Framework Detection & Region Tools
+    # =========================================================================
+
+    @server.tool(
+        description=(
+            "Detect available mutation testing frameworks and project language. "
+            "Returns detected frameworks with confidence scores and a recommendation "
+            "for which framework to use."
+        )
+    )
+    def detect_frameworks_tool(workingDirectory: str) -> dict:
+        """Detect mutation frameworks in a project."""
+        _validate_required("workingDirectory", workingDirectory)
+
+        from parsers import (
+            detect_available_frameworks,
+            detect_language,
+            recommend_framework,
+        )
+
+        language = detect_language(workingDirectory)
+        frameworks = detect_available_frameworks(workingDirectory)
+        recommendation = recommend_framework(workingDirectory)
+
+        return {
+            "language": {
+                "primary": language.primary,
+                "secondary": language.secondary,
+                "confidence": round(language.confidence, 3),
+            },
+            "detected_frameworks": [
+                {
+                    "framework": f.framework.value,
+                    "confidence": round(f.confidence, 3),
+                    "evidence": f.evidence,
+                }
+                for f in frameworks
+            ],
+            "recommendation": {
+                "framework": recommendation.framework.value,
+                "confidence": round(recommendation.confidence, 3),
+                "evidence": recommendation.evidence,
+            },
+        }
+
+    @server.tool(
+        description=(
+            "Parse a region identifier string into its components. "
+            "Regions use a hierarchical format: file:<path>::class:<name>::func:<name>::lines:<start>-<end>. "
+            "Useful for understanding region hierarchy."
+        )
+    )
+    def parse_region_tool(regionId: str) -> dict:
+        """Parse a region string into components."""
+        _validate_required("regionId", regionId)
+
+        from regions import Region
+
+        region = Region.from_string(regionId)
+
+        return {
+            "regionId": region.to_string(),
+            "level": region.level.value,
+            "file_path": region.file_path,
+            "class_name": region.class_name,
+            "func_name": region.func_name,
+            "line_start": region.line_start,
+            "line_end": region.line_end,
+        }
+
+    @server.tool(
+        description=(
+            "Check if one region contains or overlaps another. "
+            "Useful for aggregating metrics across related regions. "
+            "A file region contains all functions within it; a function region contains its line ranges."
+        )
+    )
+    def check_region_relationship_tool(
+        regionA: str,
+        regionB: str,
+    ) -> dict:
+        """Check containment/overlap relationship between regions."""
+        _validate_required("regionA", regionA)
+        _validate_required("regionB", regionB)
+
+        from regions import Region
+
+        a = Region.from_string(regionA)
+        b = Region.from_string(regionB)
+
+        return {
+            "a": a.to_string(),
+            "b": b.to_string(),
+            "a_contains_b": a.contains(b),
+            "b_contains_a": b.contains(a),
+            "overlaps": a.overlaps(b),
+        }
+
+    @server.tool(
+        description=(
+            "Create a region identifier for a specific code location. "
+            "Use level='file' for whole file, 'function' for a function, "
+            "'class' for a class, or 'lines' for a line range."
+        )
+    )
+    def create_region_tool(
+        filePath: str,
+        level: str = "file",
+        className: Optional[str] = None,
+        funcName: Optional[str] = None,
+        lineStart: Optional[int] = None,
+        lineEnd: Optional[int] = None,
+    ) -> dict:
+        """Create a region identifier."""
+        _validate_required("filePath", filePath)
+
+        from regions import Region
+
+        if level == "file":
+            region = Region.for_file(filePath)
+        elif level == "class":
+            if not className:
+                raise ValueError("className required for class-level region")
+            region = Region.for_class(filePath, className)
+        elif level == "function":
+            if not funcName:
+                raise ValueError("funcName required for function-level region")
+            region = Region.for_function(filePath, funcName, class_name=className)
+        elif level == "lines":
+            if lineStart is None or lineEnd is None:
+                raise ValueError("lineStart and lineEnd required for lines-level region")
+            region = Region.for_lines(
+                filePath, lineStart, lineEnd,
+                func_name=funcName, class_name=className
+            )
+        else:
+            raise ValueError(f"Invalid level: {level}. Must be one of: file, class, function, lines")
+
+        return {
+            "regionId": region.to_string(),
+            "level": region.level.value,
+        }
 
     # =========================================================================
     # Belief Revision Tools (powered by py-brs)
