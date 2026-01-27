@@ -99,34 +99,46 @@ LLM Candidates (k samples)
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         MCP Interface                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │   Mutation   │  │   Symbolic   │  │    Graph     │              │
-│  │  Framework   │  │  Execution   │  │   Analysis   │              │
-│  │  Orchestrator│  │   (KLEE/Z3)  │  │  (Joern/Neo4j)│             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
-│         │                 │                 │                       │
-│         └─────────────────┼─────────────────┘                       │
-│                           ▼                                         │
-│              ┌────────────────────────┐                             │
-│              │    Belief Revision     │                             │
-│              │    Engine (AGM)        │                             │
-│              └────────────┬───────────┘                             │
-│                           ▼                                         │
-│              ┌────────────────────────┐                             │
-│              │   CEGIS/CEGAR/Genetic  │                             │
-│              │   Synthesis Loop       │                             │
-│              └────────────┬───────────┘                             │
-│                           ▼                                         │
-│              ┌────────────────────────┐                             │
-│              │   Strongly Typed       │                             │
-│              │   Patch Output         │                             │
-│              └────────────────────────┘                             │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph MCP["MCP Interface"]
+        direction TB
+
+        subgraph Sources["Analysis Sources"]
+            direction LR
+            MUT["🧬 Mutation<br/>Orchestrator<br/><small>Stryker · mutmut<br/>cosmic-ray · poodle</small>"]
+            SYM["🔬 Symbolic<br/>Execution<br/><small>KLEE · Z3<br/>SymPy</small>"]
+            GRAPH["📊 Graph<br/>Analysis<br/><small>Joern · Neo4j<br/>Fiedler · Kameda</small>"]
+        end
+
+        MUT --> BRE
+        SYM --> BRE
+        GRAPH --> BRE
+
+        BRE["🧠 Belief Revision Engine<br/><small>AGM Theory · Entrenchment · Provenance DAG</small>"]
+
+        BRE --> SYNTH
+
+        SYNTH["⚙️ Synthesis Loop<br/><small>CEGIS · CEGAR · Genetic Algorithm</small>"]
+
+        SYNTH --> |"counterexample"| BRE
+
+        SYNTH --> OUTPUT
+
+        OUTPUT["✅ Strongly Typed Patch<br/><small>Proof Certificate · Type Signature<br/>Pre/Post Conditions</small>"]
+    end
+
+    LLM["🤖 LLM Candidates<br/><small>top-k samples</small>"] --> SYNTH
+
+    style MCP fill:#1a1a2e,stroke:#16213e,color:#eee
+    style Sources fill:#16213e,stroke:#0f3460,color:#eee
+    style MUT fill:#0f3460,stroke:#e94560,color:#eee
+    style SYM fill:#0f3460,stroke:#e94560,color:#eee
+    style GRAPH fill:#0f3460,stroke:#e94560,color:#eee
+    style BRE fill:#533483,stroke:#e94560,color:#eee
+    style SYNTH fill:#e94560,stroke:#ff6b6b,color:#fff
+    style OUTPUT fill:#06d6a0,stroke:#118ab2,color:#000
+    style LLM fill:#ffd166,stroke:#ef476f,color:#000
 ```
 
 ## Roadmap
