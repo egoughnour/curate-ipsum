@@ -1,0 +1,254 @@
+# Curate-Ipsum
+
+**A graph-spectral framework for verified code synthesis through belief revision**
+
+Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unverified) and formally verified patches (slow, correct, trustworthy). It treats mutation testing as one component of a larger system for maintaining robust, self-healing codebase metadata that supports reachability analysis, symbolic execution, and automated test generation.
+
+## The Problem
+
+LLMs produce code that is:
+- ✅ Syntactically valid (usually)
+- ✅ Statistically plausible
+- ❌ Semantically correct (sometimes)
+- ❌ Type-safe (by accident)
+- ❌ Formally verified (never)
+
+Current approaches either trust LLM output blindly or reject it entirely. Neither is optimal.
+
+## The Solution
+
+Use LLMs for **cheap candidate generation**, then invest computational resources to achieve **formal guarantees**:
+
+```
+LLM Candidates (k samples)
+        ↓
+   Seed Population
+        ↓
+┌───────────────────────────┐
+│  CEGIS + CEGAR + Genetic  │  ← Verification loop
+│  + Belief Revision        │
+└───────────────────────────┘
+        ↓
+  Strongly Typed Patch
+  (with proof certificate)
+```
+
+## Key Differentiators from State of the Art
+
+### vs. Traditional Mutation Testing (Stryker, mutmut, cosmic-ray)
+
+| Traditional | Curate-Ipsum |
+|-------------|--------------|
+| Single tool, single language | Multi-framework orchestration |
+| Flat file-level analysis | Hierarchical graph-spectral decomposition |
+| Mutation score as output | Mutation testing as *input* to synthesis |
+| No formal verification | CEGIS/CEGAR verification loop |
+| Manual test writing | Automated patch generation |
+
+### vs. LLM Code Generation (Copilot, Claude, GPT)
+
+| LLM-only | Curate-Ipsum |
+|----------|--------------|
+| Trust model output | Verify model output |
+| Single sample or best-of-k | Population-based refinement |
+| No formal guarantees | Proof certificates |
+| Stateless generation | Belief revision with provenance |
+| Plausible code | Provably correct code |
+
+### vs. Program Synthesis (Sketch, Rosette, SyGuS)
+
+| Traditional Synthesis | Curate-Ipsum |
+|----------------------|--------------|
+| Hand-written sketches | LLM-generated candidates |
+| Cold-start search | Warm-start from LLM population |
+| No learning across runs | Totalizing theory accumulates knowledge |
+| Single specification | Multi-framework implicit regions |
+
+### vs. Symbolic Execution (KLEE, S2E)
+
+| Symbolic Execution | Curate-Ipsum |
+|-------------------|--------------|
+| Path exploration only | Integrated with synthesis |
+| Boolean constraint solving | Mathematical reformulation (SymPy) |
+| Single-tool analysis | Graph DB + SMT + mutation orchestration |
+| No code generation | Generates verified patches |
+
+### Novel Contributions
+
+1. **Graph-Spectral Code Decomposition**
+   - Fiedler vector partitioning for optimal reachability
+   - Hierarchical SCC condensation
+   - Planar subgraph identification → O(1) Kameda queries
+   - Kuratowski subgraphs as atomic non-planar units
+
+2. **Belief Revision for Synthesis**
+   - AGM-compliant theory revision
+   - Entrenchment ordering for minimal contraction
+   - Provenance DAG for failure mode analysis
+   - Rollback sharpens validity (failures refine the universal model)
+
+3. **Implicit Region Detection**
+   - Spectral anomalies reveal undertested code
+   - Cross-framework mutation resistance identifies critical regions
+   - Historical mutability guides partition optimization
+
+4. **Mathematical Constraint Reformulation**
+   - Boolean-intractable → differential/root-finding
+   - SymPy path condition encoding
+   - Hybrid SMT + numerical solving
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         MCP Interface                                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │   Mutation   │  │   Symbolic   │  │    Graph     │              │
+│  │  Framework   │  │  Execution   │  │   Analysis   │              │
+│  │  Orchestrator│  │   (KLEE/Z3)  │  │  (Joern/Neo4j)│             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
+│         │                 │                 │                       │
+│         └─────────────────┼─────────────────┘                       │
+│                           ▼                                         │
+│              ┌────────────────────────┐                             │
+│              │    Belief Revision     │                             │
+│              │    Engine (AGM)        │                             │
+│              └────────────┬───────────┘                             │
+│                           ▼                                         │
+│              ┌────────────────────────┐                             │
+│              │   CEGIS/CEGAR/Genetic  │                             │
+│              │   Synthesis Loop       │                             │
+│              └────────────┬───────────┘                             │
+│                           ▼                                         │
+│              ┌────────────────────────┐                             │
+│              │   Strongly Typed       │                             │
+│              │   Patch Output         │                             │
+│              └────────────────────────┘                             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Roadmap
+
+### Phase 1: Foundation (Current)
+- [x] MCP server infrastructure
+- [x] Stryker report parsing
+- [x] Run history and PID metrics
+- [ ] mutmut parser integration
+- [ ] Basic call graph extraction
+
+### Phase 2: Graph Infrastructure
+- [ ] Laplacian construction from call/dependency graphs
+- [ ] Fiedler vector computation (scipy.sparse.linalg)
+- [ ] SCC detection and hierarchical condensation
+- [ ] Planar subgraph identification
+- [ ] Kameda preprocessing for O(1) reachability
+
+### Phase 3: Multi-Framework Orchestration
+- [ ] Unified mutation framework interface
+- [ ] cosmic-ray, poodle, universalmutator parsers
+- [ ] Implicit region detection (spectral anomalies)
+- [ ] Non-contradictory framework assignment
+- [ ] Cross-framework survival analysis
+
+### Phase 4: Belief Revision Engine
+- [ ] AGM-compliant theory representation
+- [ ] Evidence types and grounding rules
+- [ ] Entrenchment calculation
+- [ ] Contraction via minimal hitting sets
+- [ ] Provenance DAG storage and queries
+
+### Phase 5: Synthesis Loop
+- [ ] CEGIS implementation with LLM seeding
+- [ ] CEGAR abstraction hierarchy (Type → CFG → DFG → Concrete)
+- [ ] Genetic algorithm with AST-aware crossover
+- [ ] Entropy monitoring and diversity injection
+- [ ] Counterexample-directed mutation
+
+### Phase 6: Verification Backends
+- [ ] Z3 integration for SMT solving
+- [ ] KLEE container for concolic execution
+- [ ] SymPy path condition encoding
+- [ ] Alternative solvers (CVC5, Boolector)
+- [ ] Mathematical reformulation pipeline
+
+### Phase 7: Graph Database Integration
+- [ ] Joern CPG generation
+- [ ] Neo4j/JanusGraph backend options
+- [ ] Code Graph RAG for semantic search
+- [ ] Reachability index persistence
+- [ ] Incremental update on file change
+
+### Phase 8: Production Hardening
+- [ ] CI/CD integration (GitHub Actions)
+- [ ] Regression detection and alerting
+- [ ] HTML/SARIF reporting
+- [ ] IDE extensions (VSCode)
+- [ ] Self-healing metadata consistency
+
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/egoughnour/curate-ipsum.git
+cd curate-ipsum
+
+# Install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Configure MCP server
+cp example_config.toml config.toml
+# Edit config.toml with your paths
+
+# Run the server
+python server.py
+```
+
+## Configuration
+
+```toml
+[mutation]
+tool = "stryker"  # or "mutmut", "cosmic-ray", "poodle"
+report_path = "reports/mutation/mutation.json"
+
+[analysis]
+pid_window = 5
+pid_decay = 0.8
+
+[graph]
+backend = "networkx"  # or "neo4j", "janusgraph"
+fiedler_tolerance = 1e-6
+
+[synthesis]
+llm_candidates = 10
+max_cegis_iterations = 100
+entropy_threshold = 0.3
+```
+
+## Documentation
+
+- [Summary](./summary.md) - Functionality catalog
+- [Architectural Vision](./architectural_vision.md) - Graph-spectral framework
+- [Synthesis Framework](./synthesis_framework.md) - CEGIS/CEGAR/genetic approach
+- [Belief Revision](./belief_revision_framework.md) - AGM theory and provenance
+- [Potential Directions](./potential_directions.md) - Enhancement roadmap
+- [Synergies](./synergies.md) - Tool ecosystem integration
+
+## Key References
+
+- Alchourrón, Gärdenfors, Makinson (1985). *On the Logic of Theory Change*
+- Fiedler (1973). *Algebraic Connectivity of Graphs*
+- Kameda (1975). *On the Vector Representation of Reachability in Planar Directed Graphs*
+- Solar-Lezama (2008). *Program Synthesis by Sketching* (CEGIS)
+- Clarke et al. (2000). *Counterexample-Guided Abstraction Refinement* (CEGAR)
+
+## License
+
+MIT License - see [LICENSE](./LICENSE)
+
+---
+
+*Curate-Ipsum: Because LLM-generated code should be verified, not trusted.*
