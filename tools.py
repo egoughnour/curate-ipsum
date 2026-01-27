@@ -84,11 +84,62 @@ def _ensure_data_dir() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# Flag to enable/disable BRS dual-write
+BRS_DUAL_WRITE = os.environ.get("CURATE_IPSUM_BRS_DUAL_WRITE", "1") == "1"
+
+
+def _dual_write_to_brs(run: RunResult) -> None:
+    """
+    Write run result to BRS CASStore as evidence.
+
+    This enables belief revision operations on test/mutation results.
+    Failures are logged but do not block the primary JSONL write.
+    """
+    if not BRS_DUAL_WRITE:
+        return
+
+    try:
+        from adapters.evidence_adapter import (
+            mutation_result_to_evidence,
+            test_result_to_evidence,
+        )
+        from theory import TheoryManager
+    except ImportError:
+        LOG.debug("BRS dual-write skipped: py-brs not installed")
+        return
+
+    try:
+        manager = TheoryManager(DATA_DIR / run.projectId)
+
+        if isinstance(run, MutationRunResult):
+            evidence = mutation_result_to_evidence(run)
+        else:
+            evidence = test_result_to_evidence(run)
+
+        manager.store_evidence(evidence)
+        LOG.debug("Stored evidence %s in BRS", evidence.id)
+
+    except Exception as exc:
+        # Don't fail the primary operation - just log
+        LOG.warning("BRS dual-write failed: %s", exc)
+
+
 def append_run(run: RunResult) -> None:
+    """
+    Append a run result to storage.
+
+    Primary: JSONL file (runs.jsonl)
+    Secondary: BRS CASStore (if enabled and py-brs installed)
+    """
     _ensure_data_dir()
+
+    # Primary: JSONL write
     payload = run.model_dump(mode="json")
     with RUNS_FILE.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload) + "\n")
+
+    # Secondary: BRS dual-write
+    _dual_write_to_brs(run)
 
 
 def _deserialize_run(record: Dict) -> Optional[RunResult]:
