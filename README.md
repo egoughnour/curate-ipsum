@@ -120,9 +120,9 @@ flowchart TB
 
         subgraph Sources["Analysis Sources"]
             direction LR
-            MUT["🧬 Mutation<br/>Orchestrator<br/><small>Stryker · mutmut<br/>cosmic-ray</small>"]
+            MUT["🧬 Mutation<br/>Orchestrator<br/><small>Stryker<br/>mutmut<br/>cosmic-ray</small>"]
             SYM["🔬 Symbolic<br/>Execution<br/><small>KLEE · Z3<br/>SymPy</small>"]
-            GRAPH["📊 Graph<br/>Analysis<br/><small>Joern · Neo4j<br/>Fiedler</small>"]
+            GRAPH["📊 Graph<br/>Analysis<br/><small>Joern<br/>Neo4j<br/>Fiedler</small>"]
         end
 
         MUT --> BRE
@@ -139,7 +139,7 @@ flowchart TB
 
         SYNTH --> OUTPUT
 
-        OUTPUT["✅ Strongly Typed Patch<br/><small>Proof Certificate · Type Signature<br/>Pre/Post Conditions</small>"]
+        OUTPUT["✅ Strongly Typed Patch<br/><small>Proof Certificate ·Type Signature<br/>Pre/Post Conditions</small>"]
     end
 
     LLM["🤖 LLM Candidates<br/><small>top-k samples</small>"] --> SYNTH
