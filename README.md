@@ -120,9 +120,9 @@ flowchart TB
 
         subgraph Sources["Analysis Sources"]
             direction LR
-            MUT["🧬 Mutation<br/>Orchestrator<br/><small>Stryker · mutmut<br/>cosmic-ray · poodle</small>"]
+            MUT["🧬 Mutation<br/>Orchestrator<br/><small>Stryker · mutmut<br/>cosmic-ray</small>"]
             SYM["🔬 Symbolic<br/>Execution<br/><small>KLEE · Z3<br/>SymPy</small>"]
-            GRAPH["📊 Graph<br/>Analysis<br/><small>Joern · Neo4j<br/>Fiedler · Kameda</small>"]
+            GRAPH["📊 Graph<br/>Analysis<br/><small>Joern · Neo4j<br/>Fiedler</small>"]
         end
 
         MUT --> BRE
