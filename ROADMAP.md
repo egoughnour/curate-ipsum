@@ -4,19 +4,35 @@
 
 Transform mutation testing from a quality metric into the foundation of a **verified code synthesis pipeline** where LLM outputs become seeds for formally proven patches.
 
+## Current Status
+
+**Last Updated**: 2026-01-27
+
+| Milestone | Status | Progress |
+|-----------|--------|----------|
+| M1: Multi-Framework Foundation | 🟡 In Progress | ~70% |
+| M2: Graph-Spectral Infrastructure | 🟡 In Progress | ~30% |
+| M3: Belief Revision Engine | 🟡 In Progress | ~40% |
+| M4: Synthesis Loop | ⚪ Not Started | 0% |
+| M5: Verification Backends | ⚪ Not Started | 0% |
+| M6: Graph Database + RAG | ⚪ Not Started | 0% |
+| M7: Production Hardening | ⚪ Not Started | 0% |
+
 ## Milestones
 
 ### M1: Multi-Framework Foundation (Q1)
 **Goal**: Unified interface across mutation testing tools
 
-| Task | Complexity | Dependencies |
-|------|------------|--------------|
-| mutmut parser | Low | - |
-| cosmic-ray parser | Medium | - |
-| poodle parser | Low | - |
-| universalmutator parser | Medium | - |
-| Framework auto-detection | Low | All parsers |
-| Non-contradictory region assignment | Medium | Auto-detection |
+| Task | Status | Complexity | Dependencies |
+|------|--------|------------|--------------|
+| Flexible region model | ✅ Done | Medium | - |
+| Stryker parser extraction | ✅ Done | Low | - |
+| mutmut parser | ✅ Done | Low | - |
+| Framework auto-detection | ✅ Done | Low | - |
+| Unified parser interface | ✅ Done | Low | All parsers |
+| cosmic-ray parser | ⬚ Todo | Medium | - |
+| poodle parser | ⬚ Todo | Low | - |
+| universalmutator parser | ⬚ Todo | Medium | - |
 
 **Exit Criteria**: Run any Python mutation tool through single MCP interface
 
@@ -25,17 +41,19 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 ### M2: Graph-Spectral Infrastructure (Q1-Q2)
 **Goal**: O(1) reachability queries via hierarchical decomposition
 
-| Task | Complexity | Dependencies |
-|------|------------|--------------|
-| Call graph extraction (AST) | Medium | - |
-| Dependency graph extraction | Medium | - |
-| Laplacian construction | Low | Graph extraction |
-| Fiedler vector computation | Medium | Laplacian |
-| Recursive partitioning | Medium | Fiedler |
-| SCC detection + condensation | Low | Partitioning |
-| Planar subgraph identification | High | SCC |
-| Kameda preprocessing | High | Planar subgraph |
-| Virtual sink/source augmentation | Low | Module detection |
+| Task | Status | Complexity | Dependencies |
+|------|--------|------------|--------------|
+| Graph models (CodeGraph, Node, Edge) | ✅ Done | Low | - |
+| Call graph extraction (AST) | ✅ Done | Medium | - |
+| ASR extractor (import/class analysis) | ✅ Done | Medium | - |
+| Dependency graph extraction | ⬚ Todo | Medium | - |
+| Laplacian construction | ⬚ Todo | Low | Graph extraction |
+| Fiedler vector computation | ⬚ Todo | Medium | Laplacian |
+| Recursive partitioning | ⬚ Todo | Medium | Fiedler |
+| SCC detection + condensation | ⬚ Todo | Low | Partitioning |
+| Planar subgraph identification | ⬚ Todo | High | SCC |
+| Kameda preprocessing | ⬚ Todo | High | Planar subgraph |
+| Virtual sink/source augmentation | ⬚ Todo | Low | Module detection |
 
 **Exit Criteria**: Query reachability between any two functions in O(1) after O(n) preprocessing
 
@@ -44,15 +62,17 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 ### M3: Belief Revision Engine (Q2)
 **Goal**: AGM-compliant theory management with provenance
 
-| Task | Complexity | Dependencies |
-|------|------------|--------------|
-| Assertion model (types, behaviors, invariants) | Medium | - |
-| Evidence types + grounding rules | Low | Assertion model |
-| Entrenchment calculation | Medium | Evidence |
-| AGM expansion/contraction/revision | High | Entrenchment |
-| Provenance DAG storage | Medium | AGM operations |
-| Rollback mechanism | Medium | Provenance DAG |
-| Failure mode analyzer | High | All above |
+| Task | Status | Complexity | Dependencies |
+|------|--------|------------|--------------|
+| py-brs library (AGM core) | ✅ Done | High | - |
+| Evidence adapter (mutation→belief) | ✅ Done | Medium | py-brs |
+| Theory manager (curate-ipsum) | ✅ Done | Medium | Evidence adapter |
+| AGM contraction (py-brs PR) | 🔄 PR Ready | High | py-brs |
+| Assertion model (types, behaviors) | ⬚ Todo | Medium | - |
+| Entrenchment calculation | ⬚ Todo | Medium | Evidence |
+| Provenance DAG storage | ⬚ Todo | Medium | AGM operations |
+| Rollback mechanism | ⬚ Todo | Medium | Provenance DAG |
+| Failure mode analyzer | ⬚ Todo | High | All above |
 
 **Exit Criteria**: Track belief evolution across synthesis attempts with full provenance
 

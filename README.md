@@ -4,6 +4,20 @@
 
 Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unverified) and formally verified patches (slow, correct, trustworthy). It treats mutation testing as one component of a larger system for maintaining robust, self-healing codebase metadata that supports reachability analysis, symbolic execution, and automated test generation.
 
+## Current Status
+
+**Last Updated**: 2026-01-27
+
+| Component | Status |
+|-----------|--------|
+| Multi-framework parsing (Stryker, mutmut) | ✅ Working |
+| Framework auto-detection | ✅ Working |
+| Hierarchical region model | ✅ Working |
+| Graph extraction (AST/ASR) | ✅ Working |
+| BRS integration (evidence adapter) | ✅ Working |
+| Theory manager | ✅ Working |
+| AGM contraction | 🔄 PR Ready |
+
 ## The Problem
 
 LLMs produce code that is:
@@ -143,33 +157,42 @@ flowchart TB
 
 ## Roadmap
 
-### Phase 1: Foundation (Current)
+### Phase 1: Foundation ✅
 - [x] MCP server infrastructure
 - [x] Stryker report parsing
 - [x] Run history and PID metrics
-- [ ] mutmut parser integration
-- [ ] Basic call graph extraction
+- [x] Flexible region model (hierarchical: file → class → function → lines)
+- [x] mutmut parser integration
+- [x] Framework auto-detection
+- [x] Unified parser interface
 
-### Phase 2: Graph Infrastructure
+### Phase 2: Graph Infrastructure 🟡
+- [x] Graph models (CodeGraph, Node, Edge)
+- [x] Call graph extraction (AST-based)
+- [x] ASR extractor (import/class analysis)
 - [ ] Laplacian construction from call/dependency graphs
 - [ ] Fiedler vector computation (scipy.sparse.linalg)
 - [ ] SCC detection and hierarchical condensation
 - [ ] Planar subgraph identification
 - [ ] Kameda preprocessing for O(1) reachability
 
-### Phase 3: Multi-Framework Orchestration
-- [ ] Unified mutation framework interface
-- [ ] cosmic-ray, poodle, universalmutator parsers
+### Phase 3: Multi-Framework Orchestration 🟡
+- [x] Unified mutation framework interface
+- [ ] cosmic-ray parser
+- [ ] poodle parser
+- [ ] universalmutator parser
 - [ ] Implicit region detection (spectral anomalies)
 - [ ] Non-contradictory framework assignment
 - [ ] Cross-framework survival analysis
 
-### Phase 4: Belief Revision Engine
-- [ ] AGM-compliant theory representation
-- [ ] Evidence types and grounding rules
+### Phase 4: Belief Revision Engine 🟡
+- [x] py-brs library integration (AGM core)
+- [x] Evidence adapter (mutation results → beliefs)
+- [x] Theory manager for curate-ipsum
+- [x] AGM contraction (PR ready for py-brs)
 - [ ] Entrenchment calculation
-- [ ] Contraction via minimal hitting sets
 - [ ] Provenance DAG storage and queries
+- [ ] Failure mode analyzer
 
 ### Phase 5: Synthesis Loop
 - [ ] CEGIS implementation with LLM seeding
@@ -242,12 +265,23 @@ entropy_threshold = 0.3
 
 ## Documentation
 
-- [Summary](./summary.md) - Functionality catalog
+### Planning & Design
+- [M1 Multi-Framework Plan](./m1_multi_framework_plan.md) - Region model & parser design
+- [BRS Integration Plan](./brs_integration_plan.md) - Belief revision integration
+- [BRS v2 Refactoring Plan](./brs_v2_refactoring_plan.md) - Modular architecture
+- [ROADMAP](./ROADMAP.md) - Full milestone tracker
+
+### Architecture
 - [Architectural Vision](./architectural_vision.md) - Graph-spectral framework
 - [Synthesis Framework](./synthesis_framework.md) - CEGIS/CEGAR/genetic approach
 - [Belief Revision](./belief_revision_framework.md) - AGM theory and provenance
+
+### Reference
+- [Summary](./summary.md) - Functionality catalog
 - [Potential Directions](./potential_directions.md) - Enhancement roadmap
 - [Synergies](./synergies.md) - Tool ecosystem integration
+- [CONTEXT](./CONTEXT.md) - Session context for AI assistants
+- [DOCS_INDEX](./DOCS_INDEX.md) - Documentation quick reference
 
 ## Key References
 
