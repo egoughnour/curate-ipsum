@@ -12,7 +12,7 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 |-----------|--------|----------|
 | M1: Multi-Framework Foundation | 🟡 In Progress | ~70% |
 | M2: Graph-Spectral Infrastructure | 🟡 In Progress | ~30% |
-| M3: Belief Revision Engine | 🟡 In Progress | ~40% |
+| M3: Belief Revision Engine | 🟡 In Progress | ~56% |
 | M4: Synthesis Loop | ⚪ Not Started | 0% |
 | M5: Verification Backends | ⚪ Not Started | 0% |
 | M6: Graph Database + RAG | ⚪ Not Started | 0% |
@@ -67,9 +67,9 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 | py-brs library (AGM core) | ✅ Done | High | - |
 | Evidence adapter (mutation→belief) | ✅ Done | Medium | py-brs |
 | Theory manager (curate-ipsum) | ✅ Done | Medium | Evidence adapter |
-| AGM contraction (py-brs PR) | 🔄 PR Ready | High | py-brs |
+| AGM contraction (py-brs v2.0.0) | ✅ Done | High | py-brs |
 | Assertion model (types, behaviors) | ⬚ Todo | Medium | - |
-| Entrenchment calculation | ⬚ Todo | Medium | Evidence |
+| Entrenchment calculation (py-brs v2.0.0) | ✅ Done | Medium | Evidence |
 | Provenance DAG storage | ⬚ Todo | Medium | AGM operations |
 | Rollback mechanism | ⬚ Todo | Medium | Provenance DAG |
 | Failure mode analyzer | ⬚ Todo | High | All above |

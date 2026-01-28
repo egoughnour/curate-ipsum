@@ -16,7 +16,7 @@ Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unveri
 | Graph extraction (AST/ASR) | ✅ Working |
 | BRS integration (evidence adapter) | ✅ Working |
 | Theory manager | ✅ Working |
-| AGM contraction | 🔄 PR Ready |
+| AGM contraction (py-brs v2.0.0) | ✅ Released |
 
 ## The Problem
 
@@ -189,8 +189,8 @@ flowchart TB
 - [x] py-brs library integration (AGM core)
 - [x] Evidence adapter (mutation results → beliefs)
 - [x] Theory manager for curate-ipsum
-- [x] AGM contraction (PR ready for py-brs)
-- [ ] Entrenchment calculation
+- [x] AGM contraction (py-brs v2.0.0 released)
+- [x] Entrenchment calculation (py-brs v2.0.0)
 - [ ] Provenance DAG storage and queries
 - [ ] Failure mode analyzer
 
