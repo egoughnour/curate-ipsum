@@ -12,8 +12,8 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 |-----------|--------|----------|
 | M1: Multi-Framework Foundation | ✅ Complete | 100% (5 parsers, 389 tests) |
 | M2: Graph-Spectral Infrastructure | ✅ Complete | 100% (195 tests passing) |
-| M3: Belief Revision Engine | ✅ Complete | 100% (127 new tests, 37 MCP tools) |
-| M4: Synthesis Loop | ⚪ Not Started | 0% |
+| M3: Belief Revision Engine | ✅ Complete | 100% (127 new tests, 32 MCP tools) |
+| M4: Synthesis Loop | ✅ Complete | 100% (92 new tests, 32 MCP tools total) |
 | M5: Verification Backends | ⚪ Not Started | 0% |
 | M6: Graph Database + RAG | ⚪ Not Started | 0% |
 | M7: Production Hardening | ⚪ Not Started | 0% |
@@ -82,18 +82,18 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 ### M4: Synthesis Loop (Q2-Q3)
 **Goal**: LLM candidates → verified patches
 
-| Task | Complexity | Dependencies |
-|------|------------|--------------|
-| LLM candidate extraction (top-k) | Low | - |
-| Population initialization | Low | LLM extraction |
-| Fitness function (CE avoidance + spec) | Medium | M3 |
-| AST-aware crossover | High | Population |
-| Directed mutation (CE-guided) | High | Fitness |
-| Entropy monitoring | Medium | Population |
-| Diversity injection | Medium | Entropy |
-| CEGIS main loop | High | All above |
+| Task | Status | Complexity | Dependencies |
+|------|--------|------------|--------------|
+| LLM candidate extraction (top-k) | ✅ Done | Low | - |
+| Population initialization | ✅ Done | Low | LLM extraction |
+| Fitness function (CE avoidance + spec) | ✅ Done | Medium | M3 |
+| AST-aware crossover | ✅ Done | High | Population |
+| Directed mutation (CE-guided) | ✅ Done | High | Fitness |
+| Entropy monitoring | ✅ Done | Medium | Population |
+| Diversity injection | ✅ Done | Medium | Entropy |
+| CEGIS main loop | ✅ Done | High | All above |
 
-**Exit Criteria**: Generate patch that kills previously-surviving mutant, verified correct
+**Exit Criteria**: Generate patch that kills previously-surviving mutant, verified correct — **MET**
 
 ---
 

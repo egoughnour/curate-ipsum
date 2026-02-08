@@ -1089,6 +1089,149 @@ def build_server() -> "FastMCP":
             "fiedler_value": round(leaf.fiedler_value, 6) if leaf.fiedler_value else None,
         }
 
+    # ── M4: Synthesis Loop Tools ──────────────────────────────────────────────
+
+    # In-memory store for active synthesis runs (run_id → engine)
+    _synthesis_engines: Dict[str, Any] = {}
+    _synthesis_results: Dict[str, Any] = {}
+
+    @server.tool(
+        description=(
+            "Start CEGIS synthesis to generate a patch that kills a surviving mutant. "
+            "The engine uses LLM candidates + genetic algorithm evolution + counterexample "
+            "feedback to produce a verified patch. Returns a SynthesisResult dict."
+        )
+    )
+    async def synthesize_patch_tool(
+        projectId: str,
+        workingDirectory: str,
+        testCommand: str,
+        regionId: str = "",
+        targetMutantIds: Optional[List[str]] = None,
+        mutationCommand: str = "",
+        originalCode: str = "",
+        contextCode: str = "",
+        llmBackend: str = "mock",
+        maxIterations: int = 50,
+        populationSize: int = 20,
+    ) -> dict:
+        _validate_required("projectId", projectId)
+        _validate_required("workingDirectory", workingDirectory)
+        _validate_required("testCommand", testCommand)
+
+        from synthesis.models import Specification, SynthesisConfig
+        from synthesis.cegis import CEGISEngine
+        from synthesis.llm_client import MockLLMClient
+
+        config = SynthesisConfig(
+            llm_backend=llmBackend,
+            max_iterations=maxIterations,
+            population_size=populationSize,
+        )
+
+        # Select LLM client
+        if llmBackend == "cloud":
+            try:
+                from synthesis.cloud_llm import CloudLLMClient
+                llm_client = CloudLLMClient()
+            except (ImportError, ValueError) as exc:
+                return {"error": f"Cloud LLM not available: {exc}"}
+        elif llmBackend == "local":
+            try:
+                from synthesis.local_llm import LocalLLMClient
+                llm_client = LocalLLMClient()
+            except ImportError as exc:
+                return {"error": f"Local LLM not available: {exc}"}
+        else:
+            llm_client = MockLLMClient()
+
+        # Build specification
+        spec = Specification(
+            target_region=regionId,
+            original_code=originalCode,
+            surviving_mutant_ids=targetMutantIds or [],
+            test_commands=[testCommand],
+            mutation_command=mutationCommand,
+            working_directory=workingDirectory,
+            context_code=contextCode,
+        )
+
+        # Get theory manager if available
+        theory_manager = None
+        try:
+            theory_manager = _get_theory_manager(projectId)
+        except Exception:
+            pass
+
+        engine = CEGISEngine(config, llm_client, theory_manager)
+        _synthesis_engines[engine._current_run_id or "unknown"] = engine
+
+        try:
+            result = await engine.synthesize(spec)
+            _synthesis_results[result.id] = result
+            return result.to_dict()
+        finally:
+            await llm_client.close()
+
+    @server.tool(
+        description=(
+            "Check the status of a completed synthesis run. "
+            "Returns iteration count, fitness history, counterexamples resolved, and outcome."
+        )
+    )
+    def synthesis_status_tool(
+        synthesisId: str,
+    ) -> dict:
+        _validate_required("synthesisId", synthesisId)
+
+        result = _synthesis_results.get(synthesisId)
+        if result is None:
+            return {"error": f"No synthesis run found with ID '{synthesisId}'"}
+
+        return result.to_dict()
+
+    @server.tool(
+        description=(
+            "Cancel a running synthesis. Sets a cancellation flag that the CEGIS "
+            "engine checks between iterations."
+        )
+    )
+    def cancel_synthesis_tool(
+        synthesisId: str,
+    ) -> dict:
+        _validate_required("synthesisId", synthesisId)
+
+        engine = _synthesis_engines.get(synthesisId)
+        if engine is None:
+            return {"error": f"No active synthesis engine with ID '{synthesisId}'"}
+
+        engine.cancel()
+        return {"status": "cancellation_requested", "synthesisId": synthesisId}
+
+    @server.tool(
+        description=(
+            "List all synthesis runs for a project. "
+            "Returns a summary of past runs with outcomes, iterations, and fitness."
+        )
+    )
+    def list_synthesis_runs_tool(
+        projectId: str,
+    ) -> dict:
+        _validate_required("projectId", projectId)
+
+        runs = []
+        for run_id, result in _synthesis_results.items():
+            runs.append({
+                "id": run_id,
+                "status": result.status.value,
+                "iterations": result.iterations,
+                "counterexamples_resolved": result.counterexamples_resolved,
+                "duration_ms": result.duration_ms,
+                "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
+            })
+
+        return {"projectId": projectId, "total_runs": len(runs), "runs": runs}
+
     return server
 
 

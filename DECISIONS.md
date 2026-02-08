@@ -228,6 +228,48 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 
 ---
 
+## D-012: Hybrid LLM Client with Abstract Interface
+
+**Date:** 2026-02-08
+**Status:** Active
+**Affects:** `synthesis/llm_client.py`, `synthesis/cloud_llm.py`, `synthesis/local_llm.py`
+
+**Context:** M4 requires LLM-generated code candidates as seeds for the genetic algorithm. Two options: cloud APIs (Claude/GPT) offer higher quality (85-92% syntactically valid) but cost $0.80-2/run and require API keys. Local models (Ollama + codellama:7b) are free but produce lower quality (60-70% valid) and require GPU for usable speed.
+
+**Decision:** Implement both behind an abstract `LLMClient` ABC, mirroring D-001's dual extractor pattern. Three concrete implementations: `CloudLLMClient` (Anthropic/OpenAI via httpx), `LocalLLMClient` (Ollama HTTP API), and `MockLLMClient` (testing). Backend is selectable at runtime via `SynthesisConfig.llm_backend`.
+
+**Reasoning:**
+- Mirrors the project's established pattern (D-001: dual AST/ASR extractors behind abstract base).
+- ~50 extra lines of abstraction enables runtime switching and zero-dependency testing.
+- Cloud API for high-quality initial seeds; local model for cost-free refinement iterations.
+- CI/CD runs with MockLLMClient — no API keys or GPU needed for testing.
+- Users without GPU or API keys can still use whichever backend is available.
+
+**Trade-off:** httpx becomes an optional dependency for cloud/local backends. Mock backend works without it.
+
+---
+
+## D-013: Fitness Function Formula for Genetic Algorithm
+
+**Date:** 2026-02-08
+**Status:** Active
+**Affects:** `synthesis/fitness.py`, `synthesis/cegis.py`
+
+**Context:** The genetic algorithm needs a fitness function to evaluate candidate patches. The function must balance three concerns: (1) avoiding known counterexamples, (2) satisfying the specification (tests pass), and (3) code simplicity.
+
+**Decision:** Fitness = (0.4 × CE_avoidance) + (0.5 × spec_satisfaction) - (0.1 × complexity_penalty). CE_avoidance is the fraction of counterexamples NOT triggered. Spec_satisfaction is the fraction of test commands that pass. Complexity_penalty is AST node count / 100, capped at 1.0.
+
+**Reasoning:**
+- Spec satisfaction dominates (0.5 weight) because passing tests is the primary goal.
+- CE avoidance has second priority (0.4) because avoiding known failures is critical for convergence.
+- Complexity penalty is low (0.1) — a tiebreaker to prefer simpler code, not a primary concern.
+- AST node count is a simple, fast proxy for complexity (no external dependency needed).
+- The formula matches `synthesis_framework.md` §Genetic Algorithm Population Management.
+
+**Trade-off:** Static weights may not be optimal for all codebases. Could be made adaptive in future milestones.
+
+---
+
 ## Decision Index
 
 | ID | Short Name | Date | Status |
@@ -243,6 +285,8 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 | D-009 | Standardized parser interface | 2026-02-08 | Active |
 | D-010 | Provenance DAG as append-only event log | 2026-02-08 | Active |
 | D-011 | Heuristic failure classification | 2026-02-08 | Active |
+| D-012 | Hybrid LLM client with abstract interface | 2026-02-08 | Active |
+| D-013 | Fitness function formula for GA | 2026-02-08 | Active |
 
 ---
 
@@ -251,3 +295,4 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 - **v1.0** (2026-02-08): Initial decision log created. D-001 and D-002 documented retroactively from existing code. D-003 through D-008 are Phase 2 design decisions.
 - **v1.1** (2026-02-08): Added D-009 (standardized parser interface) for M1 completion. All Phase 2 decisions (D-003 through D-008) confirmed as implemented and tested.
 - **v1.2** (2026-02-08): Added D-010 (provenance DAG) and D-011 (heuristic failure classification) for M3 completion.
+- **v1.3** (2026-02-08): Added D-012 (hybrid LLM client) and D-013 (fitness function formula) for M4 completion.

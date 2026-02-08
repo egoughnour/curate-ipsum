@@ -26,7 +26,7 @@ Curate-ipsum is a **mutation testing orchestration MCP server** that bridges LLM
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      MCP Interface                       │
-│                  (37 tools registered)                    │
+│                  (32 tools registered)                    │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │
@@ -62,7 +62,7 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 
 | Item | Status | File(s) | Notes |
 |------|--------|---------|-------|
-| MCP server infrastructure | ✓ | `server.py` | FastMCP-based, 37 tools |
+| MCP server infrastructure | ✓ | `server.py` | FastMCP-based, 32 tools |
 | Stryker report parsing | ✓ | `parsers/stryker_parser.py` | JavaScript mutation tool |
 | mutmut parser | ✓ | `parsers/mutmut_parser.py` | Python mutation tool (SQLite cache) |
 | Run history + PID metrics | ✓ | `tools.py` | Precision/completeness tracking |
@@ -99,7 +99,7 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 
 ### M3: Belief Revision Engine ✓ (Complete)
 
-> **AMENDED 2026-02-08:** All M3 items implemented. Exit criteria met: "Track belief evolution across synthesis attempts with full provenance."
+> **AMENDED 2026-02-08:** All M3 items implemented. Exit criteria met: "Track belief evolution across synthesis attempts with full provenance." 32 MCP tools total (8 new M3 tools)
 
 | Item | Status | File(s) | Notes |
 |------|--------|---------|-------|
@@ -114,19 +114,36 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 | Failure mode analyzer | ✓ | `theory/failure_analyzer.py` | 7 failure modes, heuristic classification → D-011 |
 | MCP tools (8 new) | ✓ | `server.py` | store_evidence, provenance, why_believe, stability, rollback, undo, analyze_failure, world_history |
 
-### Phases 4–8: Not Started
+### M4: Synthesis Loop ✓ (Complete)
 
-Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardening. See `ROADMAP.md` for details.
+> **AMENDED 2026-02-08:** All M4 items implemented. Exit criteria met: "Generate patch that kills previously-surviving mutant, verified correct."
+
+| Item | Status | File(s) | Notes |
+|------|--------|---------|-------|
+| Synthesis data models | ✓ | `synthesis/models.py` | Individual, CodePatch, Specification, Counterexample, SynthesisResult |
+| Abstract LLM client | ✓ | `synthesis/llm_client.py` | ABC + MockLLMClient + prompt builder |
+| Cloud LLM backend | ✓ | `synthesis/cloud_llm.py` | Anthropic + OpenAI via httpx → D-012 |
+| Local LLM backend | ✓ | `synthesis/local_llm.py` | Ollama HTTP API → D-012 |
+| Population management | ✓ | `synthesis/population.py` | Elite/tournament selection, add/remove |
+| Fitness evaluation | ✓ | `synthesis/fitness.py` | CE avoidance + spec satisfaction - complexity → D-013 |
+| AST-aware crossover | ✓ | `synthesis/ast_operators.py` | Subtree swap, directed mutation |
+| Entropy manager | ✓ | `synthesis/entropy.py` | Shannon entropy, diversity injection |
+| CEGIS engine | ✓ | `synthesis/cegis.py` | Full loop: LLM → GA → verify → CE feedback |
+| MCP tools (4 new) | ✓ | `server.py` | synthesize_patch, synthesis_status, cancel_synthesis, list_synthesis_runs |
+
+### Phases 5–8: Not Started
+
+Verification Backends, Graph Database + RAG, Production Hardening. See `ROADMAP.md` for details.
 
 ---
 
 ## What's Next
 
-### M4: Synthesis Loop (Next Milestone)
+### M5: Verification Backends (Next Milestone)
 
-**Exit criteria:** Generate patch that kills previously-surviving mutant, verified correct.
+**Exit criteria:** Verify patch correctness against specification with proof certificate.
 
-**Key tasks:** LLM candidate extraction, fitness function, AST-aware crossover, CEGIS main loop. See `ROADMAP.md` for details.
+**Key tasks:** Z3 integration, CEGAR abstraction levels, SymPy path conditions, KLEE container. See `ROADMAP.md` for details.
 
 ---
 
@@ -157,7 +174,12 @@ Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardenin
 | `tests/test_rollback.py` | 12 | Rollback, checkpoints, undo operations |
 | `tests/test_failure_analyzer.py` | 38 | Failure classification, overfitting, contraction suggestions |
 | `tests/test_m3_end_to_end.py` | 9 | M3 full lifecycle: evidence → assertion → provenance → rollback |
-| **Total** | **468 passed, 1 pre-existing failure** | |
+| `tests/test_synthesis_models.py` | 28 | Synthesis data models, config validation |
+| `tests/test_llm_client.py` | 18 | Mock/cloud/local LLM clients, prompt building |
+| `tests/test_genetic_operators.py` | 27 | Population, fitness, AST operators, entropy |
+| `tests/test_cegis.py` | 8 | CEGIS engine, cancellation, timeout |
+| `tests/test_m4_end_to_end.py` | 11 | M4 full pipeline end-to-end |
+| **Total** | **560 passed, 1 pre-existing failure** | |
 
 ---
 
@@ -165,7 +187,7 @@ Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardenin
 
 ```
 curate-ipsum/
-├── server.py              # MCP server entry point (37 tools)
+├── server.py              # MCP server entry point (32 tools)
 ├── tools.py               # Async test/mutation execution layer
 ├── models.py              # Pydantic data models (MutationRunResult, etc.)
 ├── config.toml            # Server configuration
@@ -201,6 +223,17 @@ curate-ipsum/
 │   ├── provenance.py          # Append-only provenance DAG
 │   ├── rollback.py            # Rollback manager + checkpoints
 │   └── failure_analyzer.py    # Heuristic failure classification
+├── synthesis/
+│   ├── __init__.py            # Public API + optional dependency flag
+│   ├── models.py              # Individual, CodePatch, Specification, SynthesisResult
+│   ├── llm_client.py          # LLMClient ABC + MockLLMClient + prompt builder
+│   ├── cloud_llm.py           # Cloud LLM (Anthropic/OpenAI) via httpx
+│   ├── local_llm.py           # Local LLM (Ollama) via httpx
+│   ├── population.py          # GA population management
+│   ├── fitness.py             # Fitness evaluation (CE + spec - complexity)
+│   ├── ast_operators.py       # AST crossover + directed mutation
+│   ├── entropy.py             # Shannon entropy + diversity injection
+│   └── cegis.py               # CEGIS engine (main synthesis loop)
 ├── tests/
 │   ├── test_m1_regions.py       # Region model tests
 │   ├── test_m1_parsers.py       # Parser tests (Stryker + mutmut)
@@ -215,7 +248,12 @@ curate-ipsum/
 │   ├── test_spectral.py         # Laplacian/Fiedler/partitioner tests
 │   ├── test_planarity_kameda.py # Planarity + Kameda tests
 │   ├── test_hierarchy_deps.py   # Hierarchy + dependency tests
-│   └── test_mcp_graph.py        # MCP graph tool integration tests
+│   ├── test_mcp_graph.py        # MCP graph tool integration tests
+│   ├── test_synthesis_models.py   # Synthesis data model tests
+│   ├── test_llm_client.py        # LLM client tests
+│   ├── test_genetic_operators.py  # GA operator tests
+│   ├── test_cegis.py             # CEGIS engine tests
+│   └── test_m4_end_to_end.py     # M4 full pipeline E2E
 ├── docs/
 │   ├── m1_m3_audit.md     # M1-M3 audit findings
 │   └── lpython_klee_feasibility.md  # LPython/KLEE feasibility study
@@ -247,3 +285,4 @@ curate-ipsum/
 - **v1.0** (2026-02-08): Initial PROGRESS.md created from comprehensive codebase audit. Phase 1 complete, Phase 2 active.
 - **v2.0** (2026-02-08): Phase 2 (M2) complete — all 9 steps implemented (195 tests). M1 remaining parsers now active focus. Updated architecture diagram, file inventory, test summary, and known limitations.
 - **v3.0** (2026-02-08): M1 ✅ complete (3 new parsers: cosmic-ray, poodle, universalmutator). M3 ✅ complete (assertions, provenance DAG, rollback, failure analyzer, 8 new MCP tools). 468 tests passing. Updated all inventories.
+- **v4.0** (2026-02-08): M4 ✅ complete (synthesis loop: CEGIS + genetic algorithm + LLM client). 560 tests passing. 10 new synthesis files, 5 new test files, 4 new MCP tools.
