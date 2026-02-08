@@ -1,2 +1,7 @@
 __pycache__/
 .mutation_tool_data/
+.DS_Store
+*.db
+quick-verification/verification-and-semantic-search-rag.mhtml
+*.egg-info/
+
