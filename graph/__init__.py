@@ -1,36 +1,42 @@
 """
-Call graph extraction module for curate-ipsum.
+Graph extraction and spectral analysis module for curate-ipsum.
 
-This module provides tools for extracting call graphs from Python source code.
-It supports two backends:
+This module provides:
 
-1. AST backend (always available):
-   Uses Python's built-in ast module. Works with any Python code but
-   has limited semantic information.
+1. **Call graph extraction** (Phase 1 — complete):
+   - AST backend (always available)
+   - ASR backend (requires LPython)
+   - Dependency extraction (import-level)
 
-2. ASR backend (requires LPython):
-   Uses LPython's Abstract Semantic Representation for richer semantic
-   information. Requires type-annotated code.
+2. **Graph-spectral analysis** (Phase 2):
+   - Laplacian construction and Fiedler vector computation
+   - Recursive spectral partitioning
+   - Virtual sink/source augmentation
+   - Hierarchical SCC condensation
+   - Planarity testing and Kuratowski extraction
+   - Kameda O(1) reachability index
 
 Usage:
     from graph import get_extractor, CallGraph
 
-    # Auto-select best available backend
+    # Extract call graph
     extractor = get_extractor()
-
-    # Extract from file
-    graph = extractor.extract_file(Path("module.py"))
-
-    # Extract from directory
     graph = extractor.extract_directory(Path("src/"))
 
-    # Query the graph
-    for func in graph.functions():
-        callees = graph.get_callees(func.id)
-        print(f"{func.name} calls: {callees}")
+    # Spectral partitioning (requires scipy)
+    from graph.spectral import compute_fiedler_components
+    from graph.partitioner import GraphPartitioner
 
-    # Export to DOT
-    print(graph.to_dot())
+    partitioner = GraphPartitioner(min_partition_size=3)
+    tree = partitioner.partition(graph)
+
+    # O(1) reachability (requires networkx)
+    from graph.planarity import check_planarity
+    from graph.kameda import KamedaIndex
+
+    result = check_planarity(graph)
+    index = KamedaIndex.build(result.planar_subgraph, result.embedding)
+    print(index.reaches("module.func_a", "module.func_b"))
 """
 
 from .models import (
@@ -53,6 +59,8 @@ from .extractor import (
 
 from .ast_extractor import ASTExtractor
 
+from .dependency_extractor import DependencyExtractor
+
 # ASR extractor is optional (requires LPython)
 try:
     from .asr_extractor import ASRExtractor, LPythonNotFoundError
@@ -61,6 +69,40 @@ except ImportError:
     ASRExtractor = None  # type: ignore
     LPythonNotFoundError = ImportError  # type: ignore
     HAS_LPYTHON = False
+
+# Spectral analysis is optional (requires scipy)
+try:
+    from .spectral import (
+        FiedlerResult,
+        build_adjacency_matrix,
+        build_laplacian,
+        compute_fiedler,
+        compute_fiedler_components,
+        find_connected_components,
+    )
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
+# Planarity and Kameda are optional (requires networkx)
+try:
+    from .planarity import (
+        PlanarityResult,
+        callgraph_to_networkx,
+        check_planarity,
+        networkx_to_callgraph,
+    )
+    from .kameda import KamedaIndex
+    HAS_NETWORKX = True
+except ImportError:
+    HAS_NETWORKX = False
+
+# Partitioner and hierarchy need scipy
+try:
+    from .partitioner import GraphPartitioner, Partition, augment_partition
+    from .hierarchy import HierarchyBuilder, HierarchyNode
+except ImportError:
+    pass  # scipy not available
 
 
 __all__ = [
@@ -76,12 +118,36 @@ __all__ = [
     "CallGraphExtractor",
     "ASTExtractor",
     "ASRExtractor",
+    "DependencyExtractor",
     "get_extractor",
     # Exceptions
     "ExtractorError",
     "ParseError",
     "UnsupportedFeatureError",
     "LPythonNotFoundError",
+    # Spectral (optional: scipy)
+    "FiedlerResult",
+    "build_adjacency_matrix",
+    "build_laplacian",
+    "compute_fiedler",
+    "compute_fiedler_components",
+    "find_connected_components",
+    # Partitioning (optional: scipy)
+    "GraphPartitioner",
+    "Partition",
+    "augment_partition",
+    # Hierarchy (optional: scipy)
+    "HierarchyBuilder",
+    "HierarchyNode",
+    # Planarity (optional: networkx)
+    "PlanarityResult",
+    "check_planarity",
+    "callgraph_to_networkx",
+    "networkx_to_callgraph",
+    # Kameda (optional: networkx)
+    "KamedaIndex",
     # Flags
     "HAS_LPYTHON",
+    "HAS_SCIPY",
+    "HAS_NETWORKX",
 ]

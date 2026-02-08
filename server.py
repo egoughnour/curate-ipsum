@@ -498,6 +498,379 @@ def build_server() -> "FastMCP":
 
         return result
 
+    # =========================================================================
+    # Graph-Spectral Analysis Tools (Phase 2)
+    # =========================================================================
+
+    def _require_graph_extras() -> None:
+        """Raise a clear error if graph optional dependencies are missing."""
+        try:
+            import scipy  # noqa: F401
+        except ImportError:
+            raise ValueError(
+                "scipy is required for graph-spectral analysis. "
+                "Install with: pip install 'curate-ipsum[graph]'"
+            )
+
+    def _require_networkx_extra() -> None:
+        """Raise a clear error if networkx is not installed."""
+        try:
+            import networkx  # noqa: F401
+        except ImportError:
+            raise ValueError(
+                "networkx is required for planarity/reachability analysis. "
+                "Install with: pip install 'curate-ipsum[graph]'"
+            )
+
+    def _extract_graph(working_directory: str, backend: str = "auto") -> "CallGraph":
+        """Extract a call graph from a project directory."""
+        from graph import get_extractor, CallGraph as CG
+
+        directory = Path(working_directory)
+        if not directory.is_dir():
+            raise ValueError(f"Not a valid directory: {working_directory}")
+
+        extractor = get_extractor(backend=backend)
+        return extractor.extract_directory(directory)
+
+    @server.tool(
+        description=(
+            "Extract and analyze the call graph of a Python project. "
+            "Returns summary statistics: node count, edge count, SCC count, "
+            "connected components, and top-level function list."
+        )
+    )
+    def extract_call_graph(
+        workingDirectory: str,
+        backend: str = "auto",
+    ) -> dict:
+        """Extract call graph and return summary statistics."""
+        _validate_required("workingDirectory", workingDirectory)
+
+        graph = _extract_graph(workingDirectory, backend)
+
+        sccs = graph.strongly_connected_components()
+        non_trivial_sccs = [scc for scc in sccs if len(scc) >= 2]
+
+        # Compute connected components (undirected) via union-find
+        parent: Dict[str, str] = {n: n for n in graph.nodes}
+
+        def find(x: str) -> str:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a: str, b: str) -> None:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[ra] = rb
+
+        for edge in graph.edges:
+            if edge.source_id in parent and edge.target_id in parent:
+                union(edge.source_id, edge.target_id)
+
+        components: Dict[str, List[str]] = {}
+        for node_id in graph.nodes:
+            root = find(node_id)
+            components.setdefault(root, []).append(node_id)
+
+        return {
+            "node_count": len(graph.nodes),
+            "edge_count": len(graph.edges),
+            "scc_count": len(sccs),
+            "non_trivial_scc_count": len(non_trivial_sccs),
+            "connected_component_count": len(components),
+            "component_sizes": sorted(
+                [len(c) for c in components.values()], reverse=True
+            ),
+            "functions": [
+                {"id": n.id, "name": n.name, "kind": n.kind.value}
+                for n in sorted(graph.nodes.values(), key=lambda n: n.id)
+            ],
+        }
+
+    @server.tool(
+        description=(
+            "Compute Fiedler spectral partitioning of a project's call graph. "
+            "Recursively bipartitions the graph using the Fiedler vector (2nd "
+            "eigenvector of the graph Laplacian). Returns a partition tree with "
+            "node assignments and algebraic connectivity (λ₂) values."
+        )
+    )
+    def compute_partitioning(
+        workingDirectory: str,
+        min_partition_size: int = 3,
+        max_depth: int = 10,
+    ) -> dict:
+        """Compute spectral partitioning and return the partition tree."""
+        _validate_required("workingDirectory", workingDirectory)
+        _require_graph_extras()
+
+        from graph import GraphPartitioner
+
+        graph = _extract_graph(workingDirectory)
+        partitioner = GraphPartitioner(
+            min_partition_size=min_partition_size,
+            max_depth=max_depth,
+        )
+        root = partitioner.partition(graph)
+        leaves = GraphPartitioner.get_leaf_partitions(root)
+
+        def _serialize_partition(p) -> dict:
+            result = {
+                "id": p.id,
+                "size": p.size,
+                "depth": p.depth,
+                "is_leaf": p.is_leaf,
+                "node_ids": sorted(p.node_ids),
+            }
+            if p.fiedler_value is not None:
+                result["fiedler_value"] = round(p.fiedler_value, 6)
+            if p.children is not None:
+                result["children"] = [
+                    _serialize_partition(p.children[0]),
+                    _serialize_partition(p.children[1]),
+                ]
+            return result
+
+        return {
+            "total_nodes": root.size,
+            "leaf_partition_count": len(leaves),
+            "leaf_sizes": sorted([l.size for l in leaves], reverse=True),
+            "partition_tree": _serialize_partition(root),
+        }
+
+    @server.tool(
+        description=(
+            "Query reachability between two functions in a project's call graph. "
+            "Uses Kameda O(1) index for planar subgraphs with BFS fallback for "
+            "non-planar edges. Returns whether the source can reach the target, "
+            "the method used, and the path if reachable via BFS."
+        )
+    )
+    def query_reachability(
+        workingDirectory: str,
+        source_function: str,
+        target_function: str,
+    ) -> dict:
+        """Query reachability between two functions."""
+        _validate_required("workingDirectory", workingDirectory)
+        _validate_required("source_function", source_function)
+        _validate_required("target_function", target_function)
+        _require_graph_extras()
+        _require_networkx_extra()
+
+        from graph import check_planarity, KamedaIndex
+        from graph.partitioner import augment_partition, GraphPartitioner
+
+        graph = _extract_graph(workingDirectory)
+
+        # Validate both functions exist
+        if source_function not in graph.nodes:
+            # Try fuzzy match: search by short name
+            matches = [
+                nid for nid, n in graph.nodes.items()
+                if n.name == source_function or nid.endswith(f".{source_function}")
+            ]
+            if len(matches) == 1:
+                source_function = matches[0]
+            elif len(matches) > 1:
+                return {
+                    "error": f"Ambiguous source function '{source_function}'. Matches: {matches}",
+                    "reachable": None,
+                }
+            else:
+                return {
+                    "error": f"Source function '{source_function}' not found in call graph.",
+                    "reachable": None,
+                    "available_functions": sorted(graph.nodes.keys())[:50],
+                }
+
+        if target_function not in graph.nodes:
+            matches = [
+                nid for nid, n in graph.nodes.items()
+                if n.name == target_function or nid.endswith(f".{target_function}")
+            ]
+            if len(matches) == 1:
+                target_function = matches[0]
+            elif len(matches) > 1:
+                return {
+                    "error": f"Ambiguous target function '{target_function}'. Matches: {matches}",
+                    "reachable": None,
+                }
+            else:
+                return {
+                    "error": f"Target function '{target_function}' not found in call graph.",
+                    "reachable": None,
+                    "available_functions": sorted(graph.nodes.keys())[:50],
+                }
+
+        # BFS-based path finding (always available, used as ground truth)
+        bfs_reachable = target_function in graph.reachable_from(source_function)
+        bfs_path: Optional[List[str]] = None
+        if bfs_reachable:
+            # Reconstruct path via BFS
+            from collections import deque
+            visited: Dict[str, Optional[str]] = {source_function: None}
+            queue = deque([source_function])
+            while queue:
+                current = queue.popleft()
+                if current == target_function:
+                    break
+                for callee in graph.get_callees(current):
+                    if callee not in visited:
+                        visited[callee] = current
+                        queue.append(callee)
+            if target_function in visited:
+                path: List[str] = []
+                node = target_function
+                while node is not None:
+                    path.append(node)
+                    node = visited[node]
+                bfs_path = list(reversed(path))
+
+        # Try Kameda index for O(1) check
+        method = "bfs"
+        try:
+            # Condense SCCs first (Kameda needs a DAG)
+            condensed = graph.condensation()
+            planarity_result = check_planarity(condensed)
+
+            kameda_index = KamedaIndex.build(
+                planarity_result.planar_subgraph,
+                embedding=planarity_result.embedding,
+                non_planar_edges=planarity_result.non_planar_edges,
+            )
+
+            # Map original function IDs to their SCC IDs
+            sccs = graph.strongly_connected_components()
+            node_to_scc: Dict[str, str] = {}
+            for i, scc in enumerate(sccs):
+                for n in scc:
+                    node_to_scc[n] = f"scc_{i}"
+
+            src_scc = node_to_scc.get(source_function)
+            tgt_scc = node_to_scc.get(target_function)
+
+            if src_scc and tgt_scc:
+                if src_scc == tgt_scc:
+                    kameda_reachable = True
+                else:
+                    kameda_reachable = kameda_index.reaches(src_scc, tgt_scc)
+                method = "kameda"
+        except (ValueError, ImportError):
+            # Kameda build failed — fall back to BFS (already computed)
+            pass
+
+        return {
+            "source": source_function,
+            "target": target_function,
+            "reachable": bfs_reachable,
+            "method": method,
+            "path": bfs_path,
+        }
+
+    @server.tool(
+        description=(
+            "Get the hierarchical decomposition of a project's call graph. "
+            "Alternates between SCC condensation and Fiedler spectral partitioning "
+            "to produce a tree representing the project's modular structure."
+        )
+    )
+    def get_hierarchy(workingDirectory: str) -> dict:
+        """Get hierarchical decomposition of the call graph."""
+        _validate_required("workingDirectory", workingDirectory)
+        _require_graph_extras()
+
+        from graph import HierarchyBuilder
+
+        graph = _extract_graph(workingDirectory)
+        builder = HierarchyBuilder()
+        root = builder.build(graph)
+
+        summary = builder.summary(root)
+        leaf_groups = builder.flatten(root)
+
+        summary["leaf_group_count"] = len(leaf_groups)
+        summary["leaf_groups"] = [
+            {"size": len(group), "members": sorted(group)}
+            for group in sorted(leaf_groups, key=len, reverse=True)
+        ]
+
+        return summary
+
+    @server.tool(
+        description=(
+            "Find which partition a function belongs to in the Fiedler partition tree. "
+            "Returns the partition ID, sibling functions in the same partition, "
+            "and the entry/exit points of that partition."
+        )
+    )
+    def find_function_partition(
+        workingDirectory: str,
+        function_name: str,
+    ) -> dict:
+        """Find which partition a function belongs to."""
+        _validate_required("workingDirectory", workingDirectory)
+        _validate_required("function_name", function_name)
+        _require_graph_extras()
+
+        from graph import GraphPartitioner
+
+        graph = _extract_graph(workingDirectory)
+
+        # Resolve function name
+        resolved = function_name
+        if function_name not in graph.nodes:
+            matches = [
+                nid for nid, n in graph.nodes.items()
+                if n.name == function_name or nid.endswith(f".{function_name}")
+            ]
+            if len(matches) == 1:
+                resolved = matches[0]
+            elif len(matches) > 1:
+                return {
+                    "error": f"Ambiguous function name '{function_name}'. Matches: {matches}",
+                }
+            else:
+                return {
+                    "error": f"Function '{function_name}' not found in call graph.",
+                    "available_functions": sorted(graph.nodes.keys())[:50],
+                }
+
+        partitioner = GraphPartitioner()
+        root = partitioner.partition(graph)
+        leaf = GraphPartitioner.find_partition(root, resolved)
+
+        if leaf is None:
+            return {
+                "error": f"Function '{resolved}' not found in any partition.",
+            }
+
+        # Find entry/exit points within the partition
+        partition_nodes = leaf.node_ids
+        has_internal_incoming: set = set()
+        has_internal_outgoing: set = set()
+        for edge in graph.edges:
+            if edge.source_id in partition_nodes and edge.target_id in partition_nodes:
+                has_internal_incoming.add(edge.target_id)
+                has_internal_outgoing.add(edge.source_id)
+
+        entry_points = sorted(partition_nodes - has_internal_incoming)
+        exit_points = sorted(partition_nodes - has_internal_outgoing)
+
+        return {
+            "function": resolved,
+            "partition_id": leaf.id,
+            "partition_size": leaf.size,
+            "partition_depth": leaf.depth,
+            "siblings": sorted(nid for nid in leaf.node_ids if nid != resolved),
+            "entry_points": entry_points,
+            "exit_points": exit_points,
+            "fiedler_value": round(leaf.fiedler_value, 6) if leaf.fiedler_value else None,
+        }
+
     return server
 
 

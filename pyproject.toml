@@ -27,11 +27,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+graph = [
+    "scipy>=1.10",
+    "networkx>=3.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
     "ruff>=0.1.0",
     "mypy>=1.0",
+    "scipy>=1.10",
+    "networkx>=3.0",
 ]
 
 [project.scripts]
