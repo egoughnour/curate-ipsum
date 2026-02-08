@@ -15,7 +15,7 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 | M3: Belief Revision Engine | ✅ Complete | 100% (127 new tests, 32 MCP tools) |
 | M4: Synthesis Loop | ✅ Complete | 100% (92 new tests, 32 MCP tools total) |
 | M5: Verification Backends | ⚪ Not Started | 0% |
-| M6: Graph Database + RAG | ⚪ Not Started | 0% |
+| M6: Graph Database + RAG | 🟡 Partial | 60% (graph persistence done, RAG deferred) |
 | M7: Production Hardening | ⚪ Not Started | 0% |
 
 ## Milestones
@@ -119,18 +119,22 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 ### M6: Graph Database + RAG (Q3-Q4)
 **Goal**: Persistent, queryable code graph
 
-| Task | Complexity | Dependencies |
-|------|------------|--------------|
-| Joern CPG generation | Medium | - |
-| Neo4j schema design | Medium | CPG |
-| Reachability index persistence | Medium | M2, Neo4j |
-| Incremental update on file change | High | Index |
-| Code embedding model | Medium | - |
-| Semantic search index | Medium | Embedding |
-| RAG retrieval pipeline | Medium | Search index |
-| MCP tools for graph queries | Low | All above |
+| Task | Status | Complexity | Dependencies |
+|------|--------|------------|--------------|
+| Abstract GraphStore ABC | ✅ Done | Low | M2 |
+| SQLite graph store (primary) | ✅ Done | Medium | GraphStore |
+| Kuzu graph store (optional) | ✅ Done | Medium | GraphStore |
+| Synthesis result persistence | ✅ Done | Low | M4 |
+| Kameda index persistence | ✅ Done | Medium | M2, GraphStore |
+| Fiedler partition persistence | ✅ Done | Medium | M2, GraphStore |
+| Incremental update engine | ✅ Done | High | GraphStore |
+| MCP tools (3 new) | ✅ Done | Low | All above |
+| Code embedding model | ⚪ Deferred | Medium | - |
+| Semantic search index | ⚪ Deferred | Medium | Embedding |
+| RAG retrieval pipeline | ⚪ Deferred | Medium | Search index |
+| Text-to-Cypher queries | ⚪ Deferred | Medium | Kuzu + RAG |
 
-**Exit Criteria**: Natural language queries over codebase with graph-backed retrieval
+**Exit Criteria**: Natural language queries over codebase with graph-backed retrieval — **PARTIALLY MET** (graph persistence complete, RAG deferred)
 
 ---
 

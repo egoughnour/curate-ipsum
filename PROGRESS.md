@@ -26,7 +26,7 @@ Curate-ipsum is a **mutation testing orchestration MCP server** that bridges LLM
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      MCP Interface                       │
-│                  (32 tools registered)                    │
+│                  (35 tools registered)                    │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │
@@ -62,7 +62,7 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 
 | Item | Status | File(s) | Notes |
 |------|--------|---------|-------|
-| MCP server infrastructure | ✓ | `server.py` | FastMCP-based, 32 tools |
+| MCP server infrastructure | ✓ | `server.py` | FastMCP-based, 35 tools |
 | Stryker report parsing | ✓ | `parsers/stryker_parser.py` | JavaScript mutation tool |
 | mutmut parser | ✓ | `parsers/mutmut_parser.py` | Python mutation tool (SQLite cache) |
 | Run history + PID metrics | ✓ | `tools.py` | Precision/completeness tracking |
@@ -131,15 +131,38 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 | CEGIS engine | ✓ | `synthesis/cegis.py` | Full loop: LLM → GA → verify → CE feedback |
 | MCP tools (4 new) | ✓ | `server.py` | synthesize_patch, synthesis_status, cancel_synthesis, list_synthesis_runs |
 
-### Phases 5–8: Not Started
+### M6: Graph Persistence (Partial — Graph Storage Complete, RAG Deferred)
 
-Verification Backends, Graph Database + RAG, Production Hardening. See `ROADMAP.md` for details.
+> **AMENDED 2026-02-08:** Graph persistence layer implemented. 56 new tests, 35 MCP tools total. Storage package with SQLite (primary) + Kuzu (optional) backends, incremental update engine, and synthesis result persistence. RAG/embeddings deferred to follow-up.
+
+| Item | Status | File(s) | Notes |
+|------|--------|---------|-------|
+| Abstract GraphStore ABC | ✓ | `storage/graph_store.py` | Factory pattern mirrors D-012 → D-014 |
+| SQLite graph store (primary) | ✓ | `storage/sqlite_graph_store.py` | 7 tables, WAL mode, zero deps |
+| Kuzu graph store (optional) | ✓ | `storage/kuzu_graph_store.py` | Cypher queries, embedded graph DB |
+| Synthesis result persistence | ✓ | `storage/synthesis_store.py` | JSONL append-only, multi-project |
+| Kameda index persistence | ✓ | `storage/sqlite_graph_store.py` | O(1) reachability survives restart |
+| Fiedler partition persistence | ✓ | `storage/sqlite_graph_store.py` | Materialized path encoding |
+| Incremental update engine | ✓ | `storage/incremental.py` | SHA-256 file hashing → D-015 |
+| MCP tools (3 new) | ✓ | `server.py` | incremental_update, persistent_graph_stats, graph_query |
+| Server wiring | ✓ | `server.py` | extract_call_graph, compute_partitioning, synthesize_patch persist automatically |
+| Code embedding / RAG | ⚪ | - | Deferred to follow-up |
+
+### Phases 5, 7–8: Not Started
+
+Verification Backends, Production Hardening. See `ROADMAP.md` for details.
 
 ---
 
 ## What's Next
 
-### M5: Verification Backends (Next Milestone)
+### RAG + Embeddings (M6 Follow-Up)
+
+**Exit criteria:** Natural language queries over codebase with graph-backed retrieval.
+
+**Key tasks:** Code embedding model, vector index, semantic search, text-to-Cypher pipeline.
+
+### M5: Verification Backends
 
 **Exit criteria:** Verify patch correctness against specification with proof certificate.
 
@@ -179,7 +202,12 @@ Verification Backends, Graph Database + RAG, Production Hardening. See `ROADMAP.
 | `tests/test_genetic_operators.py` | 27 | Population, fitness, AST operators, entropy |
 | `tests/test_cegis.py` | 8 | CEGIS engine, cancellation, timeout |
 | `tests/test_m4_end_to_end.py` | 11 | M4 full pipeline end-to-end |
-| **Total** | **560 passed, 1 pre-existing failure** | |
+| `tests/test_synthesis_store.py` | 10 | Synthesis store JSONL persistence |
+| `tests/test_sqlite_graph_store.py` | 25 | SQLite graph store round-trips, queries |
+| `tests/test_kuzu_graph_store.py` | 12 | Kuzu graph store (skipped if kuzu not installed) |
+| `tests/test_incremental.py` | 15 | Incremental update engine, change detection |
+| `tests/test_m6_end_to_end.py` | 7 | M6 full pipeline: persist → query → update |
+| **Total** | **616 passed, 1 pre-existing failure, 1 skipped** | |
 
 ---
 
@@ -187,7 +215,7 @@ Verification Backends, Graph Database + RAG, Production Hardening. See `ROADMAP.
 
 ```
 curate-ipsum/
-├── server.py              # MCP server entry point (32 tools)
+├── server.py              # MCP server entry point (35 tools)
 ├── tools.py               # Async test/mutation execution layer
 ├── models.py              # Pydantic data models (MutationRunResult, etc.)
 ├── config.toml            # Server configuration
@@ -234,6 +262,13 @@ curate-ipsum/
 │   ├── ast_operators.py       # AST crossover + directed mutation
 │   ├── entropy.py             # Shannon entropy + diversity injection
 │   └── cegis.py               # CEGIS engine (main synthesis loop)
+├── storage/
+│   ├── __init__.py            # Package init, exports
+│   ├── synthesis_store.py     # JSONL persistence for synthesis results
+│   ├── graph_store.py         # Abstract GraphStore ABC + factory → D-014
+│   ├── sqlite_graph_store.py  # SQLite backend (primary, zero deps)
+│   ├── kuzu_graph_store.py    # Kuzu backend (optional, Cypher queries)
+│   └── incremental.py         # File hash tracking + delta updates → D-015
 ├── tests/
 │   ├── test_m1_regions.py       # Region model tests
 │   ├── test_m1_parsers.py       # Parser tests (Stryker + mutmut)
@@ -253,7 +288,12 @@ curate-ipsum/
 │   ├── test_llm_client.py        # LLM client tests
 │   ├── test_genetic_operators.py  # GA operator tests
 │   ├── test_cegis.py             # CEGIS engine tests
-│   └── test_m4_end_to_end.py     # M4 full pipeline E2E
+│   ├── test_m4_end_to_end.py     # M4 full pipeline E2E
+│   ├── test_synthesis_store.py    # Synthesis JSONL store tests
+│   ├── test_sqlite_graph_store.py # SQLite graph store tests
+│   ├── test_kuzu_graph_store.py   # Kuzu graph store tests (skip if no kuzu)
+│   ├── test_incremental.py        # Incremental update engine tests
+│   └── test_m6_end_to_end.py     # M6 full pipeline E2E
 ├── docs/
 │   ├── m1_m3_audit.md     # M1-M3 audit findings
 │   └── lpython_klee_feasibility.md  # LPython/KLEE feasibility study
@@ -262,7 +302,7 @@ curate-ipsum/
 ├── CONTEXT.md             # Directory structure + naming conventions
 ├── DOCS_INDEX.md          # Documentation navigation guide
 ├── PROGRESS.md            # ← You are here
-├── DECISIONS.md           # Architectural decision log (D-001 through D-009)
+├── DECISIONS.md           # Architectural decision log (D-001 through D-015)
 ├── PHASE2_PLAN.md         # Phase 2 implementation plan (complete)
 ├── architectural_vision.md       # Graph-spectral framework theory
 ├── synthesis_framework.md        # CEGIS/CEGAR/genetic approach
@@ -286,3 +326,4 @@ curate-ipsum/
 - **v2.0** (2026-02-08): Phase 2 (M2) complete — all 9 steps implemented (195 tests). M1 remaining parsers now active focus. Updated architecture diagram, file inventory, test summary, and known limitations.
 - **v3.0** (2026-02-08): M1 ✅ complete (3 new parsers: cosmic-ray, poodle, universalmutator). M3 ✅ complete (assertions, provenance DAG, rollback, failure analyzer, 8 new MCP tools). 468 tests passing. Updated all inventories.
 - **v4.0** (2026-02-08): M4 ✅ complete (synthesis loop: CEGIS + genetic algorithm + LLM client). 560 tests passing. 10 new synthesis files, 5 new test files, 4 new MCP tools.
+- **v5.0** (2026-02-08): M6 🟡 partial (graph persistence: SQLite + Kuzu backends, incremental updates, synthesis persistence). 616 tests passing. 6 new storage files, 5 new test files, 3 new MCP tools (35 total). RAG deferred.

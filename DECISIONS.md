@@ -270,6 +270,47 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 
 ---
 
+## D-014: Abstract GraphStore with SQLite/Kuzu Dual Backends
+
+**Date:** 2026-02-08
+**Status:** Active
+**Affects:** `storage/graph_store.py`, `storage/sqlite_graph_store.py`, `storage/kuzu_graph_store.py`
+
+**Context:** M6 requires persistent graph storage for call graphs, Kameda reachability indices, and Fiedler partition trees. Prior to M6, all graph data was in-memory and lost on restart. Synthesis results from M4 were similarly ephemeral.
+
+**Decision:** Abstract `GraphStore` ABC with two concrete backends: SQLite (primary, zero external deps) and Kuzu (optional embedded graph DB with Cypher). Mirrors the D-012 pattern (hybrid client with abstract base + concrete backends). Factory function `build_graph_store(backend, project_path)` selects backend at runtime.
+
+**Reasoning:**
+- SQLite is stdlib — zero-dependency primary backend ensures curate-ipsum works out of the box.
+- Kuzu provides native Cypher query language and efficient multi-hop traversals — important for future RAG and text-to-Cypher features.
+- Storing both backends behind an ABC means new backends (Neo4j, JanusGraph) can be added without changing consumer code.
+- Storage location: `.curate_ipsum/` directory alongside existing `beliefs.db`.
+
+**Alternatives Considered:**
+- Neo4j server: Rejected — external server dependency too heavy for embedded tool.
+- Joern CPG + Neo4j: Deferred — Joern adds JVM dependency; Kuzu provides similar Cypher without JVM.
+- SQLite only: Would work but blocks future Cypher-based queries.
+
+---
+
+## D-015: Incremental Graph Updates via File Hashing
+
+**Date:** 2026-02-08
+**Status:** Active
+**Affects:** `storage/incremental.py`, `storage/sqlite_graph_store.py`
+
+**Context:** Full call graph re-extraction is expensive for large projects. Users modify a few files between queries, making full re-extraction wasteful.
+
+**Decision:** SHA-256 file hashing with change detection. The `IncrementalEngine` computes hashes for all `.py` files, compares with stored hashes, and produces a `ChangeSet` (added/modified/removed files). Only affected nodes and edges are updated. File hashes are persisted in the graph store's `file_hashes` table.
+
+**Reasoning:**
+- SHA-256 is fast enough for file-level change detection and avoids false positives.
+- File-level granularity balances precision vs. complexity — function-level diffing would require AST parsing before change detection.
+- Removed files trigger node/edge deletion. Modified files trigger delete + re-extract. Added files trigger extraction only.
+- Full rebuild is always available as a fallback via `force_full_rebuild()`.
+
+---
+
 ## Decision Index
 
 | ID | Short Name | Date | Status |
@@ -287,6 +328,8 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 | D-011 | Heuristic failure classification | 2026-02-08 | Active |
 | D-012 | Hybrid LLM client with abstract interface | 2026-02-08 | Active |
 | D-013 | Fitness function formula for GA | 2026-02-08 | Active |
+| D-014 | Abstract GraphStore with SQLite/Kuzu backends | 2026-02-08 | Active |
+| D-015 | Incremental graph updates via file hashing | 2026-02-08 | Active |
 
 ---
 
@@ -296,3 +339,4 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 - **v1.1** (2026-02-08): Added D-009 (standardized parser interface) for M1 completion. All Phase 2 decisions (D-003 through D-008) confirmed as implemented and tested.
 - **v1.2** (2026-02-08): Added D-010 (provenance DAG) and D-011 (heuristic failure classification) for M3 completion.
 - **v1.3** (2026-02-08): Added D-012 (hybrid LLM client) and D-013 (fitness function formula) for M4 completion.
+- **v1.4** (2026-02-08): Added D-014 (abstract GraphStore) and D-015 (incremental updates) for M6 graph persistence.

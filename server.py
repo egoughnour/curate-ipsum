@@ -15,6 +15,10 @@ from tools import (
 )
 
 LOG_LEVEL = os.environ.get("MUTATION_TOOL_LOG_LEVEL", "INFO").upper()
+LOG = logging.getLogger("server")
+
+# Graph store backend: "sqlite" (default) or "kuzu"
+GRAPH_BACKEND = os.environ.get("CURATE_IPSUM_GRAPH_BACKEND", "sqlite")
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -45,6 +49,27 @@ def _json_payload(model) -> dict:
 
 def build_server() -> "FastMCP":
     server = _require_server()
+
+    # ── M6: Persistent storage singletons ─────────────────────────────────────
+    _graph_stores: Dict[str, Any] = {}   # project_path → GraphStore
+    _synthesis_store_cache: Dict[str, Any] = {}  # sentinel → SynthesisStore
+
+    def _get_graph_store(project_path: str) -> Any:
+        """Get or create a GraphStore for the given project path."""
+        if project_path not in _graph_stores:
+            from storage.graph_store import build_graph_store
+            _graph_stores[project_path] = build_graph_store(
+                GRAPH_BACKEND, Path(project_path)
+            )
+        return _graph_stores[project_path]
+
+    def _get_synthesis_store() -> Any:
+        """Get or create the SynthesisStore singleton."""
+        if "store" not in _synthesis_store_cache:
+            from storage.synthesis_store import SynthesisStore
+            store_dir = DATA_DIR / "synthesis"
+            _synthesis_store_cache["store"] = SynthesisStore(store_dir)
+        return _synthesis_store_cache["store"]
 
     @server.tool(
             description="Run unit tests for a project and return a summarized result."
@@ -793,6 +818,15 @@ def build_server() -> "FastMCP":
             root = find(node_id)
             components.setdefault(root, []).append(node_id)
 
+        # Persist graph to storage (M6)
+        persisted = False
+        try:
+            store = _get_graph_store(workingDirectory)
+            store.store_graph(graph, workingDirectory)
+            persisted = True
+        except Exception as exc:
+            LOG.debug("Graph persistence failed: %s", exc)
+
         return {
             "node_count": len(graph.nodes),
             "edge_count": len(graph.edges),
@@ -806,6 +840,7 @@ def build_server() -> "FastMCP":
                 {"id": n.id, "name": n.name, "kind": n.kind.value}
                 for n in sorted(graph.nodes.values(), key=lambda n: n.id)
             ],
+            "persisted": persisted,
         }
 
     @server.tool(
@@ -852,11 +887,22 @@ def build_server() -> "FastMCP":
                 ]
             return result
 
+        # Persist partitions to storage (M6)
+        persisted = False
+        try:
+            store = _get_graph_store(workingDirectory)
+            partition_dict = _serialize_partition(root)
+            store.store_partitions(partition_dict, workingDirectory)
+            persisted = True
+        except Exception as exc:
+            LOG.debug("Partition persistence failed: %s", exc)
+
         return {
             "total_nodes": root.size,
             "leaf_partition_count": len(leaves),
             "leaf_sizes": sorted([l.size for l in leaves], reverse=True),
             "partition_tree": _serialize_partition(root),
+            "persisted": persisted,
         }
 
     @server.tool(
@@ -1169,6 +1215,12 @@ def build_server() -> "FastMCP":
         try:
             result = await engine.synthesize(spec)
             _synthesis_results[result.id] = result
+            # Persist to synthesis store (M6)
+            try:
+                synth_store = _get_synthesis_store()
+                synth_store.append(result, projectId)
+            except Exception as exc:
+                LOG.debug("Synthesis persistence failed: %s", exc)
             return result.to_dict()
         finally:
             await llm_client.close()
@@ -1220,17 +1272,162 @@ def build_server() -> "FastMCP":
         _validate_required("projectId", projectId)
 
         runs = []
+        seen_ids = set()
+
+        # First: load from persistent store (M6)
+        try:
+            synth_store = _get_synthesis_store()
+            stored_results = synth_store.load_all(projectId)
+            for result in stored_results:
+                seen_ids.add(result.id)
+                runs.append({
+                    "id": result.id,
+                    "status": result.status.value,
+                    "iterations": result.iterations,
+                    "counterexamples_resolved": result.counterexamples_resolved,
+                    "duration_ms": result.duration_ms,
+                    "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
+                })
+        except Exception:
+            pass
+
+        # Second: add in-memory results not yet persisted
         for run_id, result in _synthesis_results.items():
-            runs.append({
-                "id": run_id,
-                "status": result.status.value,
-                "iterations": result.iterations,
-                "counterexamples_resolved": result.counterexamples_resolved,
-                "duration_ms": result.duration_ms,
-                "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
-            })
+            if run_id not in seen_ids:
+                runs.append({
+                    "id": run_id,
+                    "status": result.status.value,
+                    "iterations": result.iterations,
+                    "counterexamples_resolved": result.counterexamples_resolved,
+                    "duration_ms": result.duration_ms,
+                    "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
+                })
 
         return {"projectId": projectId, "total_runs": len(runs), "runs": runs}
+
+    # ── M6: Graph Persistence Tools ───────────────────────────────────────────
+
+    @server.tool(
+        description=(
+            "Detect file changes and update the persisted call graph incrementally. "
+            "Compares file hashes to find added/modified/removed files, then updates "
+            "only the affected graph nodes. Much faster than full re-extraction."
+        )
+    )
+    def incremental_update_tool(
+        projectId: str,
+        workingDirectory: str,
+        pattern: str = "**/*.py",
+    ) -> dict:
+        """Detect file changes and update graph incrementally."""
+        _validate_required("projectId", projectId)
+        _validate_required("workingDirectory", workingDirectory)
+
+        from storage.incremental import IncrementalEngine
+
+        store = _get_graph_store(workingDirectory)
+        engine = IncrementalEngine(store)
+
+        result = engine.update_graph(
+            project_id=projectId,
+            directory=Path(workingDirectory),
+            pattern=pattern,
+        )
+
+        return result.to_dict()
+
+    @server.tool(
+        description=(
+            "Get statistics from the persistent graph store for a project. "
+            "Returns node count, edge count, whether Kameda index and partitions "
+            "are stored, backend type, and last update timestamp."
+        )
+    )
+    def persistent_graph_stats_tool(
+        projectId: str,
+        workingDirectory: str,
+    ) -> dict:
+        """Get statistics from the persistent graph store."""
+        _validate_required("projectId", projectId)
+        _validate_required("workingDirectory", workingDirectory)
+
+        try:
+            store = _get_graph_store(workingDirectory)
+            stats = store.get_stats(projectId)
+            stats["project_id"] = projectId
+            return stats
+        except Exception as exc:
+            return {"error": str(exc), "project_id": projectId}
+
+    @server.tool(
+        description=(
+            "Execute a structured graph query against the persistent store. "
+            "Supports query types: 'neighbors' (get adjacent nodes), "
+            "'reachability' (check if source reaches target via Kameda O(1) index), "
+            "and 'node' (get node details). Uses stored graph data without re-extraction."
+        )
+    )
+    def graph_query_tool(
+        projectId: str,
+        workingDirectory: str,
+        queryType: str,
+        nodeId: str = "",
+        targetNodeId: str = "",
+        direction: str = "outgoing",
+        edgeKind: str = "",
+    ) -> dict:
+        """Execute a structured graph query."""
+        _validate_required("projectId", projectId)
+        _validate_required("workingDirectory", workingDirectory)
+        _validate_required("queryType", queryType)
+
+        store = _get_graph_store(workingDirectory)
+
+        if queryType == "neighbors":
+            _validate_required("nodeId", nodeId)
+            neighbors = store.get_neighbors(
+                node_id=nodeId,
+                project_id=projectId,
+                direction=direction,
+                edge_kind=edgeKind or None,
+            )
+            return {
+                "query_type": "neighbors",
+                "node_id": nodeId,
+                "direction": direction,
+                "edge_kind": edgeKind or "all",
+                "neighbors": neighbors,
+                "count": len(neighbors),
+            }
+
+        elif queryType == "reachability":
+            _validate_required("nodeId", nodeId)
+            _validate_required("targetNodeId", targetNodeId)
+            reachable = store.query_reachable(
+                source_id=nodeId,
+                target_id=targetNodeId,
+                project_id=projectId,
+            )
+            return {
+                "query_type": "reachability",
+                "source": nodeId,
+                "target": targetNodeId,
+                "reachable": reachable,
+                "method": "persistent_kameda",
+            }
+
+        elif queryType == "node":
+            _validate_required("nodeId", nodeId)
+            node_data = store.get_node(nodeId, projectId)
+            if node_data:
+                return {"query_type": "node", "found": True, "node": node_data}
+            return {"query_type": "node", "found": False, "node_id": nodeId}
+
+        else:
+            return {
+                "error": f"Unknown query type: {queryType}",
+                "supported_types": ["neighbors", "reachability", "node"],
+            }
 
     return server
 
