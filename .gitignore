@@ -4,4 +4,6 @@ __pycache__/
 *.db
 quick-verification/verification-and-semantic-search-rag.mhtml
 *.egg-info/
+quick-verification/docs/
+quick-verification/angr_adapter_baseline/
 
