@@ -3,6 +3,8 @@ Theory Manager: Wraps py-brs operations with curate-ipsum-specific logic.
 
 The TheoryManager provides a high-level interface for managing synthesis theories,
 handling belief revision operations, and integrating evidence from mutation testing.
+
+M3 additions: provenance tracking, rollback, failure analysis, typed assertions.
 """
 
 from __future__ import annotations
@@ -10,6 +12,17 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+from theory.assertions import (
+    Assertion,
+    AssertionKind,
+    ContradictionDetector,
+    assertion_to_node_dict,
+    node_dict_to_assertion,
+)
+from theory.failure_analyzer import FailureAnalysis, FailureModeAnalyzer
+from theory.provenance import ProvenanceDAG, ProvenanceStore, RevisionEvent, RevisionType
+from theory.rollback import RollbackManager
 
 if TYPE_CHECKING:
     from brs import CASStore, ContractionResult, Node, WorldBundle
@@ -62,6 +75,8 @@ class TheoryManager:
         self._world_label = world_label
         self._store: Optional["CASStore"] = None
         self._store_path = project_path / ".curate_ipsum" / "beliefs.db"
+        self._provenance_dag: Optional[ProvenanceDAG] = None
+        self._rollback_manager: Optional[RollbackManager] = None
 
     @property
     def store(self) -> "CASStore":
@@ -90,6 +105,42 @@ class TheoryManager:
     def world_label(self) -> str:
         """Current world version label."""
         return self._world_label
+
+    @property
+    def provenance_dag(self) -> ProvenanceDAG:
+        """Lazy-load the provenance DAG from CASStore."""
+        if self._provenance_dag is None:
+            try:
+                self._provenance_dag = ProvenanceStore.load(
+                    self.store, self._domain
+                )
+            except Exception:
+                self._provenance_dag = ProvenanceDAG()
+        return self._provenance_dag
+
+    def _save_provenance(self) -> None:
+        """Persist the provenance DAG to CASStore."""
+        try:
+            ProvenanceStore.save(self.store, self._domain, self.provenance_dag)
+        except Exception as exc:
+            LOG.warning("Failed to save provenance DAG: %s", exc)
+
+    def _get_current_world_hash(self) -> Optional[str]:
+        """Get the hash of the current world state."""
+        try:
+            row = self.store._conn.execute(
+                "SELECT hash FROM worlds WHERE domain_id=? AND version_label=?",
+                (self._domain, self._world_label),
+            ).fetchone()
+            return row[0] if row else None
+        except Exception:
+            return None
+
+    def get_rollback_manager(self) -> RollbackManager:
+        """Get or create a RollbackManager."""
+        if self._rollback_manager is None:
+            self._rollback_manager = RollbackManager(self, self.provenance_dag)
+        return self._rollback_manager
 
     def _ensure_world_exists(self) -> None:
         """Ensure the current world exists, creating if necessary."""
@@ -237,6 +288,21 @@ class TheoryManager:
         )
         self.store._conn.commit()
 
+        # Record provenance event
+        from_hash = content_hash(world_data) if world_data else None
+        event = RevisionEvent(
+            event_type=RevisionType.EXPAND,
+            timestamp=node["created_utc"],
+            assertion_id=node_id,
+            evidence_id=evidence_id,
+            from_world_hash=from_hash,
+            to_world_hash=new_hash,
+            reason=f"Added {assertion_type} assertion: {content[:60]}",
+            nodes_added=[node_id],
+        )
+        self.provenance_dag.add_event(event)
+        self._save_provenance()
+
         LOG.info("Added assertion %s to %s:%s", node_id, self._domain, self._world_label)
         return node
 
@@ -265,8 +331,10 @@ class TheoryManager:
             ValueError: If trying to contract a root node
         """
         from brs import contract
+        import datetime
 
         self._ensure_world_exists()
+        from_hash = self._get_current_world_hash()
 
         result = contract(
             self.store,
@@ -277,6 +345,22 @@ class TheoryManager:
             strategy=strategy,
             cascade=cascade,
         )
+
+        to_hash = self._get_current_world_hash()
+
+        # Record provenance event
+        event = RevisionEvent(
+            event_type=RevisionType.CONTRACT,
+            timestamp=datetime.datetime.utcnow().isoformat() + "Z",
+            assertion_id=node_id,
+            from_world_hash=from_hash,
+            to_world_hash=to_hash,
+            strategy=strategy,
+            reason=f"Contracted {node_id} via {strategy}",
+            nodes_removed=list(result.nodes_removed),
+        )
+        self.provenance_dag.add_event(event)
+        self._save_provenance()
 
         LOG.info(
             "Contracted %s from %s:%s - removed %d nodes, %d edges",
@@ -320,6 +404,7 @@ class TheoryManager:
         import datetime
 
         self._ensure_world_exists()
+        from_hash = self._get_current_world_hash()
 
         # Create assertion node
         node_id = f"{assertion_type}_{content_hash({'type': assertion_type, 'content': content})[:12]}"
@@ -343,6 +428,23 @@ class TheoryManager:
             to_world=self._world_label,  # Revise in place
             contraction_strategy=contraction_strategy,
         )
+
+        # Record provenance event
+        nodes_removed = list(contraction.nodes_removed) if contraction else []
+        event = RevisionEvent(
+            event_type=RevisionType.REVISE,
+            timestamp=assertion_node["created_utc"],
+            assertion_id=node_id,
+            evidence_id=evidence_id,
+            from_world_hash=from_hash,
+            to_world_hash=new_hash,
+            strategy=contraction_strategy,
+            reason=f"Revised with {assertion_type}: {content[:60]}",
+            nodes_removed=nodes_removed,
+            nodes_added=[node_id],
+        )
+        self.provenance_dag.add_event(event)
+        self._save_provenance()
 
         LOG.info(
             "Revised %s:%s with %s (contraction=%s)",
@@ -400,11 +502,19 @@ class TheoryManager:
 
         assertions = []
         for node_id in node_ids:
-            # Query for node
+            # Query for node — use simple substring match (canonical_json may
+            # omit spaces after colons)
             row = self.store._conn.execute(
                 "SELECT json FROM objects WHERE kind='Node' AND json LIKE ?",
-                (f'%"id": "{node_id}"%',)
+                (f'%"id":"{node_id}"%',)
             ).fetchone()
+
+            # Fallback: try with space after colon (non-canonical JSON)
+            if row is None:
+                row = self.store._conn.execute(
+                    "SELECT json FROM objects WHERE kind='Node' AND json LIKE ?",
+                    (f'%"id": "{node_id}"%',)
+                ).fetchone()
 
             if row:
                 node = json.loads(row[0])
@@ -470,6 +580,8 @@ class TheoryManager:
             "created_utc": datetime.datetime.utcnow().isoformat() + "Z",
         }
 
+        from_hash = content_hash(world_data)
+
         new_hash = content_hash(new_world)
         self.store._conn.execute(
             "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)",
@@ -481,5 +593,181 @@ class TheoryManager:
         )
         self.store._conn.commit()
 
+        # Record provenance event for evidence storage
+        event = RevisionEvent(
+            event_type=RevisionType.EVIDENCE,
+            timestamp=evidence_dict["created_utc"],
+            evidence_id=evidence.id,
+            from_world_hash=from_hash,
+            to_world_hash=new_hash,
+            reason=f"Stored evidence {evidence.id}",
+        )
+        self.provenance_dag.add_event(event)
+        self._save_provenance()
+
         LOG.info("Stored evidence %s", evidence.id)
         return evidence.id
+
+    # =========================================================================
+    # M3: Provenance query methods (delegate to ProvenanceDAG)
+    # =========================================================================
+
+    def why_believe(self, assertion_id: str) -> List[str]:
+        """
+        Trace which evidence grounds an assertion.
+
+        Args:
+            assertion_id: The assertion to trace
+
+        Returns:
+            List of evidence IDs that support this assertion
+        """
+        return self.provenance_dag.why_believe(assertion_id)
+
+    def when_added(self, assertion_id: str) -> Optional[RevisionEvent]:
+        """
+        Find when an assertion was first added.
+
+        Args:
+            assertion_id: The assertion to look up
+
+        Returns:
+            The expansion event, or None
+        """
+        return self.provenance_dag.when_added(assertion_id)
+
+    def belief_stability(self, assertion_id: str) -> float:
+        """
+        Measure how stable an assertion is.
+
+        Returns 1.0 for never-revised beliefs, lower for frequently revised.
+
+        Args:
+            assertion_id: The assertion to measure
+
+        Returns:
+            Stability score (0.0 to 1.0)
+        """
+        return self.provenance_dag.belief_stability(assertion_id)
+
+    def get_provenance_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of the provenance DAG.
+
+        Returns:
+            Dict with event counts, world hashes, and recent events
+        """
+        dag = self.provenance_dag
+        events = dag.get_history()
+
+        type_counts: Dict[str, int] = {}
+        for e in events:
+            t = e.event_type.value
+            type_counts[t] = type_counts.get(t, 0) + 1
+
+        recent = events[-10:] if len(events) > 10 else events
+
+        return {
+            "total_events": len(events),
+            "event_type_counts": type_counts,
+            "world_hashes": dag.get_world_hashes(),
+            "recent_events": [e.to_dict() for e in recent],
+        }
+
+    # =========================================================================
+    # M3: Failure analysis
+    # =========================================================================
+
+    def analyze_failure(
+        self,
+        error_message: str = "",
+        test_pass_rate: Optional[float] = None,
+        mutation_score: Optional[float] = None,
+        failing_tests: Optional[List[str]] = None,
+        region_id: Optional[str] = None,
+    ) -> FailureAnalysis:
+        """
+        Analyze why a synthesis attempt failed.
+
+        Combines error message classification, overfitting/underfitting
+        detection, and assertion-based contraction suggestions.
+
+        Args:
+            error_message: Error output from test execution
+            test_pass_rate: Fraction of tests passing (0.0 to 1.0)
+            mutation_score: Fraction of mutants killed (0.0 to 1.0)
+            failing_tests: Names of failing tests
+            region_id: Region where the patch was applied
+
+        Returns:
+            FailureAnalysis with mode, confidence, and suggestions
+        """
+        # Get current assertions for contraction suggestions
+        assertions = []
+        try:
+            assertion_dicts = self.list_assertions(region_id=region_id)
+            for ad in assertion_dicts:
+                try:
+                    assertions.append(node_dict_to_assertion(ad))
+                except (ValueError, KeyError):
+                    pass
+        except Exception:
+            pass
+
+        return FailureModeAnalyzer.analyze(
+            error_message=error_message,
+            test_pass_rate=test_pass_rate,
+            mutation_score=mutation_score,
+            failing_tests=failing_tests,
+            assertions=assertions,
+            region_id=region_id,
+        )
+
+    # =========================================================================
+    # M3: Contradiction detection
+    # =========================================================================
+
+    def find_contradictions(
+        self,
+        assertion_type: str,
+        content: str,
+        confidence: float = 0.5,
+        region_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Find existing assertions that would contradict a new assertion.
+
+        Args:
+            assertion_type: Type of the new assertion
+            content: Content of the new assertion
+            confidence: Confidence of the new assertion
+            region_id: Region of the new assertion
+
+        Returns:
+            List of contradicting assertion node dicts
+        """
+        new_assertion = Assertion(
+            id="__candidate__",
+            kind=AssertionKind(assertion_type),
+            content=content,
+            confidence=confidence,
+            region_id=region_id,
+        )
+
+        existing = []
+        try:
+            assertion_dicts = self.list_assertions(region_id=region_id)
+            for ad in assertion_dicts:
+                try:
+                    existing.append(node_dict_to_assertion(ad))
+                except (ValueError, KeyError):
+                    pass
+        except Exception:
+            pass
+
+        contradictions = ContradictionDetector.find_contradictions(
+            new_assertion, existing
+        )
+
+        # Return as dicts for MCP compatibility
+        return [assertion_to_node_dict(c) for c in contradictions]

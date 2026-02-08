@@ -32,8 +32,11 @@ from parsers.detection import (
     detect_language,
     recommend_framework,
 )
+from parsers.cosmic_ray_parser import parse_cosmic_ray_output
 from parsers.mutmut_parser import parse_mutmut_output
+from parsers.poodle_parser import parse_poodle_output
 from parsers.stryker_parser import parse_stryker_output
+from parsers.universalmutator_parser import parse_universalmutator_output
 
 LOG = logging.getLogger("parsers")
 
@@ -51,6 +54,9 @@ __all__ = [
     # Individual parsers (for direct use)
     "parse_stryker_output",
     "parse_mutmut_output",
+    "parse_cosmic_ray_output",
+    "parse_poodle_output",
+    "parse_universalmutator_output",
 ]
 
 
@@ -116,7 +122,7 @@ def parse_mutation_output(
         if detection.framework == MutationFramework.UNKNOWN:
             raise UnsupportedFrameworkError(
                 f"Could not auto-detect mutation framework. {detection.evidence}. "
-                f"Supported frameworks: stryker, mutmut"
+                f"Supported frameworks: stryker, mutmut, cosmic-ray, poodle, universalmutator"
             )
 
     tool_lower = tool.lower().replace("-", "_").replace(" ", "_")
@@ -129,21 +135,24 @@ def parse_mutation_output(
         return parse_mutmut_output(working_directory, report_path)
 
     elif tool_lower in ("cosmic_ray", "cosmicray", "cosmic"):
-        raise UnsupportedFrameworkError(
-            f"cosmic-ray parser not yet implemented. "
-            f"Supported frameworks: stryker, mutmut"
-        )
+        return parse_cosmic_ray_output(working_directory, report_path)
+
+    elif tool_lower in ("poodle", "poodle_test"):
+        return parse_poodle_output(working_directory, report_path)
+
+    elif tool_lower in ("universalmutator", "universal_mutator", "um"):
+        return parse_universalmutator_output(working_directory, report_path)
 
     elif tool_lower in ("mutpy", "mut_py"):
         raise UnsupportedFrameworkError(
             f"mutpy parser not yet implemented. "
-            f"Supported frameworks: stryker, mutmut"
+            f"Supported frameworks: stryker, mutmut, cosmic-ray, poodle, universalmutator"
         )
 
     else:
         raise UnsupportedFrameworkError(
             f"Unknown mutation framework: {tool}. "
-            f"Supported frameworks: stryker, mutmut"
+            f"Supported frameworks: stryker, mutmut, cosmic-ray, poodle, universalmutator"
         )
 
 

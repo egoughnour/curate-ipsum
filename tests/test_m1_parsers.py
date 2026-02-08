@@ -444,9 +444,9 @@ class TestUnifiedParser:
         with pytest.raises(UnsupportedFrameworkError, match="Unknown mutation framework"):
             parse_mutation_output(str(tmp_path), tool="unknown_tool")
 
-    def test_cosmic_ray_not_implemented(self, tmp_path: Path):
-        """Raises UnsupportedFrameworkError for cosmic-ray (not yet implemented)."""
-        with pytest.raises(UnsupportedFrameworkError, match="cosmic-ray.*not yet implemented"):
+    def test_cosmic_ray_no_session_raises_file_not_found(self, tmp_path: Path):
+        """cosmic-ray is now implemented; raises FileNotFoundError if no session found."""
+        with pytest.raises(FileNotFoundError, match="Cosmic-ray session not found"):
             parse_mutation_output(str(tmp_path), tool="cosmic-ray")
 
     def test_tool_name_normalization(self, stryker_report: Path):

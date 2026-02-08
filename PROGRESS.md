@@ -26,13 +26,13 @@ Curate-ipsum is a **mutation testing orchestration MCP server** that bridges LLM
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      MCP Interface                       │
-│                  (23 tools registered)                    │
+│                  (37 tools registered)                    │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │
 │  │  Mutation   │  │  Graph     │  │  Symbolic  │         │
 │  │  Parsers    │  │  Spectral  │  │  Execution │         │
-│  │  (M1 ~)    │  │  (M2 ✓)   │  │  (Phase 6) │         │
+│  │  (M1 ✓)    │  │  (M2 ✓)   │  │  (Phase 6) │         │
 │  └──────┬─────┘  └──────┬─────┘  └──────┬─────┘         │
 │         │               │               │                │
 │         ▼               ▼               ▼                │
@@ -56,22 +56,22 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 
 ## Current Status
 
-### M1: Multi-Framework Foundation ~ (Active — Completing Remaining Parsers)
+### M1: Multi-Framework Foundation ✓ (Complete)
 
-> **AMENDED 2026-02-08:** M1 was previously listed as "Phase 1 ✓ Complete" — that reflected the core infrastructure (server, regions, Stryker, mutmut). The ROADMAP M1 exit criteria ("Run any Python mutation tool through single MCP interface") requires the remaining Python mutation tool parsers. These are now the active focus.
+> **AMENDED 2026-02-08:** All 5 mutation framework parsers implemented. M1 exit criteria met: "Run any Python mutation tool through single MCP interface."
 
 | Item | Status | File(s) | Notes |
 |------|--------|---------|-------|
-| MCP server infrastructure | ✓ | `server.py` | FastMCP-based, 23 tools |
+| MCP server infrastructure | ✓ | `server.py` | FastMCP-based, 37 tools |
 | Stryker report parsing | ✓ | `parsers/stryker_parser.py` | JavaScript mutation tool |
 | mutmut parser | ✓ | `parsers/mutmut_parser.py` | Python mutation tool (SQLite cache) |
 | Run history + PID metrics | ✓ | `tools.py` | Precision/completeness tracking |
 | Flexible region model | ✓ | `regions/models.py` | Hierarchical: file → class → func → lines |
 | Framework auto-detection | ✓ | `parsers/detection.py` | Language + tool detection |
 | Unified parser interface | ✓ | `parsers/__init__.py` | Routes to correct parser |
-| cosmic-ray parser | ✗ | — | **TODO: Active** |
-| poodle parser | ✗ | — | **TODO: Active** |
-| universalmutator parser | ✗ | — | **TODO: Active** |
+| cosmic-ray parser | ✓ | `parsers/cosmic_ray_parser.py` | JSON dump + SQLite session DB |
+| poodle parser | ✓ | `parsers/poodle_parser.py` | JSON mutation-testing-report-schema |
+| universalmutator parser | ✓ | `parsers/universalmutator_parser.py` | Plain text killed.txt / not-killed.txt |
 
 ### M2: Graph-Spectral Infrastructure ✓ (Complete)
 
@@ -97,17 +97,22 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 | Kameda O(1) reachability | ✓ | `graph/kameda.py` | 2D dominance labels + BFS fallback |
 | MCP tools for graph queries | ✓ | `server.py` | 5 tools: extract, partition, reach, hierarchy, find |
 
-### M3: Belief Revision Engine ~ (Partially Done)
+### M3: Belief Revision Engine ✓ (Complete)
 
-| Item | Status | Notes |
-|------|--------|-------|
-| py-brs library (AGM core) | ✓ | v2.0.0 released |
-| Evidence adapter (mutation→belief) | ✓ | `adapters/evidence_adapter.py` |
-| Theory manager | ✓ | `theory/manager.py` |
-| AGM contraction | ✓ | In py-brs v2.0.0 |
-| Entrenchment calculation | ✓ | In py-brs v2.0.0 |
-| Provenance DAG storage | ✗ | Can now build on M2 graph infra |
-| Failure mode analyzer | ✗ | Depends on Provenance DAG |
+> **AMENDED 2026-02-08:** All M3 items implemented. Exit criteria met: "Track belief evolution across synthesis attempts with full provenance."
+
+| Item | Status | File(s) | Notes |
+|------|--------|---------|-------|
+| py-brs library (AGM core) | ✓ | PyPI `py-brs` | v2.0.0 released |
+| Evidence adapter (mutation→belief) | ✓ | `adapters/evidence_adapter.py` | Mutation results → BRS Evidence |
+| Theory manager | ✓ | `theory/manager.py` | High-level API, provenance wired |
+| AGM contraction | ✓ | In py-brs v2.0.0 | 3 strategies: entrenchment, minimal, full_cascade |
+| Entrenchment calculation | ✓ | In py-brs v2.0.0 | `compute_entrenchment()` |
+| Typed assertion model | ✓ | `theory/assertions.py` | 6 kinds + contradiction detection → D-010 |
+| Provenance DAG | ✓ | `theory/provenance.py` | Append-only causal chain → D-010 |
+| Rollback mechanism | ✓ | `theory/rollback.py` | Checkpoints + undo via provenance DAG |
+| Failure mode analyzer | ✓ | `theory/failure_analyzer.py` | 7 failure modes, heuristic classification → D-011 |
+| MCP tools (8 new) | ✓ | `server.py` | store_evidence, provenance, why_believe, stability, rollback, undo, analyze_failure, world_history |
 
 ### Phases 4–8: Not Started
 
@@ -117,23 +122,11 @@ Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardenin
 
 ## What's Next
 
-### M1 Completion: Remaining Python Mutation Parsers (Active)
+### M4: Synthesis Loop (Next Milestone)
 
-**Exit criteria:** Run any Python mutation tool through single MCP interface.
+**Exit criteria:** Generate patch that kills previously-surviving mutant, verified correct.
 
-**Remaining work (3 parsers):**
-
-1. **cosmic-ray parser** (`parsers/cosmic_ray_parser.py`) — JSON report format. Detection signals already exist in `detection.py` (`.cosmic-ray.toml`, confidence 0.8).
-2. **poodle parser** (`parsers/poodle_parser.py`) — JSON report format. Detection signals needed.
-3. **universalmutator parser** (`parsers/universalmutator_parser.py`) — Multi-language tool, typically text/JSON output. Detection signals needed.
-
-**Integration points to update:**
-
-- `parsers/__init__.py` — route new tool names to new parsers (currently raises `UnsupportedFrameworkError`)
-- `parsers/detection.py` — add detection signals for poodle and universalmutator
-- Tests in `tests/` — one test file per parser
-
-**No server.py changes needed** — `run_mutation_tests_tool` already uses the unified `parse_mutation_output()` interface.
+**Key tasks:** LLM candidate extraction, fitness function, AST-aware crossover, CEGIS main loop. See `ROADMAP.md` for details.
 
 ---
 
@@ -152,13 +145,19 @@ Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardenin
 |-----------|-------|--------|
 | `tests/test_m1_regions.py` | 25 | Region model parsing, containment, overlap |
 | `tests/test_m1_parsers.py` | 25 | Stryker + mutmut parsing, detection |
+| `tests/test_new_parsers.py` | 62 | cosmic-ray, poodle, universalmutator parsers |
 | `tests/test_graph_extraction.py` | 26 | AST extractor, call resolution |
-| `tests/test_brs_integration.py` | 15 (skipped) | BRS evidence adapter integration |
+| `tests/test_brs_integration.py` | 15 | BRS evidence adapter integration |
 | `tests/test_spectral.py` | 41 | Laplacian, Fiedler, partitioner, virtual nodes |
 | `tests/test_planarity_kameda.py` | 54 | Planarity, Kameda reachability, BFS verification |
 | `tests/test_hierarchy_deps.py` | 48 | Hierarchy, dependency extractor, imports |
 | `tests/test_mcp_graph.py` | 26 | MCP graph tools end-to-end pipeline |
-| **Total** | **265 passed, 15 skipped** | |
+| `tests/test_assertions.py` | 38 | Typed assertions, serialization, contradiction detection |
+| `tests/test_provenance.py` | 30 | Provenance DAG, event recording, path queries |
+| `tests/test_rollback.py` | 12 | Rollback, checkpoints, undo operations |
+| `tests/test_failure_analyzer.py` | 38 | Failure classification, overfitting, contraction suggestions |
+| `tests/test_m3_end_to_end.py` | 9 | M3 full lifecycle: evidence → assertion → provenance → rollback |
+| **Total** | **468 passed, 1 pre-existing failure** | |
 
 ---
 
@@ -166,7 +165,7 @@ Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardenin
 
 ```
 curate-ipsum/
-├── server.py              # MCP server entry point (23 tools)
+├── server.py              # MCP server entry point (37 tools)
 ├── tools.py               # Async test/mutation execution layer
 ├── models.py              # Pydantic data models (MutationRunResult, etc.)
 ├── config.toml            # Server configuration
@@ -184,21 +183,35 @@ curate-ipsum/
 │   ├── planarity.py       # Boyer-Myrvold planarity + Kuratowski
 │   └── kameda.py          # O(1) reachability index (2D dominance)
 ├── parsers/
-│   ├── __init__.py        # Unified parser interface
+│   ├── __init__.py        # Unified parser interface (routes 5 frameworks)
 │   ├── detection.py       # Framework + language auto-detection
 │   ├── stryker_parser.py  # Stryker JSON report parser
-│   └── mutmut_parser.py   # mutmut SQLite cache parser
+│   ├── mutmut_parser.py   # mutmut SQLite cache parser
+│   ├── cosmic_ray_parser.py   # cosmic-ray JSON dump + SQLite parser
+│   ├── poodle_parser.py       # poodle JSON mutation-testing-report parser
+│   └── universalmutator_parser.py  # universalmutator text file parser
 ├── regions/
 │   └── models.py          # Region, RegionLevel (file/class/func/lines)
 ├── adapters/
 │   └── evidence_adapter.py  # Mutation results → BRS beliefs
 ├── theory/
-│   └── manager.py         # Theory manager for belief revision
+│   ├── __init__.py            # Package with submodule listing
+│   ├── manager.py             # Theory manager (provenance + rollback wired)
+│   ├── assertions.py          # Typed assertion model + contradiction detection
+│   ├── provenance.py          # Append-only provenance DAG
+│   ├── rollback.py            # Rollback manager + checkpoints
+│   └── failure_analyzer.py    # Heuristic failure classification
 ├── tests/
 │   ├── test_m1_regions.py       # Region model tests
 │   ├── test_m1_parsers.py       # Parser tests (Stryker + mutmut)
+│   ├── test_new_parsers.py      # cosmic-ray, poodle, universalmutator tests
 │   ├── test_graph_extraction.py # AST extractor tests
 │   ├── test_brs_integration.py  # BRS integration tests
+│   ├── test_assertions.py       # Typed assertions + contradiction detection
+│   ├── test_provenance.py       # Provenance DAG tests
+│   ├── test_rollback.py         # Rollback + checkpoint tests
+│   ├── test_failure_analyzer.py # Failure classification tests
+│   ├── test_m3_end_to_end.py    # M3 full lifecycle E2E
 │   ├── test_spectral.py         # Laplacian/Fiedler/partitioner tests
 │   ├── test_planarity_kameda.py # Planarity + Kameda tests
 │   ├── test_hierarchy_deps.py   # Hierarchy + dependency tests
@@ -233,3 +246,4 @@ curate-ipsum/
 
 - **v1.0** (2026-02-08): Initial PROGRESS.md created from comprehensive codebase audit. Phase 1 complete, Phase 2 active.
 - **v2.0** (2026-02-08): Phase 2 (M2) complete — all 9 steps implemented (195 tests). M1 remaining parsers now active focus. Updated architecture diagram, file inventory, test summary, and known limitations.
+- **v3.0** (2026-02-08): M1 ✅ complete (3 new parsers: cosmic-ray, poodle, universalmutator). M3 ✅ complete (assertions, provenance DAG, rollback, failure analyzer, 8 new MCP tools). 468 tests passing. Updated all inventories.

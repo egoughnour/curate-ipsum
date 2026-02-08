@@ -186,6 +186,48 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 
 ---
 
+## D-010: Provenance DAG as Append-Only Event Log
+
+**Date:** 2026-02-08
+**Status:** Active
+**Affects:** `theory/provenance.py`, `theory/manager.py`, `theory/rollback.py`
+
+**Context:** M3 requires tracking WHY each world state exists — not just WHAT it looks like (already handled by CASStore's content-addressed snapshots). We need a causal chain: which evidence triggered which revision, which assertions were added or removed, and why.
+
+**Decision:** Implement a `ProvenanceDAG` as an append-only event log stored alongside CASStore objects. Events record `(event_type, assertion_id, evidence_id, from_world_hash, to_world_hash, strategy, reason, nodes_removed, nodes_added)`. The DAG structure is derived from event ordering (no explicit parent pointers). Serialized to CASStore as a single object per domain.
+
+**Reasoning:**
+- Append-only log provides an audit trail — events are immutable once recorded.
+- Content-addressed storage means all historical worlds are already preserved; provenance just adds the "why."
+- Storing the entire DAG as one object simplifies persistence (vs. storing individual events).
+- The rollback mechanism only changes the world_label pointer — it doesn't copy or mutate any worlds, which is correct because CAS preserves everything.
+- Indexes by assertion_id and to_world_hash enable efficient queries (why_believe, when_added, when_removed, belief_stability).
+
+**Trade-off:** Storing the entire DAG as one object means write amplification (the whole DAG is re-serialized on each event). For typical synthesis sessions with <1000 events, this is negligible. If scaling becomes an issue, events could be stored individually with an index object.
+
+---
+
+## D-011: Heuristic Failure Classification (Formal Verification Deferred to M5)
+
+**Date:** 2026-02-08
+**Status:** Active
+**Affects:** `theory/failure_analyzer.py`, `theory/manager.py`
+
+**Context:** When a synthesis attempt fails, the system needs to understand WHY it failed to guide the next iteration. Formal verification (SMT/CEGAR) is planned for M5, but M3 needs failure classification now to connect failure modes to belief revision operations (which assertions to contract).
+
+**Decision:** Implement heuristic failure classification using regex pattern matching on error messages, combined with statistical detection of overfitting (high test pass + low mutation kill) and underfitting (low test pass). Map failure modes to assertion kinds: TYPE_MISMATCH → contract TYPE assertions, POSTCONDITION_VIOLATION → contract POSTCONDITION assertions, UNDERFITTING → contract all assertions in region. Sort contraction candidates by confidence (weakest first — contract least-entrenched beliefs).
+
+**Reasoning:**
+- Pattern matching on error messages works surprisingly well for common failure modes (TypeError, AssertionError, IndexError, etc.).
+- Overfitting/underfitting detection from test pass rate vs mutation kill rate is a well-established technique in mutation testing literature.
+- The mapping from failure mode to assertion kind provides actionable guidance: "this failed because of a type issue, so contract the type-related beliefs."
+- Heuristic approach is fast (no SMT solver), deterministic, and easy to debug.
+- Formal verification in M5 will replace/augment these heuristics with proof-based classification.
+
+**Trade-off:** Heuristic classification has lower precision than formal verification. The `confidence` field on `FailureAnalysis` communicates this uncertainty to downstream consumers. The SEMANTIC_DRIFT detection (test pass rate 50–80% with no specific error pattern) is particularly low confidence (0.5).
+
+---
+
 ## Decision Index
 
 | ID | Short Name | Date | Status |
@@ -199,6 +241,8 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 | D-007 | scipy/networkx as optional dependencies | 2026-02-08 | Active |
 | D-008 | Virtual sink/source augmentation | 2026-02-08 | Active |
 | D-009 | Standardized parser interface | 2026-02-08 | Active |
+| D-010 | Provenance DAG as append-only event log | 2026-02-08 | Active |
+| D-011 | Heuristic failure classification | 2026-02-08 | Active |
 
 ---
 
@@ -206,3 +250,4 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 
 - **v1.0** (2026-02-08): Initial decision log created. D-001 and D-002 documented retroactively from existing code. D-003 through D-008 are Phase 2 design decisions.
 - **v1.1** (2026-02-08): Added D-009 (standardized parser interface) for M1 completion. All Phase 2 decisions (D-003 through D-008) confirmed as implemented and tested.
+- **v1.2** (2026-02-08): Added D-010 (provenance DAG) and D-011 (heuristic failure classification) for M3 completion.

@@ -499,6 +499,224 @@ def build_server() -> "FastMCP":
         return result
 
     # =========================================================================
+    # M3: Provenance, Rollback & Failure Analysis Tools
+    # =========================================================================
+
+    @server.tool(
+        description=(
+            "Store a piece of evidence (test result, mutation result, etc.) in the "
+            "synthesis theory. Evidence is required to ground assertions."
+        )
+    )
+    def store_evidence_tool(
+        projectId: str,
+        evidenceId: str,
+        citation: str,
+        kind: str = "mutation_result",
+        reliability: float = 0.7,
+    ) -> dict:
+        """Store evidence in the theory."""
+        _validate_required("projectId", projectId)
+        _validate_required("evidenceId", evidenceId)
+        _validate_required("citation", citation)
+
+        from brs import Evidence
+        import datetime
+
+        evidence = Evidence(
+            id=evidenceId,
+            citation=citation,
+            kind=kind,
+            reliability=reliability,
+            date=datetime.datetime.utcnow().isoformat() + "Z",
+            metadata={},
+        )
+
+        manager = _get_theory_manager(projectId)
+        stored_id = manager.store_evidence(evidence)
+
+        return {
+            "evidence_id": stored_id,
+            "kind": kind,
+            "reliability": reliability,
+            "status": "stored",
+        }
+
+    @server.tool(
+        description=(
+            "Get the provenance DAG summary for a project's synthesis theory. "
+            "Shows the history of belief revision operations: expansions, contractions, "
+            "revisions, and evidence storage events."
+        )
+    )
+    def get_provenance_tool(projectId: str) -> dict:
+        """Get provenance DAG summary."""
+        _validate_required("projectId", projectId)
+
+        manager = _get_theory_manager(projectId)
+        return manager.get_provenance_summary()
+
+    @server.tool(
+        description=(
+            "Trace the evidence chain for an assertion. "
+            "Returns the list of evidence IDs that ground (support) a given assertion, "
+            "answering 'why do we believe this?'."
+        )
+    )
+    def why_believe_tool(projectId: str, assertionId: str) -> dict:
+        """Trace evidence chain for an assertion."""
+        _validate_required("projectId", projectId)
+        _validate_required("assertionId", assertionId)
+
+        manager = _get_theory_manager(projectId)
+        evidence_ids = manager.why_believe(assertionId)
+        event = manager.when_added(assertionId)
+
+        result: Dict[str, Any] = {
+            "assertion_id": assertionId,
+            "grounding_evidence_ids": evidence_ids,
+            "evidence_count": len(evidence_ids),
+        }
+
+        if event:
+            result["first_added"] = {
+                "timestamp": event.timestamp,
+                "event_type": event.event_type.value,
+                "reason": event.reason,
+            }
+
+        return result
+
+    @server.tool(
+        description=(
+            "Measure the stability of an assertion. "
+            "Returns a score from 0.0 (constantly revised) to 1.0 (never touched). "
+            "Unstable assertions may need stronger evidence or reformulation."
+        )
+    )
+    def belief_stability_tool(projectId: str, assertionId: str) -> dict:
+        """Measure assertion stability."""
+        _validate_required("projectId", projectId)
+        _validate_required("assertionId", assertionId)
+
+        manager = _get_theory_manager(projectId)
+        score = manager.belief_stability(assertionId)
+
+        return {
+            "assertion_id": assertionId,
+            "stability": score,
+            "interpretation": (
+                "very stable" if score > 0.8
+                else "stable" if score > 0.5
+                else "unstable" if score > 0.2
+                else "highly unstable"
+            ),
+        }
+
+    @server.tool(
+        description=(
+            "Revert the synthesis theory to a prior world state. "
+            "Uses content-addressable storage — no data is lost, only the "
+            "current world pointer changes."
+        )
+    )
+    def rollback_to_tool(projectId: str, worldHash: str) -> dict:
+        """Rollback to a prior world state."""
+        _validate_required("projectId", projectId)
+        _validate_required("worldHash", worldHash)
+
+        manager = _get_theory_manager(projectId)
+        rollback = manager.get_rollback_manager()
+        rollback.rollback_to(worldHash)
+
+        return {
+            "status": "rolled_back",
+            "target_world_hash": worldHash,
+        }
+
+    @server.tool(
+        description=(
+            "Undo the last N belief revision operations. "
+            "Walks backward through the provenance DAG to find the prior "
+            "world state, then rolls back to it."
+        )
+    )
+    def undo_last_operations_tool(projectId: str, count: int = 1) -> dict:
+        """Undo last N operations."""
+        _validate_required("projectId", projectId)
+
+        manager = _get_theory_manager(projectId)
+        rollback = manager.get_rollback_manager()
+        undone = rollback.undo_last(count)
+
+        return {
+            "status": "undone",
+            "operations_undone": count,
+            "undone_events": [
+                {
+                    "event_type": e.event_type.value,
+                    "assertion_id": e.assertion_id,
+                    "timestamp": e.timestamp,
+                }
+                for e in undone
+            ],
+        }
+
+    @server.tool(
+        description=(
+            "Analyze why a synthesis attempt failed. "
+            "Classifies the failure mode (type mismatch, overfitting, underfitting, etc.) "
+            "and suggests which assertions to contract to fix the issue."
+        )
+    )
+    def analyze_failure_tool(
+        projectId: str,
+        errorMessage: str = "",
+        testPassRate: Optional[float] = None,
+        mutationScore: Optional[float] = None,
+        regionId: Optional[str] = None,
+    ) -> dict:
+        """Analyze a synthesis failure."""
+        _validate_required("projectId", projectId)
+
+        manager = _get_theory_manager(projectId)
+        analysis = manager.analyze_failure(
+            error_message=errorMessage,
+            test_pass_rate=testPassRate,
+            mutation_score=mutationScore,
+            region_id=regionId,
+        )
+
+        return analysis.to_dict()
+
+    @server.tool(
+        description=(
+            "List all historical world states for a project's synthesis theory. "
+            "Returns world hashes with timestamps and reasons, useful for "
+            "understanding theory evolution and choosing rollback targets."
+        )
+    )
+    def list_world_history_tool(projectId: str) -> dict:
+        """List historical world states."""
+        _validate_required("projectId", projectId)
+
+        manager = _get_theory_manager(projectId)
+        rollback = manager.get_rollback_manager()
+        history = rollback.list_world_history()
+
+        return {
+            "count": len(history),
+            "worlds": [
+                {
+                    "world_hash": h,
+                    "timestamp": ts,
+                    "reason": reason,
+                }
+                for h, ts, reason in history
+            ],
+        }
+
+    # =========================================================================
     # Graph-Spectral Analysis Tools (Phase 2)
     # =========================================================================
 

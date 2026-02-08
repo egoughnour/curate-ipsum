@@ -10,9 +10,9 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 
 | Milestone | Status | Progress |
 |-----------|--------|----------|
-| M1: Multi-Framework Foundation | 🟡 In Progress | ~70% (3 parsers remaining) |
+| M1: Multi-Framework Foundation | ✅ Complete | 100% (5 parsers, 389 tests) |
 | M2: Graph-Spectral Infrastructure | ✅ Complete | 100% (195 tests passing) |
-| M3: Belief Revision Engine | 🟡 In Progress | ~56% |
+| M3: Belief Revision Engine | ✅ Complete | 100% (127 new tests, 37 MCP tools) |
 | M4: Synthesis Loop | ⚪ Not Started | 0% |
 | M5: Verification Backends | ⚪ Not Started | 0% |
 | M6: Graph Database + RAG | ⚪ Not Started | 0% |
@@ -30,11 +30,11 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 | mutmut parser | ✅ Done | Low | - |
 | Framework auto-detection | ✅ Done | Low | - |
 | Unified parser interface | ✅ Done | Low | All parsers |
-| cosmic-ray parser | ⬚ Todo | Medium | - |
-| poodle parser | ⬚ Todo | Low | - |
-| universalmutator parser | ⬚ Todo | Medium | - |
+| cosmic-ray parser | ✅ Done | Medium | - |
+| poodle parser | ✅ Done | Low | - |
+| universalmutator parser | ✅ Done | Medium | - |
 
-**Exit Criteria**: Run any Python mutation tool through single MCP interface
+**Exit Criteria**: Run any Python mutation tool through single MCP interface — **MET**
 
 ---
 
@@ -69,13 +69,13 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 | Evidence adapter (mutation→belief) | ✅ Done | Medium | py-brs |
 | Theory manager (curate-ipsum) | ✅ Done | Medium | Evidence adapter |
 | AGM contraction (py-brs v2.0.0) | ✅ Done | High | py-brs |
-| Assertion model (types, behaviors) | ⬚ Todo | Medium | - |
+| Assertion model (types, behaviors) | ✅ Done | Medium | - |
 | Entrenchment calculation (py-brs v2.0.0) | ✅ Done | Medium | Evidence |
-| Provenance DAG storage | ⬚ Todo | Medium | AGM operations |
-| Rollback mechanism | ⬚ Todo | Medium | Provenance DAG |
-| Failure mode analyzer | ⬚ Todo | High | All above |
+| Provenance DAG storage | ✅ Done | Medium | AGM operations |
+| Rollback mechanism | ✅ Done | Medium | Provenance DAG |
+| Failure mode analyzer | ✅ Done | High | All above |
 
-**Exit Criteria**: Track belief evolution across synthesis attempts with full provenance
+**Exit Criteria**: Track belief evolution across synthesis attempts with full provenance — **MET**
 
 ---
 

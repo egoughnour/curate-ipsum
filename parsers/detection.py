@@ -24,6 +24,8 @@ class MutationFramework(str, Enum):
     STRYKER = "stryker"
     MUTMUT = "mutmut"
     COSMIC_RAY = "cosmic-ray"
+    POODLE = "poodle"
+    UNIVERSALMUTATOR = "universalmutator"
     MUTPY = "mutpy"
     UNKNOWN = "unknown"
 
@@ -278,6 +280,61 @@ def detect_available_frameworks(working_directory: str) -> List[FrameworkDetecti
             detections.append(
                 FrameworkDetection(
                     framework=MutationFramework.COSMIC_RAY,
+                    confidence=confidence,
+                    evidence=f"Found {evidence_type}: {signal_path.name}",
+                )
+            )
+            break
+
+    # Poodle detection (Python)
+    poodle_signals = [
+        (cwd / "mutation-report.json", 0.8, "report"),
+        (cwd / "poodle-report.json", 0.9, "report"),
+        (cwd / ".poodle-report.json", 0.9, "report"),
+        (cwd / "poodle.toml", 0.8, "config"),
+        (cwd / "pyproject.toml", None, "config"),  # Special: check [tool.poodle]
+    ]
+    for signal_path, confidence, evidence_type in poodle_signals:
+        if signal_path is None:
+            continue
+        if confidence is None:
+            # Special case: check pyproject.toml for [tool.poodle]
+            if signal_path.exists():
+                try:
+                    content = signal_path.read_text(encoding="utf-8")
+                    if "[tool.poodle]" in content:
+                        detections.append(
+                            FrameworkDetection(
+                                framework=MutationFramework.POODLE,
+                                confidence=0.8,
+                                evidence="Found [tool.poodle] section in pyproject.toml",
+                            )
+                        )
+                        break
+                except (OSError, UnicodeDecodeError):
+                    pass
+            continue
+        if signal_path.exists():
+            detections.append(
+                FrameworkDetection(
+                    framework=MutationFramework.POODLE,
+                    confidence=confidence,
+                    evidence=f"Found {evidence_type}: {signal_path.name}",
+                )
+            )
+            break
+
+    # universalmutator detection
+    um_signals = [
+        (cwd / "killed.txt", 0.7, "results"),
+        (cwd / "not-killed.txt", 0.7, "results"),
+        (cwd / "notkilled.txt", 0.7, "results"),
+    ]
+    for signal_path, confidence, evidence_type in um_signals:
+        if signal_path.exists():
+            detections.append(
+                FrameworkDetection(
+                    framework=MutationFramework.UNIVERSALMUTATOR,
                     confidence=confidence,
                     evidence=f"Found {evidence_type}: {signal_path.name}",
                 )
