@@ -166,15 +166,18 @@ flowchart TB
 - [x] Framework auto-detection
 - [x] Unified parser interface
 
-### Phase 2: Graph Infrastructure 🟡
+### Phase 2: Graph Infrastructure ✅
 - [x] Graph models (CodeGraph, Node, Edge)
 - [x] Call graph extraction (AST-based)
 - [x] ASR extractor (import/class analysis)
-- [ ] Laplacian construction from call/dependency graphs
-- [ ] Fiedler vector computation (scipy.sparse.linalg)
-- [ ] SCC detection and hierarchical condensation
-- [ ] Planar subgraph identification
-- [ ] Kameda preprocessing for O(1) reachability
+- [x] Dependency graph extraction (module-level imports)
+- [x] Laplacian construction from call/dependency graphs
+- [x] Fiedler vector computation (scipy.sparse.linalg)
+- [x] Recursive Fiedler partitioning with virtual sink/source
+- [x] SCC detection and hierarchical condensation
+- [x] Planar subgraph identification (Boyer-Myrvold)
+- [x] Kameda preprocessing for O(1) reachability
+- [x] MCP tools (extract, partition, reachability, hierarchy, find)
 
 ### Phase 3: Multi-Framework Orchestration 🟡
 - [x] Unified mutation framework interface

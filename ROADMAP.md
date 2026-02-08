@@ -6,12 +6,12 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 
 ## Current Status
 
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-02-08
 
 | Milestone | Status | Progress |
 |-----------|--------|----------|
-| M1: Multi-Framework Foundation | 🟡 In Progress | ~70% |
-| M2: Graph-Spectral Infrastructure | 🟡 In Progress | ~30% |
+| M1: Multi-Framework Foundation | 🟡 In Progress | ~70% (3 parsers remaining) |
+| M2: Graph-Spectral Infrastructure | ✅ Complete | 100% (195 tests passing) |
 | M3: Belief Revision Engine | 🟡 In Progress | ~56% |
 | M4: Synthesis Loop | ⚪ Not Started | 0% |
 | M5: Verification Backends | ⚪ Not Started | 0% |
@@ -46,16 +46,17 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 | Graph models (CodeGraph, Node, Edge) | ✅ Done | Low | - |
 | Call graph extraction (AST) | ✅ Done | Medium | - |
 | ASR extractor (import/class analysis) | ✅ Done | Medium | - |
-| Dependency graph extraction | ⬚ Todo | Medium | - |
-| Laplacian construction | ⬚ Todo | Low | Graph extraction |
-| Fiedler vector computation | ⬚ Todo | Medium | Laplacian |
-| Recursive partitioning | ⬚ Todo | Medium | Fiedler |
-| SCC detection + condensation | ⬚ Todo | Low | Partitioning |
-| Planar subgraph identification | ⬚ Todo | High | SCC |
-| Kameda preprocessing | ⬚ Todo | High | Planar subgraph |
-| Virtual sink/source augmentation | ⬚ Todo | Low | Module detection |
+| Dependency graph extraction | ✅ Done | Medium | - |
+| Laplacian construction | ✅ Done | Low | Graph extraction |
+| Fiedler vector computation | ✅ Done | Medium | Laplacian |
+| Recursive partitioning | ✅ Done | Medium | Fiedler |
+| SCC detection + condensation | ✅ Done | Low | Partitioning |
+| Planar subgraph identification | ✅ Done | High | SCC |
+| Kameda preprocessing | ✅ Done | High | Planar subgraph |
+| Virtual sink/source augmentation | ✅ Done | Low | Module detection |
+| MCP tools for graph queries | ✅ Done | Low | All above |
 
-**Exit Criteria**: Query reachability between any two functions in O(1) after O(n) preprocessing
+**Exit Criteria**: Query reachability between any two functions in O(1) after O(n) preprocessing — **MET**
 
 ---
 

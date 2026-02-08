@@ -1,8 +1,10 @@
 # Phase 2: Graph-Spectral Infrastructure — Implementation Plan
 
 **Last updated:** 2026-02-08
-**Status:** Active — ready for implementation
-**Exit criteria:** Query reachability between any two functions in O(1) after O(n) preprocessing
+**Status:** ✓ Complete — all 9 steps implemented and tested (195 tests passing)
+**Exit criteria:** Query reachability between any two functions in O(1) after O(n) preprocessing — **MET**
+
+> **AMENDED 2026-02-08:** All 9 steps implemented in a single session. 6 new source files, 4 new test files, 5 MCP tools. Committed as `d34b411`.
 
 ---
 

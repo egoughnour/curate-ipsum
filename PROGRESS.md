@@ -12,7 +12,7 @@ Curate-ipsum is a **mutation testing orchestration MCP server** that bridges LLM
 
 - Python 3.10+ on any POSIX-compatible system
 - Dependencies: `py-brs>=2.0.0`, `pydantic>=2.0`, `mcp>=1.0.0`
-- Optional: `scipy`, `networkx` (Phase 2), `z3-solver`, `sympy` (Phase 5+)
+- Optional: `scipy>=1.10`, `networkx>=3.0` (graph extras), `z3-solver`, `sympy` (Phase 5+)
 
 ### Companion Repositories
 
@@ -26,12 +26,13 @@ Curate-ipsum is a **mutation testing orchestration MCP server** that bridges LLM
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      MCP Interface                       │
+│                  (23 tools registered)                    │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │
 │  │  Mutation   │  │  Graph     │  │  Symbolic  │         │
 │  │  Parsers    │  │  Spectral  │  │  Execution │         │
-│  │  (Phase 1✓) │  │  (Phase 2) │  │  (Phase 6) │         │
+│  │  (M1 ~)    │  │  (M2 ✓)   │  │  (Phase 6) │         │
 │  └──────┬─────┘  └──────┬─────┘  └──────┬─────┘         │
 │         │               │               │                │
 │         ▼               ▼               ▼                │
@@ -55,19 +56,26 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 
 ## Current Status
 
-### Phase 1: Foundation ✓ (Complete)
+### M1: Multi-Framework Foundation ~ (Active — Completing Remaining Parsers)
+
+> **AMENDED 2026-02-08:** M1 was previously listed as "Phase 1 ✓ Complete" — that reflected the core infrastructure (server, regions, Stryker, mutmut). The ROADMAP M1 exit criteria ("Run any Python mutation tool through single MCP interface") requires the remaining Python mutation tool parsers. These are now the active focus.
 
 | Item | Status | File(s) | Notes |
 |------|--------|---------|-------|
-| MCP server infrastructure | ✓ | `server.py` | FastMCP-based |
+| MCP server infrastructure | ✓ | `server.py` | FastMCP-based, 23 tools |
 | Stryker report parsing | ✓ | `parsers/stryker_parser.py` | JavaScript mutation tool |
 | mutmut parser | ✓ | `parsers/mutmut_parser.py` | Python mutation tool (SQLite cache) |
 | Run history + PID metrics | ✓ | `tools.py` | Precision/completeness tracking |
 | Flexible region model | ✓ | `regions/models.py` | Hierarchical: file → class → func → lines |
 | Framework auto-detection | ✓ | `parsers/detection.py` | Language + tool detection |
 | Unified parser interface | ✓ | `parsers/__init__.py` | Routes to correct parser |
+| cosmic-ray parser | ✗ | — | **TODO: Active** |
+| poodle parser | ✗ | — | **TODO: Active** |
+| universalmutator parser | ✗ | — | **TODO: Active** |
 
-### Phase 2: Graph Infrastructure ~ (In Progress — This Is the Active Phase)
+### M2: Graph-Spectral Infrastructure ✓ (Complete)
+
+> **AMENDED 2026-02-08:** All 9 steps from `PHASE2_PLAN.md` implemented. 195 tests passing. Committed as `d34b411`.
 
 | Item | Status | File(s) | Notes |
 |------|--------|---------|-------|
@@ -79,38 +87,29 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 | BFS reachability | ✓ | `graph/models.py` | `reachable_from()`, `reaches()` |
 | Topological sort | ✓ | `graph/models.py` | For DAG ordering |
 | DOT export | ✓ | `graph/models.py` | Graphviz visualization |
-| Dependency graph extraction | ✗ | — | **TODO: Phase 2, Step 1** |
-| Laplacian construction | ✗ | — | **TODO: Phase 2, Step 2** |
-| Fiedler vector computation | ✗ | — | **TODO: Phase 2, Step 3** |
-| Recursive partitioning | ✗ | — | **TODO: Phase 2, Step 4** |
-| Virtual sink/source augmentation | ✗ | — | **TODO: Phase 2, Step 5** |
-| Hierarchical SCC condensation | ✗ | — | **TODO: Phase 2, Step 6** |
-| Planar subgraph identification | ✗ | — | **TODO: Phase 2, Step 7** |
-| Kameda preprocessing (O(1) reachability) | ✗ | — | **TODO: Phase 2, Step 8** |
-| MCP tools for graph queries | ✗ | — | **TODO: Phase 2, Step 9** |
+| Dependency graph extraction | ✓ | `graph/dependency_extractor.py` | Module-level import graphs |
+| Laplacian construction | ✓ | `graph/spectral.py` | Sparse L = D − A, symmetrized |
+| Fiedler vector computation | ✓ | `graph/spectral.py` | `eigsh` + dense fallback `→ D-003` |
+| Recursive partitioning | ✓ | `graph/partitioner.py` | Binary tree of Fiedler bipartitions |
+| Virtual sink/source augmentation | ✓ | `graph/partitioner.py` | `augment_partition()` `→ D-008` |
+| Hierarchical SCC condensation | ✓ | `graph/hierarchy.py` | Alternating condense/partition `→ D-005` |
+| Planar subgraph identification | ✓ | `graph/planarity.py` | Boyer-Myrvold + Kuratowski `→ D-006` |
+| Kameda O(1) reachability | ✓ | `graph/kameda.py` | 2D dominance labels + BFS fallback |
+| MCP tools for graph queries | ✓ | `server.py` | 5 tools: extract, partition, reach, hierarchy, find |
 
-### Phase 3: Multi-Framework Orchestration ~ (Partially Done)
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Unified mutation framework interface | ✓ | Done in Phase 1 |
-| cosmic-ray parser | ✗ | Deferred — not blocking Phase 2 |
-| poodle parser | ✗ | Deferred |
-| universalmutator parser | ✗ | Deferred |
-
-### Phase 4: Belief Revision Engine ~ (Partially Done)
+### M3: Belief Revision Engine ~ (Partially Done)
 
 | Item | Status | Notes |
 |------|--------|-------|
 | py-brs library (AGM core) | ✓ | v2.0.0 released |
-| Evidence adapter (mutation→belief) | ✓ | `adapters/evidence.py` |
+| Evidence adapter (mutation→belief) | ✓ | `adapters/evidence_adapter.py` |
 | Theory manager | ✓ | `theory/manager.py` |
 | AGM contraction | ✓ | In py-brs v2.0.0 |
 | Entrenchment calculation | ✓ | In py-brs v2.0.0 |
-| Provenance DAG storage | ✗ | Depends on Phase 2 graph infra |
+| Provenance DAG storage | ✗ | Can now build on M2 graph infra |
 | Failure mode analyzer | ✗ | Depends on Provenance DAG |
 
-### Phases 5–8: Not Started
+### Phases 4–8: Not Started
 
 Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardening. See `ROADMAP.md` for details.
 
@@ -118,42 +117,48 @@ Synthesis Loop, Verification Backends, Graph Database + RAG, Production Hardenin
 
 ## What's Next
 
-### Phase 2: Graph-Spectral Infrastructure (Active)
+### M1 Completion: Remaining Python Mutation Parsers (Active)
 
-See `PHASE2_PLAN.md` for the full implementation plan with 9 steps, file-by-file specs, and dependency graph.
+**Exit criteria:** Run any Python mutation tool through single MCP interface.
 
-**Blocking prerequisites:**
-1. ~~Graph models~~ (done)
-2. ~~Call graph extraction~~ (done)
-3. ~~SCC detection~~ (done)
-4. Add `scipy>=1.10` and `networkx>=3.0` to `pyproject.toml` dependencies
+**Remaining work (3 parsers):**
 
-**Summary of work:**
-1. Dependency graph extraction (`graph/dependency_extractor.py`)
-2. Laplacian construction (`graph/spectral.py`)
-3. Fiedler vector computation (`graph/spectral.py`)
-4. Recursive partitioning (`graph/partitioner.py`)
-5. Virtual sink/source augmentation (`graph/partitioner.py`)
-6. Hierarchical SCC condensation (`graph/hierarchy.py`)
-7. Planar subgraph identification (`graph/planarity.py`)
-8. Kameda preprocessing (`graph/kameda.py`)
-9. MCP tools for graph queries (`server.py`, `tools.py`)
+1. **cosmic-ray parser** (`parsers/cosmic_ray_parser.py`) — JSON report format. Detection signals already exist in `detection.py` (`.cosmic-ray.toml`, confidence 0.8).
+2. **poodle parser** (`parsers/poodle_parser.py`) — JSON report format. Detection signals needed.
+3. **universalmutator parser** (`parsers/universalmutator_parser.py`) — Multi-language tool, typically text/JSON output. Detection signals needed.
 
-**Integration testing:**
-1. Extract call graph from curate-ipsum's own source code
-2. Compute Fiedler partitioning on that graph
-3. Verify SCC condensation produces valid DAG
-4. Test O(1) reachability against BFS ground truth
-5. Run all existing tests (`pytest tests/ -v`)
+**Integration points to update:**
+
+- `parsers/__init__.py` — route new tool names to new parsers (currently raises `UnsupportedFrameworkError`)
+- `parsers/detection.py` — add detection signals for poodle and universalmutator
+- Tests in `tests/` — one test file per parser
+
+**No server.py changes needed** — `run_mutation_tests_tool` already uses the unified `parse_mutation_output()` interface.
 
 ---
 
 ## Known Limitations & Open Questions
 
 - **LPython optional**: ASR extractor requires LPython which is alpha-status. AST extractor is always available. See `docs/lpython_klee_feasibility.md`. `→ D-001`
-- **Fiedler on disconnected graphs**: Need to handle disconnected components separately — Fiedler vector is undefined for disconnected graphs. `→ D-004`
-- **Planarity NP-hard**: Maximal planar subgraph identification is NP-hard in general. Using networkx heuristics as mitigation. `→ D-006`
-- **scipy not yet in dependencies**: Must add `scipy` and `networkx` to `pyproject.toml` before Phase 2 work begins.
+- ~~**Fiedler on disconnected graphs**: Need to handle disconnected components separately.~~ **Resolved** in `graph/spectral.py` via per-component Fiedler. `→ D-004`
+- ~~**Planarity NP-hard**: Maximal planar subgraph identification is NP-hard in general.~~ **Mitigated** via iterative edge removal heuristic in `graph/planarity.py`. `→ D-006`
+- ~~**scipy not yet in dependencies**~~ **Resolved**: Added as `[graph]` optional dependency. `→ D-007`
+
+---
+
+## Test Suite Summary
+
+| Test File | Count | Covers |
+|-----------|-------|--------|
+| `tests/test_m1_regions.py` | 25 | Region model parsing, containment, overlap |
+| `tests/test_m1_parsers.py` | 25 | Stryker + mutmut parsing, detection |
+| `tests/test_graph_extraction.py` | 26 | AST extractor, call resolution |
+| `tests/test_brs_integration.py` | 15 (skipped) | BRS evidence adapter integration |
+| `tests/test_spectral.py` | 41 | Laplacian, Fiedler, partitioner, virtual nodes |
+| `tests/test_planarity_kameda.py` | 54 | Planarity, Kameda reachability, BFS verification |
+| `tests/test_hierarchy_deps.py` | 48 | Hierarchy, dependency extractor, imports |
+| `tests/test_mcp_graph.py` | 26 | MCP graph tools end-to-end pipeline |
+| **Total** | **265 passed, 15 skipped** | |
 
 ---
 
@@ -161,17 +166,23 @@ See `PHASE2_PLAN.md` for the full implementation plan with 9 steps, file-by-file
 
 ```
 curate-ipsum/
-├── server.py              # MCP server entry point (FastMCP)
-├── tools.py               # MCP tool implementations
+├── server.py              # MCP server entry point (23 tools)
+├── tools.py               # Async test/mutation execution layer
 ├── models.py              # Pydantic data models (MutationRunResult, etc.)
 ├── config.toml            # Server configuration
 ├── pyproject.toml         # Package metadata + dependencies
 ├── graph/
-│   ├── __init__.py        # Public API (CallGraph, extractors, etc.)
+│   ├── __init__.py        # Public API + optional dependency flags
 │   ├── models.py          # CallGraph, GraphNode, GraphEdge, SCC, condensation
 │   ├── extractor.py       # Abstract base class for extractors
 │   ├── ast_extractor.py   # Python AST-based call graph extraction
-│   └── asr_extractor.py   # LPython ASR-based extraction (optional)
+│   ├── asr_extractor.py   # LPython ASR-based extraction (optional)
+│   ├── dependency_extractor.py  # Module-level import graph extraction
+│   ├── spectral.py        # Laplacian + Fiedler vector computation
+│   ├── partitioner.py     # Recursive Fiedler partitioning + virtual nodes
+│   ├── hierarchy.py       # Alternating condense/partition tree
+│   ├── planarity.py       # Boyer-Myrvold planarity + Kuratowski
+│   └── kameda.py          # O(1) reachability index (2D dominance)
 ├── parsers/
 │   ├── __init__.py        # Unified parser interface
 │   ├── detection.py       # Framework + language auto-detection
@@ -180,16 +191,18 @@ curate-ipsum/
 ├── regions/
 │   └── models.py          # Region, RegionLevel (file/class/func/lines)
 ├── adapters/
-│   └── evidence.py        # Mutation results → BRS beliefs
-├── domains/
-│   └── ...                # Domain-specific logic
+│   └── evidence_adapter.py  # Mutation results → BRS beliefs
 ├── theory/
 │   └── manager.py         # Theory manager for belief revision
 ├── tests/
-│   ├── test_m1_regions.py    # Region model tests
-│   ├── test_m1_parsers.py    # Parser tests (Stryker + mutmut)
-│   ├── test_graph_extraction.py  # AST extractor tests
-│   └── test_brs_integration.py   # BRS integration tests
+│   ├── test_m1_regions.py       # Region model tests
+│   ├── test_m1_parsers.py       # Parser tests (Stryker + mutmut)
+│   ├── test_graph_extraction.py # AST extractor tests
+│   ├── test_brs_integration.py  # BRS integration tests
+│   ├── test_spectral.py         # Laplacian/Fiedler/partitioner tests
+│   ├── test_planarity_kameda.py # Planarity + Kameda tests
+│   ├── test_hierarchy_deps.py   # Hierarchy + dependency tests
+│   └── test_mcp_graph.py        # MCP graph tool integration tests
 ├── docs/
 │   ├── m1_m3_audit.md     # M1-M3 audit findings
 │   └── lpython_klee_feasibility.md  # LPython/KLEE feasibility study
@@ -198,8 +211,8 @@ curate-ipsum/
 ├── CONTEXT.md             # Directory structure + naming conventions
 ├── DOCS_INDEX.md          # Documentation navigation guide
 ├── PROGRESS.md            # ← You are here
-├── DECISIONS.md           # Architectural decision log
-├── PHASE2_PLAN.md         # Phase 2 implementation plan (active)
+├── DECISIONS.md           # Architectural decision log (D-001 through D-009)
+├── PHASE2_PLAN.md         # Phase 2 implementation plan (complete)
 ├── architectural_vision.md       # Graph-spectral framework theory
 ├── synthesis_framework.md        # CEGIS/CEGAR/genetic approach
 ├── belief_revision_framework.md  # AGM theory + provenance
@@ -219,3 +232,4 @@ curate-ipsum/
 ## Revision History
 
 - **v1.0** (2026-02-08): Initial PROGRESS.md created from comprehensive codebase audit. Phase 1 complete, Phase 2 active.
+- **v2.0** (2026-02-08): Phase 2 (M2) complete — all 9 steps implemented (195 tests). M1 remaining parsers now active focus. Updated architecture diagram, file inventory, test summary, and known limitations.

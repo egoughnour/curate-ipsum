@@ -160,6 +160,32 @@ Every significant architectural and implementation decision, with reasoning and 
 
 ---
 
+## D-009: Standardized Parser Interface for All Mutation Frameworks
+
+**Date:** 2026-02-08
+**Status:** Active
+**Affects:** `parsers/__init__.py`, all `parsers/*_parser.py` modules
+
+**Context:** M1 exit criteria require running "any Python mutation tool through single MCP interface." The project already has Stryker (JS) and mutmut (Python) parsers. Three more Python mutation frameworks — cosmic-ray, poodle, and universalmutator — need parsers. The MCP server's `run_mutation_tests_tool` already routes through the unified `parse_mutation_output()` interface, so new parsers only need to implement the standard entry point and be wired into the router.
+
+**Decision:** Every parser module exports a single entry-point function with this signature:
+
+```python
+def parse_<tool>_output(
+    working_directory: str,
+    report_path: Optional[str] = None,
+) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+```
+
+Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers/__init__.py` router normalizes tool name variations (e.g., `"cosmic-ray"` → `"cosmic_ray"`) and imports lazily. Each parser also exports a `find_<tool>_report()` locator function. Detection signals go in `parsers/detection.py`.
+
+**Reasoning:**
+- Uniform 6-tuple return means no downstream changes needed — `tools.py`, `server.py`, and `models.py` are already wired.
+- Lazy imports avoid ImportError if a parser's optional dependencies aren't installed.
+- Detection and parsing are separate concerns: detection tells you which tool ran; parsing reads the output.
+
+---
+
 ## Decision Index
 
 | ID | Short Name | Date | Status |
@@ -172,9 +198,11 @@ Every significant architectural and implementation decision, with reasoning and 
 | D-006 | networkx for planarity, custom Kameda | 2026-02-08 | Active |
 | D-007 | scipy/networkx as optional dependencies | 2026-02-08 | Active |
 | D-008 | Virtual sink/source augmentation | 2026-02-08 | Active |
+| D-009 | Standardized parser interface | 2026-02-08 | Active |
 
 ---
 
 ## Revision History
 
 - **v1.0** (2026-02-08): Initial decision log created. D-001 and D-002 documented retroactively from existing code. D-003 through D-008 are Phase 2 design decisions.
+- **v1.1** (2026-02-08): Added D-009 (standardized parser interface) for M1 completion. All Phase 2 decisions (D-003 through D-008) confirmed as implemented and tested.

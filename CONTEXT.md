@@ -177,3 +177,4 @@ For zero-context session resumption, read these in order:
 | 2025-01-27 | Added CI/CD pipeline with test gating |
 | 2025-01-27 | Fixed cascade bug (nodes with alternate support survive) |
 | 2026-02-08 | Added cold-start docs: PROGRESS.md, DECISIONS.md, PHASE2_PLAN.md |
+| 2026-02-08 | M2 complete: 6 graph modules, 4 test files, 5 MCP tools (195 tests). M1 parsers now active. |
