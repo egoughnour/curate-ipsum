@@ -1,0 +1,11 @@
+# Purpose-built angr runner container
+# Includes run_angr.py baked in — no need to mount the runner script
+FROM angr/angr:latest
+
+COPY angr_adapter_baseline/verification/runners/run_angr.py /opt/runner/run_angr.py
+
+WORKDIR /work
+
+# Usage: docker run --rm -v <artifacts>:/work -v <binaries>:/bin_in:ro quickverify-angr
+ENTRYPOINT ["python", "/opt/runner/run_angr.py"]
+CMD ["/work/request.json", "/work/response.json"]

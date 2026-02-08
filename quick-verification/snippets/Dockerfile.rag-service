@@ -1,0 +1,17 @@
+# RAG semantic search microservice
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY snippets/requirements-rag.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY snippets/vector_store.py ./rag/vector_store.py
+COPY snippets/embedding_provider.py ./rag/embedding_provider.py
+COPY snippets/rag_search.py ./rag/search.py
+
+# Placeholder server entry point
+RUN echo 'print("RAG service placeholder")' > ./rag/server.py
+
+EXPOSE 8080
+CMD ["python", "-m", "rag.server", "--port", "8080"]
