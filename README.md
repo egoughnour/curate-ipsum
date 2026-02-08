@@ -6,17 +6,17 @@ Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unveri
 
 ## Current Status
 
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-02-08
 
 | Component | Status |
 |-----------|--------|
-| Multi-framework parsing (Stryker, mutmut) | ✅ Working |
-| Framework auto-detection | ✅ Working |
-| Hierarchical region model | ✅ Working |
-| Graph extraction (AST/ASR) | ✅ Working |
-| BRS integration (evidence adapter) | ✅ Working |
-| Theory manager | ✅ Working |
-| AGM contraction (py-brs v2.0.0) | ✅ Released |
+| Multi-framework parsing (5 frameworks) | ✅ Complete |
+| Graph Infrastructure (Spectral/Kameda) | ✅ Complete |
+| Belief Revision Engine (AGM/Provenance) | ✅ Complete |
+| Synthesis Loop (CEGIS/Genetic) | ✅ Complete |
+| Verification Backends | ⚪ Not Started |
+| Graph Persistence (SQLite/Kuzu) | ✅ Complete |
+| RAG / Semantic Search | ⚪ Deferred |
 
 ## The Problem
 
@@ -179,30 +179,31 @@ flowchart TB
 - [x] Kameda preprocessing for O(1) reachability
 - [x] MCP tools (extract, partition, reachability, hierarchy, find)
 
-### Phase 3: Multi-Framework Orchestration 🟡
+### Phase 3: Multi-Framework Orchestration ✅
 - [x] Unified mutation framework interface
-- [ ] cosmic-ray parser
-- [ ] poodle parser
-- [ ] universalmutator parser
+- [x] cosmic-ray parser
+- [x] poodle parser
+- [x] universalmutator parser
 - [ ] Implicit region detection (spectral anomalies)
 - [ ] Non-contradictory framework assignment
 - [ ] Cross-framework survival analysis
 
-### Phase 4: Belief Revision Engine 🟡
+### Phase 4: Belief Revision Engine ✅
 - [x] py-brs library integration (AGM core)
 - [x] Evidence adapter (mutation results → beliefs)
 - [x] Theory manager for curate-ipsum
 - [x] AGM contraction (py-brs v2.0.0 released)
 - [x] Entrenchment calculation (py-brs v2.0.0)
-- [ ] Provenance DAG storage and queries
-- [ ] Failure mode analyzer
+- [x] Provenance DAG storage and queries
+- [x] Failure mode analyzer
+- [x] Rollback mechanism
 
-### Phase 5: Synthesis Loop
-- [ ] CEGIS implementation with LLM seeding
-- [ ] CEGAR abstraction hierarchy (Type → CFG → DFG → Concrete)
-- [ ] Genetic algorithm with AST-aware crossover
-- [ ] Entropy monitoring and diversity injection
-- [ ] Counterexample-directed mutation
+### Phase 5: Synthesis Loop ✅
+- [x] CEGIS implementation with LLM seeding
+- [x] Genetic algorithm with AST-aware crossover
+- [x] Entropy monitoring and diversity injection
+- [x] Counterexample-directed mutation
+- [ ] CEGAR abstraction hierarchy (Type → CFG → DFG → Concrete) [Moved to Verification]
 
 ### Phase 6: Verification Backends
 - [ ] Z3 integration for SMT solving
@@ -210,13 +211,17 @@ flowchart TB
 - [ ] SymPy path condition encoding
 - [ ] Alternative solvers (CVC5, Boolector)
 - [ ] Mathematical reformulation pipeline
+- [ ] Type/CFG abstraction levels (CEGAR preparation)
 
-### Phase 7: Graph Database Integration
-- [ ] Joern CPG generation
-- [ ] Neo4j/JanusGraph backend options
-- [ ] Code Graph RAG for semantic search
-- [ ] Reachability index persistence
-- [ ] Incremental update on file change
+### Phase 7: Graph Persistence & RAG 🟡
+- [x] Abstract GraphStore ABC
+- [x] SQLite graph store (primary)
+- [x] Kuzu graph store (optional)
+- [x] Synthesis result persistence
+- [x] Kameda & Fiedler persistence
+- [x] Incremental update engine
+- [ ] Code Graph RAG for semantic search (Deferred)
+- [ ] Text-to-Cypher queries (Deferred)
 
 ### Phase 8: Production Hardening
 - [ ] CI/CD integration (GitHub Actions)
@@ -303,4 +308,3 @@ MIT License - see [LICENSE](./LICENSE)
 
 ---
 
-*Curate-Ipsum: Because LLM-generated code should be verified, not trusted.*
