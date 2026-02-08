@@ -214,10 +214,10 @@ class Region:
         Raises:
             ValueError: If string is empty or malformed
         """
+        s = s.strip()
+
         if not s:
             raise ValueError("Empty region string")
-
-        s = s.strip()
 
         # Handle legacy plain strings (backward compatibility)
         if not s.startswith("file:"):
