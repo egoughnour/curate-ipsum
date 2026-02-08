@@ -184,9 +184,6 @@ flowchart TB
 - [x] cosmic-ray parser
 - [x] poodle parser
 - [x] universalmutator parser
-- [ ] Implicit region detection (spectral anomalies)
-- [ ] Non-contradictory framework assignment
-- [ ] Cross-framework survival analysis
 
 ### Phase 4: Belief Revision Engine ✅
 - [x] py-brs library integration (AGM core)
@@ -213,15 +210,13 @@ flowchart TB
 - [ ] Mathematical reformulation pipeline
 - [ ] Type/CFG abstraction levels (CEGAR preparation)
 
-### Phase 7: Graph Persistence & RAG 🟡
+### Phase 7: Graph Persistence ✅
 - [x] Abstract GraphStore ABC
 - [x] SQLite graph store (primary)
 - [x] Kuzu graph store (optional)
 - [x] Synthesis result persistence
 - [x] Kameda & Fiedler persistence
 - [x] Incremental update engine
-- [ ] Code Graph RAG for semantic search (Deferred)
-- [ ] Text-to-Cypher queries (Deferred)
 
 ### Phase 8: Production Hardening
 - [ ] CI/CD integration (GitHub Actions)
@@ -229,6 +224,19 @@ flowchart TB
 - [ ] HTML/SARIF reporting
 - [ ] IDE extensions (VSCode)
 - [ ] Self-healing metadata consistency
+
+## Future Work
+
+### Advanced Orchestration (Deferred)
+- [ ] Implicit region detection (spectral anomalies)
+- [ ] Non-contradictory framework assignment
+- [ ] Cross-framework survival analysis
+
+### Semantic Search & RAG (Deferred)
+- [ ] Code Graph RAG for semantic search
+- [ ] Semantic search index
+- [ ] RAG retrieval pipeline
+- [ ] Text-to-Cypher queries
 
 ## Quick Start
 
