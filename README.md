@@ -266,7 +266,10 @@ entropy_threshold = 0.3
 ## Documentation
 
 ### Planning & Design
-- [M1 Multi-Framework Plan](./m1_multi_framework_plan.md) - Region model & parser design
+- [Phase 2 Plan](./PHASE2_PLAN.md) - **Active**: Graph-spectral infrastructure (9 steps)
+- [Progress](./PROGRESS.md) - Current status, what's done, what's next
+- [Decisions](./DECISIONS.md) - Architectural decisions with reasoning (D-001 through D-008)
+- [M1 Multi-Framework Plan](./m1_multi_framework_plan.md) - Region model & parser design (done)
 - [BRS Integration Plan](./brs_integration_plan.md) - Belief revision integration
 - [BRS v2 Refactoring Plan](./brs_v2_refactoring_plan.md) - Modular architecture
 - [ROADMAP](./ROADMAP.md) - Full milestone tracker
