@@ -12,18 +12,19 @@ No mocks of Z3 or the orchestrator — only the angr Docker backend
 is stubbed (it needs an actual Docker daemon).
 """
 
+from __future__ import annotations
+
 import pytest
 
 # Gate the whole module on z3 availability
 z3 = pytest.importorskip("z3")
 
-from verification.backend import build_verification_backend, VerificationBackend
-from verification.backends.z3_backend import Z3Backend
+from verification.backend import build_verification_backend
 from verification.backends.mock import MockBackend
+from verification.backends.z3_backend import Z3Backend
 from verification.orchestrator import (
-    VerificationOrchestrator,
-    OrchestratorResult,
     DEFAULT_BUDGET_PRESETS,
+    VerificationOrchestrator,
 )
 from verification.types import (
     Budget,
@@ -34,8 +35,8 @@ from verification.types import (
     VerificationStatus,
 )
 
-
 # ─── Helpers ────────────────────────────────────────────────────────────────
+
 
 def _z3_request(
     constraints: list[str],
@@ -57,6 +58,7 @@ def _z3_request(
 
 
 # ─── 1. Z3 real constraint solving ─────────────────────────────────────────
+
 
 class TestZ3EndToEnd:
     """Z3 backend with real constraints — no mocks."""
@@ -143,6 +145,7 @@ class TestZ3EndToEnd:
 
 # ─── 2. Orchestrator with real Z3 ──────────────────────────────────────────
 
+
 class TestOrchestratorEndToEnd:
     """CEGAR orchestrator driving real Z3 — state flows through budget escalation."""
 
@@ -224,6 +227,7 @@ class TestOrchestratorEndToEnd:
 
 # ─── 3. Factory wiring ─────────────────────────────────────────────────────
 
+
 class TestFactoryEndToEnd:
     """Factory produces real backends that actually work."""
 
@@ -250,6 +254,7 @@ class TestFactoryEndToEnd:
 
 # ─── 4. CEGIS integration with real Z3 ─────────────────────────────────────
 
+
 class TestCEGISWithZ3:
     """
     CEGIS engine with a real Z3 verification backend.
@@ -274,10 +279,12 @@ class TestCEGISWithZ3:
             population_size=4,
             top_k=4,
         )
-        client = MockLLMClient(responses=[
-            "def fix(x):\n    if x < 0:\n        return -x\n    return x + 1\n",
-            "def fix(x):\n    return x + 2\n",
-        ])
+        client = MockLLMClient(
+            responses=[
+                "def fix(x):\n    if x < 0:\n        return -x\n    return x + 1\n",
+                "def fix(x):\n    return x + 2\n",
+            ]
+        )
 
         engine = CEGISEngine(config, client, verification_backend=z3_backend)
 
@@ -309,10 +316,12 @@ class TestCEGISWithZ3:
 
         z3_backend = Z3Backend()
         config = SynthesisConfig(max_iterations=3, population_size=3, top_k=3)
-        client = MockLLMClient(responses=[
-            "def f(x): return x\n",
-            "def f(x): return x + 1\n",
-        ])
+        client = MockLLMClient(
+            responses=[
+                "def f(x): return x\n",
+                "def f(x): return x + 1\n",
+            ]
+        )
         engine = CEGISEngine(config, client, verification_backend=z3_backend)
 
         # Contradictory: x must be both > 100 and < 50
@@ -331,6 +340,7 @@ class TestCEGISWithZ3:
 
 
 # ─── 5. Harness builder ────────────────────────────────────────────────────
+
 
 class TestHarnessBuilderEndToEnd:
     """Harness builder generates real C source code."""

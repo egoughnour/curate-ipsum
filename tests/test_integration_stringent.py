@@ -18,13 +18,8 @@ external services to catch integration regressions that unit tests miss.
 """
 
 import asyncio
-import json
-import os
-import shutil
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import List
 from uuid import uuid4
 
 import pytest
@@ -32,14 +27,13 @@ import pytest
 from graph.models import (
     CallGraph,
     EdgeKind,
+    FunctionSignature,
     GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
-    FunctionSignature,
 )
-from rag.embedding_provider import EmbeddingProvider
-from rag.search import RAGConfig, RAGPipeline, RAGResult
+from rag.search import RAGConfig, RAGPipeline
 from rag.vector_store import ChromaVectorStore, VectorDocument
 from storage.graph_store import build_graph_store
 from verification.backend import build_verification_backend
@@ -48,18 +42,19 @@ from verification.types import (
     Budget,
     SymbolSpec,
     VerificationRequest,
-    VerificationResult,
     VerificationStatus,
 )
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _docker_image_exists(image_name: str) -> bool:
     """Check if a Docker image exists locally."""
     try:
         result = subprocess.run(
             ["docker", "image", "inspect", image_name],
-            capture_output=True, timeout=10,
+            capture_output=True,
+            timeout=10,
         )
         return result.returncode == 0
     except Exception:
@@ -72,43 +67,57 @@ def _build_realistic_graph() -> CallGraph:
 
     nodes = [
         GraphNode(
-            id="auth.login", kind=NodeKind.FUNCTION, name="login",
+            id="auth.login",
+            kind=NodeKind.FUNCTION,
+            name="login",
             location=SourceLocation(file="auth.py", line_start=15, line_end=35),
             signature=FunctionSignature(name="login", params=("username", "password"), return_type="Optional[Token]"),
             docstring="Authenticate user credentials and return a JWT token.",
         ),
         GraphNode(
-            id="auth.hash_password", kind=NodeKind.FUNCTION, name="hash_password",
+            id="auth.hash_password",
+            kind=NodeKind.FUNCTION,
+            name="hash_password",
             location=SourceLocation(file="auth.py", line_start=38, line_end=45),
             signature=FunctionSignature(name="hash_password", params=("password", "salt"), return_type="str"),
             docstring="Hash password using bcrypt with provided salt.",
         ),
         GraphNode(
-            id="auth.verify_token", kind=NodeKind.FUNCTION, name="verify_token",
+            id="auth.verify_token",
+            kind=NodeKind.FUNCTION,
+            name="verify_token",
             location=SourceLocation(file="auth.py", line_start=48, line_end=60),
             signature=FunctionSignature(name="verify_token", params=("token",), return_type="Optional[Claims]"),
             docstring="Verify JWT token signature and expiration.",
         ),
         GraphNode(
-            id="db.get_user", kind=NodeKind.FUNCTION, name="get_user",
+            id="db.get_user",
+            kind=NodeKind.FUNCTION,
+            name="get_user",
             location=SourceLocation(file="db.py", line_start=10, line_end=20),
             signature=FunctionSignature(name="get_user", params=("username",), return_type="Optional[User]"),
             docstring="Fetch user record from database by username.",
         ),
         GraphNode(
-            id="api.handle_login", kind=NodeKind.FUNCTION, name="handle_login",
+            id="api.handle_login",
+            kind=NodeKind.FUNCTION,
+            name="handle_login",
             location=SourceLocation(file="api.py", line_start=25, line_end=50),
             signature=FunctionSignature(name="handle_login", params=("request",), return_type="Response"),
             docstring="HTTP endpoint handler for user login requests.",
         ),
         GraphNode(
-            id="api.handle_profile", kind=NodeKind.FUNCTION, name="handle_profile",
+            id="api.handle_profile",
+            kind=NodeKind.FUNCTION,
+            name="handle_profile",
             location=SourceLocation(file="api.py", line_start=53, line_end=70),
             signature=FunctionSignature(name="handle_profile", params=("request",), return_type="Response"),
             docstring="HTTP endpoint handler for user profile retrieval, requires authentication.",
         ),
         GraphNode(
-            id="middleware.auth_required", kind=NodeKind.FUNCTION, name="auth_required",
+            id="middleware.auth_required",
+            kind=NodeKind.FUNCTION,
+            name="auth_required",
             location=SourceLocation(file="middleware.py", line_start=5, line_end=20),
             signature=FunctionSignature(name="auth_required", params=("handler",), return_type="Callable"),
             docstring="Decorator that requires valid JWT token in request headers.",
@@ -136,6 +145,7 @@ def _build_realistic_graph() -> CallGraph:
 # 1. REAL EMBEDDING MODEL TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @pytest.mark.embedding
 class TestRealEmbeddingModel:
     """
@@ -149,6 +159,7 @@ class TestRealEmbeddingModel:
     @pytest.fixture
     def real_embedder(self):
         from rag.embedding_provider import LocalEmbeddingProvider
+
         return LocalEmbeddingProvider("all-MiniLM-L6-v2")
 
     @pytest.fixture
@@ -176,15 +187,18 @@ class TestRealEmbeddingModel:
         """
         docs = [
             VectorDocument(
-                id="validate_input", text="Validate user input: check type, length, and format",
+                id="validate_input",
+                text="Validate user input: check type, length, and format",
                 embedding=real_embedder.embed(["Validate user input: check type, length, and format"])[0],
             ),
             VectorDocument(
-                id="render_html", text="Render HTML template with Jinja2 engine",
+                id="render_html",
+                text="Render HTML template with Jinja2 engine",
                 embedding=real_embedder.embed(["Render HTML template with Jinja2 engine"])[0],
             ),
             VectorDocument(
-                id="check_params", text="Check input parameters for validity and bounds",
+                id="check_params",
+                text="Check input parameters for validity and bounds",
                 embedding=real_embedder.embed(["Check input parameters for validity and bounds"])[0],
             ),
         ]
@@ -196,10 +210,7 @@ class TestRealEmbeddingModel:
         # validate_input and check_params should both rank above render_html
         result_ids = [r.id for r in results]
         render_idx = result_ids.index("render_html")
-        assert render_idx == 2, (
-            f"render_html should be last (least relevant), "
-            f"but got order: {result_ids}"
-        )
+        assert render_idx == 2, f"render_html should be last (least relevant), but got order: {result_ids}"
 
     def test_real_rag_pipeline_with_graph_expansion(self, real_embedder, chroma_store, tmp_path):
         """
@@ -217,17 +228,25 @@ class TestRealEmbeddingModel:
         for node_id, node in graph.nodes.items():
             text = f"{node.name}: {node.docstring or ''}"
             embedding = real_embedder.embed([text])[0]
-            chroma_store.add([VectorDocument(
-                id=node_id, text=text, embedding=embedding,
-                metadata={"file": node.location.file if node.location else ""},
-            )])
+            chroma_store.add(
+                [
+                    VectorDocument(
+                        id=node_id,
+                        text=text,
+                        embedding=embedding,
+                        metadata={"file": node.location.file if node.location else ""},
+                    )
+                ]
+            )
 
         pipeline = RAGPipeline(
             vector_store=chroma_store,
             embedding_provider=real_embedder,
             graph_store=graph_store,
             config=RAGConfig(
-                vector_top_k=7, expansion_hops=1, project_id=project_id,
+                vector_top_k=7,
+                expansion_hops=1,
+                project_id=project_id,
             ),
         )
 
@@ -238,8 +257,7 @@ class TestRealEmbeddingModel:
         assert "auth.login" in result_ids, f"auth.login should be in results: {result_ids}"
 
         # auth.hash_password should appear (callee of auth.login)
-        assert "auth.hash_password" in result_ids, \
-            f"hash_password should appear via graph expansion: {result_ids}"
+        assert "auth.hash_password" in result_ids, f"hash_password should appear via graph expansion: {result_ids}"
 
         # Verify scoring makes sense: vector hits > graph-expanded
         result_map = {r.node_id: r for r in results}
@@ -293,18 +311,19 @@ class TestRealEmbeddingModel:
             preconditions=["x >= 0"],
         )
 
-        import asyncio
         asyncio.get_event_loop().run_until_complete(engine.synthesize(spec))
 
         assert len(captured_prompts) >= 1
         # The real embedding model should retrieve the hash_password document
-        assert "hash_password" in captured_prompts[0] or "bcrypt" in captured_prompts[0], \
+        assert "hash_password" in captured_prompts[0] or "bcrypt" in captured_prompts[0], (
             f"Real model should retrieve semantically related doc, prompt: {captured_prompts[0][:300]}"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 2. REAL DOCKER DAEMON TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.docker
 class TestDockerDaemon:
@@ -321,7 +340,9 @@ class TestDockerDaemon:
         """Docker daemon responds to 'docker info'."""
         result = subprocess.run(
             ["docker", "info", "--format", "{{.ServerVersion}}"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         assert result.returncode == 0
         assert len(result.stdout.strip()) > 0
@@ -337,25 +358,44 @@ class TestDockerDaemon:
 
         try:
             # Start Chroma container
-            result = subprocess.run([
-                "docker", "run", "-d",
-                "--name", container_name,
-                "-p", "18000:8000",  # Use high port to avoid conflicts
-                "-e", "IS_PERSISTENT=FALSE",
-                "-e", "ANONYMIZED_TELEMETRY=FALSE",
-                "chromadb/chroma:latest",
-            ], capture_output=True, text=True, timeout=60)
+            result = subprocess.run(
+                [
+                    "docker",
+                    "run",
+                    "-d",
+                    "--name",
+                    container_name,
+                    "-p",
+                    "18000:8000",  # Use high port to avoid conflicts
+                    "-e",
+                    "IS_PERSISTENT=FALSE",
+                    "-e",
+                    "ANONYMIZED_TELEMETRY=FALSE",
+                    "chromadb/chroma:latest",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
 
             if result.returncode != 0:
                 pytest.skip(f"Could not start Chroma container: {result.stderr}")
 
             # Wait for container to be healthy
             import time
+
             for _ in range(30):
                 check = subprocess.run(
-                    ["docker", "exec", container_name, "python", "-c",
-                     "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"],
-                    capture_output=True, timeout=5,
+                    [
+                        "docker",
+                        "exec",
+                        container_name,
+                        "python",
+                        "-c",
+                        "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')",
+                    ],
+                    capture_output=True,
+                    timeout=5,
                 )
                 if check.returncode == 0:
                     break
@@ -370,10 +410,15 @@ class TestDockerDaemon:
                 chroma_port=18000,
             )
 
-            store.add([VectorDocument(
-                id="test_doc", text="test document",
-                embedding=[1.0] + [0.0] * 383,
-            )])
+            store.add(
+                [
+                    VectorDocument(
+                        id="test_doc",
+                        text="test document",
+                        embedding=[1.0] + [0.0] * 383,
+                    )
+                ]
+            )
             assert store.count() == 1
 
             results = store.search([1.0] + [0.0] * 383, top_k=1)
@@ -387,7 +432,8 @@ class TestDockerDaemon:
             # Cleanup
             subprocess.run(
                 ["docker", "rm", "-f", container_name],
-                capture_output=True, timeout=10,
+                capture_output=True,
+                timeout=10,
             )
 
     @pytest.mark.asyncio
@@ -411,11 +457,10 @@ class TestDockerDaemon:
                 pytest.skip("docker/Dockerfile.angr-runner not found")
 
             build_result = subprocess.run(
-                ["docker", "build",
-                 "-t", image_name,
-                 "-f", str(dockerfile),
-                 str(project_root)],
-                capture_output=True, text=True, timeout=600,
+                ["docker", "build", "-t", image_name, "-f", str(dockerfile), str(project_root)],
+                capture_output=True,
+                text=True,
+                timeout=600,
             )
             if build_result.returncode != 0:
                 pytest.skip(f"Could not build angr image: {build_result.stderr[:500]}")
@@ -451,6 +496,7 @@ class TestDockerDaemon:
         """Factory produces AngrDockerBackend for 'angr' key."""
         backend = build_verification_backend("angr")
         from verification.backends.angr_docker import AngrDockerBackend
+
         assert isinstance(backend, AngrDockerBackend)
         assert backend.supports()["input"] == "binary"
 
@@ -458,6 +504,7 @@ class TestDockerDaemon:
 # ═══════════════════════════════════════════════════════════════════════════════
 # 3. FULL INTEGRATION: Docker + Real Embeddings + Z3 + CEGIS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.integration
 class TestFullIntegration:
@@ -477,6 +524,7 @@ class TestFullIntegration:
     @pytest.fixture
     def real_embedder(self):
         from rag.embedding_provider import LocalEmbeddingProvider
+
         return LocalEmbeddingProvider("all-MiniLM-L6-v2")
 
     @pytest.fixture
@@ -489,7 +537,11 @@ class TestFullIntegration:
 
     @pytest.mark.asyncio
     async def test_full_stack_graph_to_rag_to_cegis_z3(
-        self, real_embedder, chroma_store, graph_store, tmp_path,
+        self,
+        real_embedder,
+        chroma_store,
+        graph_store,
+        tmp_path,
     ):
         """
         Complete state flow: graph → index → RAG → CEGIS + Z3.
@@ -510,10 +562,16 @@ class TestFullIntegration:
             text = f"{node.name}: {node.docstring or ''}"
             embedding = real_embedder.embed([text])[0]
             assert len(embedding) == 384
-            chroma_store.add([VectorDocument(
-                id=node_id, text=text, embedding=embedding,
-                metadata={"file": node.location.file if node.location else ""},
-            )])
+            chroma_store.add(
+                [
+                    VectorDocument(
+                        id=node_id,
+                        text=text,
+                        embedding=embedding,
+                        metadata={"file": node.location.file if node.location else ""},
+                    )
+                ]
+            )
 
         assert chroma_store.count() == 7
 
@@ -523,8 +581,10 @@ class TestFullIntegration:
             embedding_provider=real_embedder,
             graph_store=graph_store,
             config=RAGConfig(
-                vector_top_k=7, expansion_hops=1,
-                project_id=project_id, max_context_tokens=4000,
+                vector_top_k=7,
+                expansion_hops=1,
+                project_id=project_id,
+                max_context_tokens=4000,
             ),
         )
 
@@ -546,14 +606,17 @@ class TestFullIntegration:
                 captured_prompts.append(prompt)
                 return await super().generate_candidates(prompt, n, temperature)
 
-        llm = CapturingLLM(responses=[
-            "def login(username, password):\n    return authenticate(username, password)\n",
-        ])
+        llm = CapturingLLM(
+            responses=[
+                "def login(username, password):\n    return authenticate(username, password)\n",
+            ]
+        )
 
         z3_backend = Z3Backend()
         config = SynthesisConfig(max_iterations=3, population_size=4, top_k=4)
         engine = CEGISEngine(
-            config, llm,
+            config,
+            llm,
             verification_backend=z3_backend,
             rag_pipeline=rag,
         )
@@ -576,9 +639,7 @@ class TestFullIntegration:
         assert len(captured_prompts) >= 1
         prompt = captured_prompts[0]
         has_rag_context = (
-            "login" in prompt.lower() or
-            "hash_password" in prompt.lower() or
-            "Retrieved context" in prompt
+            "login" in prompt.lower() or "hash_password" in prompt.lower() or "Retrieved context" in prompt
         )
         assert has_rag_context, f"RAG context missing from prompt: {prompt[:400]}"
 
@@ -594,7 +655,9 @@ class TestFullIntegration:
 
     @pytest.mark.asyncio
     async def test_orchestrator_with_real_model_embeddings(
-        self, real_embedder, chroma_store,
+        self,
+        real_embedder,
+        chroma_store,
     ):
         """
         Orchestrator budget escalation works alongside real embeddings.

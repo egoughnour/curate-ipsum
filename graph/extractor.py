@@ -10,23 +10,25 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Set
 
 from .models import CallGraph
 
 
 class ExtractorError(Exception):
     """Base exception for extraction errors."""
+
     pass
 
 
 class ParseError(ExtractorError):
     """Error parsing source code."""
+
     pass
 
 
 class UnsupportedFeatureError(ExtractorError):
     """Source contains features not supported by this extractor."""
+
     pass
 
 
@@ -97,7 +99,7 @@ class CallGraphExtractor(ABC):
         """
         pass
 
-    def extract_files(self, file_paths: List[Path]) -> CallGraph:
+    def extract_files(self, file_paths: list[Path]) -> CallGraph:
         """
         Extract call graph from multiple files.
 
@@ -116,6 +118,7 @@ class CallGraphExtractor(ABC):
             except (ParseError, FileNotFoundError) as e:
                 # Log warning but continue with other files
                 import logging
+
                 logging.warning("Failed to extract %s: %s", file_path, e)
 
         return combined
@@ -124,7 +127,7 @@ class CallGraphExtractor(ABC):
         self,
         directory: Path,
         pattern: str = "**/*.py",
-        exclude: Optional[Set[str]] = None,
+        exclude: set[str] | None = None,
     ) -> CallGraph:
         """
         Extract call graph from all Python files in a directory.
@@ -139,7 +142,7 @@ class CallGraphExtractor(ABC):
         """
         exclude = exclude or {"__pycache__", ".git", ".venv", "venv", "node_modules"}
 
-        files: List[Path] = []
+        files: list[Path] = []
         for file_path in directory.glob(pattern):
             # Check if any parent directory is in exclude list
             if any(part in exclude for part in file_path.parts):
@@ -191,17 +194,21 @@ def get_extractor(
         # Try ASR first, fall back to AST
         try:
             from .asr_extractor import ASRExtractor
+
             return ASRExtractor(**kwargs)
         except ImportError:
             from .ast_extractor import ASTExtractor
+
             return ASTExtractor(**kwargs)
 
     elif backend == "ast":
         from .ast_extractor import ASTExtractor
+
         return ASTExtractor(**kwargs)
 
     elif backend == "asr":
         from .asr_extractor import ASRExtractor
+
         return ASRExtractor(**kwargs)
 
     else:

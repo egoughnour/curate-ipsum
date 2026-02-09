@@ -6,27 +6,24 @@ Includes test graphs: complete graphs K5, K3,3, diamonds, trees, and chains.
 Verifies correctness of Kameda index against BFS ground truth.
 """
 
-import pytest
+import sys
 from pathlib import Path
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from graph.kameda import KamedaIndex
 from graph.models import (
     CallGraph,
-    GraphNode,
-    GraphEdge,
-    NodeKind,
     EdgeKind,
+    GraphEdge,
+    GraphNode,
+    NodeKind,
 )
 from graph.planarity import (
-    check_planarity,
     callgraph_to_networkx,
+    check_planarity,
     networkx_to_callgraph,
-    PlanarityResult,
 )
-from graph.kameda import KamedaIndex
-
 
 # ─────────────────────────────────────────────────────────────────
 # Helper functions to build test graphs
@@ -309,7 +306,7 @@ class TestNetworkxToCallgraph:
         assert len(restored.nodes) == len(original.nodes)
         # Should have created nodes with default metadata
         for node_id in restored.nodes:
-            assert restored.nodes[node_id].kind in [k for k in NodeKind]
+            assert restored.nodes[node_id].kind in list(NodeKind)
 
 
 class TestCheckPlananityTree:
@@ -606,8 +603,7 @@ class TestKamedaReachesVerification:
                 reachable = diamond.reachable_from(src_id)
                 expected = (tgt_id in reachable) or (src_id == tgt_id)
                 actual = index.reaches(src_id, tgt_id)
-                assert actual == expected, \
-                    f"Mismatch for {src_id} → {tgt_id}: expected {expected}, got {actual}"
+                assert actual == expected, f"Mismatch for {src_id} → {tgt_id}: expected {expected}, got {actual}"
 
     def test_kameda_vs_bfs_chain(self):
         """Kameda reaches() matches CallGraph.reachable_from() on chain."""
@@ -619,8 +615,7 @@ class TestKamedaReachesVerification:
                 reachable = chain.reachable_from(src_id)
                 expected = (tgt_id in reachable) or (src_id == tgt_id)
                 actual = index.reaches(src_id, tgt_id)
-                assert actual == expected, \
-                    f"Chain: Mismatch for {src_id} → {tgt_id}: expected {expected}, got {actual}"
+                assert actual == expected, f"Chain: Mismatch for {src_id} → {tgt_id}: expected {expected}, got {actual}"
 
     def test_kameda_vs_bfs_tree(self):
         """Kameda reaches() matches CallGraph.reachable_from() on tree."""
@@ -638,8 +633,9 @@ class TestKamedaReachesVerification:
                 # but core reachability should be preserved
                 if src_id == "root":
                     # From root, should reach all descendants
-                    assert actual == expected, \
+                    assert actual == expected, (
                         f"Tree: Mismatch for {src_id} → {tgt_id}: expected {expected}, got {actual}"
+                    )
 
 
 class TestKamedaAllReachable:
@@ -707,8 +703,9 @@ class TestKamedaAllReachableVerification:
         for src_id in diamond.nodes:
             kameda_result = index.all_reachable_from(src_id)
             bfs_result = diamond.reachable_from(src_id)
-            assert kameda_result == bfs_result, \
+            assert kameda_result == bfs_result, (
                 f"Diamond: Mismatch for {src_id}: Kameda {kameda_result}, BFS {bfs_result}"
+            )
 
     def test_kameda_all_reachable_vs_bfs_chain(self):
         """Kameda all_reachable_from() matches BFS on chain."""
@@ -718,8 +715,9 @@ class TestKamedaAllReachableVerification:
         for src_id in chain.nodes:
             kameda_result = index.all_reachable_from(src_id)
             bfs_result = chain.reachable_from(src_id)
-            assert kameda_result == bfs_result, \
+            assert kameda_result == bfs_result, (
                 f"Chain: Mismatch for {src_id}: Kameda {kameda_result}, BFS {bfs_result}"
+            )
 
     def test_kameda_all_reachable_vs_bfs_tree(self):
         """Kameda all_reachable_from() matches BFS on tree."""
@@ -730,8 +728,9 @@ class TestKamedaAllReachableVerification:
         src_id = "root"
         kameda_result = index.all_reachable_from(src_id)
         bfs_result = tree.reachable_from(src_id)
-        assert kameda_result == bfs_result, \
+        assert kameda_result == bfs_result, (
             f"Tree root: Mismatch for {src_id}: Kameda {kameda_result}, BFS {bfs_result}"
+        )
 
 
 class TestKamedaWithNonplanarEdges:
@@ -743,10 +742,7 @@ class TestKamedaWithNonplanarEdges:
         # Manually create a "non-planar" edge
         non_planar_edge = GraphEdge("b", "a", kind=EdgeKind.CALLS)
 
-        index = KamedaIndex.build(
-            diamond,
-            non_planar_edges={non_planar_edge}
-        )
+        index = KamedaIndex.build(diamond, non_planar_edges={non_planar_edge})
 
         assert index is not None
         # Non-planar reachability should be precomputed
@@ -758,10 +754,7 @@ class TestKamedaWithNonplanarEdges:
         # Add a backward edge: b → a (non-planar in the DAG)
         non_planar_edge = GraphEdge("b", "a", kind=EdgeKind.CALLS)
 
-        index = KamedaIndex.build(
-            diamond,
-            non_planar_edges={non_planar_edge}
-        )
+        index = KamedaIndex.build(diamond, non_planar_edges={non_planar_edge})
 
         # With the non-planar edge, b should reach a
         # (though in the planar subgraph it wouldn't)
@@ -776,9 +769,7 @@ class TestKamedaWithNonplanarEdges:
         planarity_result = check_planarity(diamond)
 
         index = KamedaIndex.build(
-            diamond,
-            embedding=planarity_result.embedding,
-            non_planar_edges=planarity_result.non_planar_edges
+            diamond, embedding=planarity_result.embedding, non_planar_edges=planarity_result.non_planar_edges
         )
 
         assert index is not None

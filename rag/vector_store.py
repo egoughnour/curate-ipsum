@@ -15,7 +15,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 LOG = logging.getLogger("rag.vector_store")
 
@@ -26,8 +26,8 @@ class VectorDocument:
 
     id: str
     text: str
-    embedding: Optional[List[float]] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    embedding: list[float] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -37,7 +37,7 @@ class VectorSearchResult:
     id: str
     text: str
     score: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class VectorStore(ABC):
@@ -51,21 +51,21 @@ class VectorStore(ABC):
     @abstractmethod
     def add(
         self,
-        documents: List[VectorDocument],
+        documents: list[VectorDocument],
     ) -> None:
         """Add documents to the store. Upserts on matching IDs."""
 
     @abstractmethod
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 10,
-        filter_metadata: Optional[Dict[str, Any]] = None,
-    ) -> List[VectorSearchResult]:
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[VectorSearchResult]:
         """Search for similar documents by embedding vector."""
 
     @abstractmethod
-    def delete(self, ids: List[str]) -> None:
+    def delete(self, ids: list[str]) -> None:
         """Delete documents by ID."""
 
     @abstractmethod
@@ -94,8 +94,8 @@ class ChromaVectorStore(VectorStore):
     def __init__(
         self,
         collection_name: str = "code_nodes",
-        persist_directory: Optional[str] = None,
-        chroma_host: Optional[str] = None,
+        persist_directory: str | None = None,
+        chroma_host: str | None = None,
         chroma_port: int = 8000,
     ) -> None:
         import chromadb
@@ -116,7 +116,7 @@ class ChromaVectorStore(VectorStore):
             metadata={"hnsw:space": "cosine"},
         )
 
-    def add(self, documents: List[VectorDocument]) -> None:
+    def add(self, documents: list[VectorDocument]) -> None:
         if not documents:
             return
 
@@ -124,7 +124,7 @@ class ChromaVectorStore(VectorStore):
         texts = [d.text for d in documents]
         metadatas = [d.metadata if d.metadata else {"_placeholder": "true"} for d in documents]
 
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "ids": ids,
             "documents": texts,
             "metadatas": metadatas,
@@ -139,15 +139,15 @@ class ChromaVectorStore(VectorStore):
 
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 10,
-        filter_metadata: Optional[Dict[str, Any]] = None,
-    ) -> List[VectorSearchResult]:
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[VectorSearchResult]:
         n = min(top_k, self._collection.count())
         if n == 0:
             return []
 
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "query_embeddings": [query_embedding],
             "n_results": n,
         }
@@ -156,7 +156,7 @@ class ChromaVectorStore(VectorStore):
 
         results = self._collection.query(**kwargs)
 
-        out: List[VectorSearchResult] = []
+        out: list[VectorSearchResult] = []
         if results and results["ids"]:
             for i, doc_id in enumerate(results["ids"][0]):
                 distance = results["distances"][0][i] if results.get("distances") else 0.0
@@ -167,7 +167,7 @@ class ChromaVectorStore(VectorStore):
 
         return out
 
-    def delete(self, ids: List[str]) -> None:
+    def delete(self, ids: list[str]) -> None:
         if ids:
             self._collection.delete(ids=ids)
 
@@ -195,7 +195,4 @@ def build_vector_store(
     if backend == "chroma":
         return ChromaVectorStore(**kwargs)
     else:
-        raise ValueError(
-            f"Unknown vector store backend: {backend!r}. "
-            f"Supported: 'chroma'"
-        )
+        raise ValueError(f"Unknown vector store backend: {backend!r}. Supported: 'chroma'")

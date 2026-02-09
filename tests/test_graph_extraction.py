@@ -4,21 +4,22 @@ Tests for call graph extraction.
 Tests the AST-based extractor with various Python code patterns.
 """
 
-import pytest
+import sys
 from pathlib import Path
 from textwrap import dedent
 
-import sys
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from graph import (
     ASTExtractor,
     CallGraph,
-    GraphNode,
-    GraphEdge,
-    NodeKind,
     EdgeKind,
     FunctionSignature,
+    GraphEdge,
+    GraphNode,
+    NodeKind,
     get_extractor,
 )
 
@@ -360,17 +361,21 @@ class TestCallGraphOperations:
         """Test JSON serialization and deserialization."""
         graph = CallGraph()
 
-        graph.add_node(GraphNode(
-            id="test.func",
-            kind=NodeKind.FUNCTION,
-            name="func",
-            signature=FunctionSignature(name="func", params=("x", "y")),
-        ))
-        graph.add_edge(GraphEdge(
-            source_id="test.func",
-            target_id="builtins.print",
-            kind=EdgeKind.CALLS,
-        ))
+        graph.add_node(
+            GraphNode(
+                id="test.func",
+                kind=NodeKind.FUNCTION,
+                name="func",
+                signature=FunctionSignature(name="func", params=("x", "y")),
+            )
+        )
+        graph.add_edge(
+            GraphEdge(
+                source_id="test.func",
+                target_id="builtins.print",
+                kind=EdgeKind.CALLS,
+            )
+        )
 
         # Round-trip
         data = graph.to_dict()

@@ -1,27 +1,27 @@
 """Tests for verification backends — mock, Z3, and factory."""
 
 import pytest
-from verification.backend import build_verification_backend, VerificationBackend
+
+from verification.backend import build_verification_backend
 from verification.backends.mock import MockBackend
 from verification.types import (
     Budget,
     SymbolSpec,
     VerificationRequest,
-    VerificationResult,
     VerificationStatus,
 )
 
 
 def _make_request(**kwargs) -> VerificationRequest:
-    defaults = dict(
-        target_binary="test.bin",
-        entry="main",
-        symbols=[SymbolSpec(name="x", kind="int", bits=64)],
-        constraints=[],
-        find_kind="addr_reached",
-        find_value="0x401000",
-        budget=Budget(timeout_s=5),
-    )
+    defaults = {
+        "target_binary": "test.bin",
+        "entry": "main",
+        "symbols": [SymbolSpec(name="x", kind="int", bits=64)],
+        "constraints": [],
+        "find_kind": "addr_reached",
+        "find_value": "0x401000",
+        "budget": Budget(timeout_s=5),
+    }
     defaults.update(kwargs)
     return VerificationRequest(**defaults)
 
@@ -96,8 +96,9 @@ class TestZ3Backend:
     async def test_satisfiable_constraint(self):
         """Z3 should find a CE for satisfiable constraints."""
         try:
-            from verification.backends.z3_backend import Z3Backend
             import z3  # noqa: F401
+
+            from verification.backends.z3_backend import Z3Backend
         except ImportError:
             pytest.skip("z3-solver not installed")
 
@@ -118,8 +119,9 @@ class TestZ3Backend:
     async def test_unsatisfiable_constraint(self):
         """Z3 should report no CE for contradictory constraints."""
         try:
-            from verification.backends.z3_backend import Z3Backend
             import z3  # noqa: F401
+
+            from verification.backends.z3_backend import Z3Backend
         except ImportError:
             pytest.skip("z3-solver not installed")
 

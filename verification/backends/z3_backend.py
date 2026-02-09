@@ -12,11 +12,10 @@ from __future__ import annotations
 import logging
 import re
 import time
-from typing import Any, Dict
+from typing import Any
 
 from verification.backend import VerificationBackend
 from verification.types import (
-    Budget,
     Counterexample,
     VerificationRequest,
     VerificationResult,
@@ -45,7 +44,7 @@ class Z3Backend(VerificationBackend):
     def __init__(self, **kwargs: Any) -> None:
         self._kwargs = kwargs
 
-    def supports(self) -> Dict[str, Any]:
+    def supports(self) -> dict[str, Any]:
         return {
             "input": "constraints",
             "constraints": ["comparison"],
@@ -78,7 +77,7 @@ class Z3Backend(VerificationBackend):
             solver.set("timeout", request.budget.timeout_s * 1000)  # ms
 
             # Create symbolic variables
-            symmap: Dict[str, z3.BitVecRef] = {}
+            symmap: dict[str, z3.BitVecRef] = {}
             for spec in request.symbols:
                 bits = spec.bits
                 if spec.kind == "bool":
@@ -104,7 +103,7 @@ class Z3Backend(VerificationBackend):
 
             if result == z3.sat:
                 model = solver.model()
-                ce_model: Dict[str, Any] = {}
+                ce_model: dict[str, Any] = {}
                 for name, sym in symmap.items():
                     val = model.evaluate(sym)
                     try:
@@ -142,9 +141,7 @@ class Z3Backend(VerificationBackend):
                 logs=f"Z3 backend error: {exc}",
             )
 
-    def _parse_constraint(
-        self, constraint: str, symmap: Dict[str, Any], z3: Any
-    ) -> Any:
+    def _parse_constraint(self, constraint: str, symmap: dict[str, Any], z3: Any) -> Any:
         """Parse a mini-DSL constraint string into a Z3 expression."""
         m = _CMP_RE.match(constraint)
         if not m:
@@ -166,14 +163,17 @@ class Z3Backend(VerificationBackend):
         elif rw < lw:
             rhs = z3.ZeroExt(lw - rw, rhs)
 
-        ops = {"==": lambda a, b: a == b, "!=": lambda a, b: a != b,
-               "<=": lambda a, b: a <= b, ">=": lambda a, b: a >= b,
-               "<": lambda a, b: z3.ULT(a, b), ">": lambda a, b: z3.UGT(a, b)}
+        ops = {
+            "==": lambda a, b: a == b,
+            "!=": lambda a, b: a != b,
+            "<=": lambda a, b: a <= b,
+            ">=": lambda a, b: a >= b,
+            "<": lambda a, b: z3.ULT(a, b),
+            ">": lambda a, b: z3.UGT(a, b),
+        }
         return ops[op](lhs, rhs)
 
-    def _resolve_atom(
-        self, atom: str, symmap: Dict[str, Any], z3: Any
-    ) -> Any:
+    def _resolve_atom(self, atom: str, symmap: dict[str, Any], z3: Any) -> Any:
         """Resolve an atom to a Z3 bitvector value or variable."""
         atom = atom.strip()
         if atom in symmap:
@@ -184,9 +184,7 @@ class Z3Backend(VerificationBackend):
             return z3.BitVecVal(int(atom), 64)
         return None
 
-    def _build_property(
-        self, request: VerificationRequest, symmap: Dict[str, Any], z3: Any
-    ) -> Any:
+    def _build_property(self, request: VerificationRequest, symmap: dict[str, Any], z3: Any) -> Any:
         """Build a Z3 expression for the find condition."""
         if request.find_kind == "return_value":
             # Find a satisfying assignment where the constraints hold

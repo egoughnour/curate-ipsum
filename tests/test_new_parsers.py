@@ -20,35 +20,32 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from parsers import (
+    UnsupportedFrameworkError,
+    parse_mutation_output,
+)
 from parsers.cosmic_ray_parser import (
-    CosmicRayMutant,
+    _module_to_filepath,
+    _normalize_test_outcome,
+    _normalize_worker_outcome,
     aggregate_cosmic_ray_stats,
     find_cosmic_ray_session,
     parse_cosmic_ray_output,
     parse_cosmic_ray_session,
-    _module_to_filepath,
-    _normalize_test_outcome,
-    _normalize_worker_outcome,
-)
-from parsers.poodle_parser import (
-    find_poodle_report,
-    parse_poodle_output,
-    parse_poodle_report,
-)
-from parsers.universalmutator_parser import (
-    find_universalmutator_results,
-    parse_universalmutator_output,
-    _extract_source_file,
 )
 from parsers.detection import (
     MutationFramework,
     detect_available_frameworks,
 )
-from parsers import (
-    parse_mutation_output,
-    UnsupportedFrameworkError,
+from parsers.poodle_parser import (
+    find_poodle_report,
+    parse_poodle_output,
 )
-
+from parsers.universalmutator_parser import (
+    _extract_source_file,
+    find_universalmutator_results,
+    parse_universalmutator_output,
+)
 
 # =============================================================================
 # Cosmic-ray fixtures
@@ -135,9 +132,7 @@ def cosmic_ray_sqlite(tmp_path: Path) -> Path:
         ("job-5", "pkg.module_a", "StringReplacer", 0, "(25, 1)", "(25, 10)", 0, 2),  # incompetent
     ]
 
-    cursor.executemany(
-        "INSERT INTO work_items VALUES (?, ?, ?, ?, ?, ?, ?, ?)", items
-    )
+    cursor.executemany("INSERT INTO work_items VALUES (?, ?, ?, ?, ?, ?, ?, ?)", items)
     conn.commit()
     conn.close()
 
@@ -163,9 +158,7 @@ def cosmic_ray_config(tmp_path: Path) -> Path:
             test_outcome INTEGER
         )
     """)
-    cursor.execute(
-        "INSERT INTO work_items VALUES ('j1', 'mod', 'Op', 0, '(1, 1)', '(1, 2)', 0, 1)"
-    )
+    cursor.execute("INSERT INTO work_items VALUES ('j1', 'mod', 'Op', 0, '(1, 1)', '(1, 2)', 0, 1)")
     conn.commit()
     conn.close()
 
@@ -404,9 +397,7 @@ class TestCosmicRayJsonParser:
         assert mutants[0].worker_outcome == "normal"
 
     def test_parse_json_aggregation(self, cosmic_ray_json: Path):
-        total, killed, survived, no_cov, score, by_file = parse_cosmic_ray_output(
-            str(cosmic_ray_json)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_cosmic_ray_output(str(cosmic_ray_json))
 
         assert total == 4
         assert killed == 2  # job-001, job-003
@@ -418,9 +409,7 @@ class TestCosmicRayJsonParser:
     def test_parse_json_by_file(self, cosmic_ray_json: Path):
         _, _, _, _, _, by_file = parse_cosmic_ray_output(str(cosmic_ray_json))
 
-        main_stats = next(
-            (f for f in by_file if "main" in f.filePath), None
-        )
+        main_stats = next((f for f in by_file if "main" in f.filePath), None)
         assert main_stats is not None
         assert main_stats.totalMutants == 2
         assert main_stats.killed == 1
@@ -439,9 +428,7 @@ class TestCosmicRaySqliteParser:
         # job-4: survived/timeout, job-5: incompetent/normal
 
     def test_parse_sqlite_aggregation(self, cosmic_ray_sqlite: Path):
-        total, killed, survived, no_cov, score, by_file = parse_cosmic_ray_output(
-            str(cosmic_ray_sqlite)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_cosmic_ray_output(str(cosmic_ray_sqlite))
 
         assert total == 5
         assert killed == 2  # job-1, job-3
@@ -464,9 +451,7 @@ class TestCosmicRayEdgeCases:
 
     def test_empty_json(self, tmp_path: Path):
         (tmp_path / "cosmic-ray.json").write_text("[]")
-        total, killed, survived, no_cov, score, by_file = parse_cosmic_ray_output(
-            str(tmp_path)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_cosmic_ray_output(str(tmp_path))
         assert total == 0
         assert by_file == []
 
@@ -476,9 +461,7 @@ class TestCosmicRayEdgeCases:
 
     def test_explicit_report_path(self, cosmic_ray_json: Path):
         report_file = cosmic_ray_json / "cosmic-ray.json"
-        total, killed, _, _, _, _ = parse_cosmic_ray_output(
-            str(cosmic_ray_json), report_path=str(report_file)
-        )
+        total, killed, _, _, _, _ = parse_cosmic_ray_output(str(cosmic_ray_json), report_path=str(report_file))
         assert total == 4
 
     def test_aggregate_empty_list(self):
@@ -515,9 +498,7 @@ class TestPoodleParser:
     """Tests for poodle report parsing."""
 
     def test_parse_basic_report(self, poodle_report: Path):
-        total, killed, survived, no_cov, score, by_file = parse_poodle_output(
-            str(poodle_report)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_poodle_output(str(poodle_report))
 
         assert total == 5
         assert killed == 3  # ids 1, 4, 5
@@ -529,34 +510,26 @@ class TestPoodleParser:
     def test_parse_by_file(self, poodle_report: Path):
         _, _, _, _, _, by_file = parse_poodle_output(str(poodle_report))
 
-        calc_stats = next(
-            (f for f in by_file if "calculator" in f.filePath), None
-        )
+        calc_stats = next((f for f in by_file if "calculator" in f.filePath), None)
         assert calc_stats is not None
         assert calc_stats.totalMutants == 3
         assert calc_stats.killed == 1
         assert calc_stats.survived == 1
         assert calc_stats.noCoverage == 1
 
-        utils_stats = next(
-            (f for f in by_file if "utils" in f.filePath), None
-        )
+        utils_stats = next((f for f in by_file if "utils" in f.filePath), None)
         assert utils_stats is not None
         assert utils_stats.totalMutants == 2
         assert utils_stats.killed == 2
 
     def test_report_score_used(self, poodle_report_with_score: Path):
         """When report includes mutationScore, it should be used."""
-        _, _, _, _, score, _ = parse_poodle_output(
-            str(poodle_report_with_score)
-        )
+        _, _, _, _, score, _ = parse_poodle_output(str(poodle_report_with_score))
         assert score == pytest.approx(0.75)  # 75% from report
 
     def test_explicit_report_path(self, poodle_report: Path):
         report_file = poodle_report / "mutation-report.json"
-        total, _, _, _, _, _ = parse_poodle_output(
-            str(poodle_report), report_path=str(report_file)
-        )
+        total, _, _, _, _, _ = parse_poodle_output(str(poodle_report), report_path=str(report_file))
         assert total == 5
 
     def test_not_found_raises(self, tmp_path: Path):
@@ -571,9 +544,7 @@ class TestPoodleEdgeCases:
         data = {"schemaVersion": "1", "files": {}}
         (tmp_path / "mutation-report.json").write_text(json.dumps(data))
 
-        total, killed, survived, no_cov, score, by_file = parse_poodle_output(
-            str(tmp_path)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_poodle_output(str(tmp_path))
         assert total == 0
         assert by_file == []
 
@@ -598,9 +569,7 @@ class TestPoodleEdgeCases:
         }
         (tmp_path / "mutation-report.json").write_text(json.dumps(data))
 
-        total, killed, survived, no_cov, score, by_file = parse_poodle_output(
-            str(tmp_path)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_poodle_output(str(tmp_path))
         assert total == 8
         assert killed == 1
         assert survived == 1
@@ -609,7 +578,7 @@ class TestPoodleEdgeCases:
 
     def test_invalid_json_raises(self, tmp_path: Path):
         (tmp_path / "mutation-report.json").write_text("not json")
-        with pytest.raises(Exception):  # json.JSONDecodeError
+        with pytest.raises(ValueError):  # json.JSONDecodeError wrapped as ValueError
             parse_poodle_output(str(tmp_path))
 
 
@@ -658,9 +627,7 @@ class TestUniversalMutatorParser:
     """Tests for universalmutator text file parsing."""
 
     def test_parse_basic_results(self, um_results: Path):
-        total, killed, survived, no_cov, score, by_file = parse_universalmutator_output(
-            str(um_results)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_universalmutator_output(str(um_results))
 
         assert total == 6
         assert killed == 4
@@ -672,17 +639,13 @@ class TestUniversalMutatorParser:
     def test_parse_by_file(self, um_results: Path):
         _, _, _, _, _, by_file = parse_universalmutator_output(str(um_results))
 
-        main_stats = next(
-            (f for f in by_file if "main" in f.filePath), None
-        )
+        main_stats = next((f for f in by_file if "main" in f.filePath), None)
         assert main_stats is not None
         assert main_stats.totalMutants == 4  # 3 killed + 1 survived
         assert main_stats.killed == 3
         assert main_stats.survived == 1
 
-        utils_stats = next(
-            (f for f in by_file if "utils" in f.filePath), None
-        )
+        utils_stats = next((f for f in by_file if "utils" in f.filePath), None)
         assert utils_stats is not None
         assert utils_stats.totalMutants == 2  # 1 killed + 1 survived
         assert utils_stats.killed == 1
@@ -690,25 +653,19 @@ class TestUniversalMutatorParser:
 
     def test_alt_filename(self, um_results_alt_name: Path):
         """Handles 'notkilled.txt' alternative name."""
-        total, killed, survived, _, score, _ = parse_universalmutator_output(
-            str(um_results_alt_name)
-        )
+        total, killed, survived, _, score, _ = parse_universalmutator_output(str(um_results_alt_name))
         assert total == 3
         assert killed == 2
         assert survived == 1
 
     def test_results_in_subdir(self, um_results_in_subdir: Path):
-        total, killed, survived, _, _, _ = parse_universalmutator_output(
-            str(um_results_in_subdir)
-        )
+        total, killed, survived, _, _, _ = parse_universalmutator_output(str(um_results_in_subdir))
         assert total == 2
         assert killed == 1
         assert survived == 1
 
     def test_explicit_report_path(self, um_results: Path):
-        total, _, _, _, _, _ = parse_universalmutator_output(
-            str(um_results), report_path=str(um_results)
-        )
+        total, _, _, _, _, _ = parse_universalmutator_output(str(um_results), report_path=str(um_results))
         assert total == 6
 
     def test_not_found_raises(self, tmp_path: Path):
@@ -729,15 +686,11 @@ class TestUniversalMutatorEdgeCases:
 
     def test_only_killed(self, tmp_path: Path):
         """Only killed.txt present, no survived."""
-        (tmp_path / "killed.txt").write_text(
-            "mod.py.mutant.1.AOR\nmod.py.mutant.2.ROR\n"
-        )
+        (tmp_path / "killed.txt").write_text("mod.py.mutant.1.AOR\nmod.py.mutant.2.ROR\n")
         # Create empty not-killed to prevent FileNotFoundError from both empty
         # Actually the parser should handle just killed.txt
 
-        total, killed, survived, _, score, _ = parse_universalmutator_output(
-            str(tmp_path)
-        )
+        total, killed, survived, _, score, _ = parse_universalmutator_output(str(tmp_path))
         assert total == 2
         assert killed == 2
         assert survived == 0
@@ -745,29 +698,19 @@ class TestUniversalMutatorEdgeCases:
 
     def test_comments_skipped(self, tmp_path: Path):
         """Comment lines in text files are skipped."""
-        (tmp_path / "killed.txt").write_text(
-            "# This is a comment\nmod.py.mutant.1.AOR\n"
-        )
-        (tmp_path / "not-killed.txt").write_text(
-            "# Another comment\nmod.py.mutant.2.ROR\n"
-        )
+        (tmp_path / "killed.txt").write_text("# This is a comment\nmod.py.mutant.1.AOR\n")
+        (tmp_path / "not-killed.txt").write_text("# Another comment\nmod.py.mutant.2.ROR\n")
 
-        total, killed, survived, _, _, _ = parse_universalmutator_output(
-            str(tmp_path)
-        )
+        total, killed, survived, _, _, _ = parse_universalmutator_output(str(tmp_path))
         assert total == 2
         assert killed == 1
         assert survived == 1
 
     def test_blank_lines_skipped(self, tmp_path: Path):
         """Blank lines in text files are skipped."""
-        (tmp_path / "killed.txt").write_text(
-            "\nmod.py.mutant.1.AOR\n\n\nmod.py.mutant.2.ROR\n\n"
-        )
+        (tmp_path / "killed.txt").write_text("\nmod.py.mutant.1.AOR\n\n\nmod.py.mutant.2.ROR\n\n")
 
-        total, killed, survived, _, _, _ = parse_universalmutator_output(
-            str(tmp_path)
-        )
+        total, killed, survived, _, _, _ = parse_universalmutator_output(str(tmp_path))
         assert total == 2
         assert killed == 2
 
@@ -823,9 +766,7 @@ class TestDetectionUpdates:
 
     def test_detect_poodle_from_pyproject(self, tmp_path: Path):
         """Detects poodle from [tool.poodle] in pyproject.toml."""
-        (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "test"\n\n[tool.poodle]\npaths = ["src"]\n'
-        )
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n\n[tool.poodle]\npaths = ["src"]\n')
         frameworks = detect_available_frameworks(str(tmp_path))
         poodle = next(
             (f for f in frameworks if f.framework == MutationFramework.POODLE),
@@ -844,55 +785,41 @@ class TestUnifiedRouterNewTools:
     """Tests for the unified router with new tools."""
 
     def test_explicit_cosmic_ray(self, cosmic_ray_json: Path):
-        total, killed, _, _, _, _ = parse_mutation_output(
-            str(cosmic_ray_json), tool="cosmic-ray"
-        )
+        total, killed, _, _, _, _ = parse_mutation_output(str(cosmic_ray_json), tool="cosmic-ray")
         assert total == 4
         assert killed == 2
 
     def test_explicit_cosmic_ray_variation(self, cosmic_ray_json: Path):
         """Tool name variations should work."""
         for name in ["cosmic_ray", "cosmicray", "cosmic"]:
-            total, _, _, _, _, _ = parse_mutation_output(
-                str(cosmic_ray_json), tool=name
-            )
+            total, _, _, _, _, _ = parse_mutation_output(str(cosmic_ray_json), tool=name)
             assert total == 4
 
     def test_explicit_poodle(self, poodle_report: Path):
-        total, killed, _, _, _, _ = parse_mutation_output(
-            str(poodle_report), tool="poodle"
-        )
+        total, killed, _, _, _, _ = parse_mutation_output(str(poodle_report), tool="poodle")
         assert total == 5
         assert killed == 3
 
     def test_explicit_poodle_variation(self, poodle_report: Path):
         """poodle_test variation should work."""
-        total, _, _, _, _, _ = parse_mutation_output(
-            str(poodle_report), tool="poodle_test"
-        )
+        total, _, _, _, _, _ = parse_mutation_output(str(poodle_report), tool="poodle_test")
         assert total == 5
 
     def test_explicit_universalmutator(self, um_results: Path):
-        total, killed, _, _, _, _ = parse_mutation_output(
-            str(um_results), tool="universalmutator"
-        )
+        total, killed, _, _, _, _ = parse_mutation_output(str(um_results), tool="universalmutator")
         assert total == 6
         assert killed == 4
 
     def test_explicit_universalmutator_variations(self, um_results: Path):
         """Tool name variations should work."""
         for name in ["universal_mutator", "um"]:
-            total, _, _, _, _, _ = parse_mutation_output(
-                str(um_results), tool=name
-            )
+            total, _, _, _, _, _ = parse_mutation_output(str(um_results), tool=name)
             assert total == 6
 
     def test_cosmic_ray_no_longer_raises(self, cosmic_ray_json: Path):
         """cosmic-ray should no longer raise UnsupportedFrameworkError."""
         # This should NOT raise - it's now implemented
-        total, _, _, _, _, _ = parse_mutation_output(
-            str(cosmic_ray_json), tool="cosmic-ray"
-        )
+        total, _, _, _, _, _ = parse_mutation_output(str(cosmic_ray_json), tool="cosmic-ray")
         assert total > 0
 
     def test_mutpy_still_raises(self, tmp_path: Path):

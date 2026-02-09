@@ -1,10 +1,13 @@
 """Tests for RAG subsystem — vector store, embedding provider, search pipeline."""
 
-import pytest
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
+from typing import Any
+
+import pytest
 
 # ── Mock GraphStore for testing graph expansion ──────────────────────────────
+
 
 class MockGraphStoreForRAG:
     """Minimal mock implementing the GraphStore interface methods RAG uses."""
@@ -13,15 +16,17 @@ class MockGraphStoreForRAG:
         self._neighbors = neighbors or {}  # {(node_id, direction): [ids]}
         self._nodes = nodes or {}  # {node_id: {data}}
 
-    def get_neighbors(self, node_id: str, project_id: str, direction: str = "outgoing",
-                      edge_kind: Optional[str] = None) -> List[str]:
+    def get_neighbors(
+        self, node_id: str, project_id: str, direction: str = "outgoing", edge_kind: str | None = None
+    ) -> list[str]:
         return self._neighbors.get((node_id, direction), [])
 
-    def get_node(self, node_id: str, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_node(self, node_id: str, project_id: str) -> dict[str, Any] | None:
         return self._nodes.get(node_id)
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────
+
 
 class TestVectorStore:
     def test_chroma_add_and_count(self):
@@ -31,12 +36,12 @@ class TestVectorStore:
             pytest.skip("chromadb not installed")
 
         store = ChromaVectorStore(collection_name="test_add_count")
-        store.add([
-            VectorDocument(id="fn1", text="def hello(): pass",
-                           embedding=[1.0, 0.0, 0.0], metadata={"kind": "fn"}),
-            VectorDocument(id="fn2", text="def world(): pass",
-                           embedding=[0.0, 1.0, 0.0], metadata={"kind": "fn"}),
-        ])
+        store.add(
+            [
+                VectorDocument(id="fn1", text="def hello(): pass", embedding=[1.0, 0.0, 0.0], metadata={"kind": "fn"}),
+                VectorDocument(id="fn2", text="def world(): pass", embedding=[0.0, 1.0, 0.0], metadata={"kind": "fn"}),
+            ]
+        )
         assert store.count() == 2
 
     def test_chroma_search(self):
@@ -46,12 +51,14 @@ class TestVectorStore:
             pytest.skip("chromadb not installed")
 
         store = ChromaVectorStore(collection_name="test_search")
-        store.add([
-            VectorDocument(id="fn1", text="def hello(): pass",
-                           embedding=[1.0, 0.0, 0.0], metadata={"kind": "fn"}),
-            VectorDocument(id="fn2", text="def world(): return 42",
-                           embedding=[0.0, 1.0, 0.0], metadata={"kind": "fn"}),
-        ])
+        store.add(
+            [
+                VectorDocument(id="fn1", text="def hello(): pass", embedding=[1.0, 0.0, 0.0], metadata={"kind": "fn"}),
+                VectorDocument(
+                    id="fn2", text="def world(): return 42", embedding=[0.0, 1.0, 0.0], metadata={"kind": "fn"}
+                ),
+            ]
+        )
         results = store.search([1.0, 0.0, 0.0], top_k=2)
         assert len(results) == 2
         assert results[0].id == "fn1"
@@ -64,12 +71,12 @@ class TestVectorStore:
             pytest.skip("chromadb not installed")
 
         store = ChromaVectorStore(collection_name="test_delete")
-        store.add([
-            VectorDocument(id="fn1", text="hello",
-                           embedding=[1.0, 0.0, 0.0], metadata={"kind": "fn"}),
-            VectorDocument(id="fn2", text="world",
-                           embedding=[0.0, 1.0, 0.0], metadata={"kind": "fn"}),
-        ])
+        store.add(
+            [
+                VectorDocument(id="fn1", text="hello", embedding=[1.0, 0.0, 0.0], metadata={"kind": "fn"}),
+                VectorDocument(id="fn2", text="world", embedding=[0.0, 1.0, 0.0], metadata={"kind": "fn"}),
+            ]
+        )
         assert store.count() == 2
         store.delete(["fn1"])
         assert store.count() == 1
@@ -95,6 +102,7 @@ class TestVectorStore:
 
     def test_factory_unknown_raises(self):
         from rag.vector_store import build_vector_store
+
         with pytest.raises(ValueError, match="Unknown vector store backend"):
             build_vector_store("nonexistent")
 
@@ -121,19 +129,19 @@ class TestEmbeddingProvider:
 class TestRAGPipeline:
     def test_search_returns_results(self):
         try:
-            from rag.vector_store import ChromaVectorStore, VectorDocument
             from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGPipeline, RAGConfig
+            from rag.search import RAGConfig, RAGPipeline
+            from rag.vector_store import ChromaVectorStore, VectorDocument
         except ImportError:
             pytest.skip("chromadb not installed")
 
         store = ChromaVectorStore(collection_name="test_pipeline_search")
-        store.add([
-            VectorDocument(id="fn1", text="validate input",
-                           embedding=[0.0] * 384, metadata={"kind": "fn"}),
-            VectorDocument(id="fn2", text="process data",
-                           embedding=[0.0] * 384, metadata={"kind": "fn"}),
-        ])
+        store.add(
+            [
+                VectorDocument(id="fn1", text="validate input", embedding=[0.0] * 384, metadata={"kind": "fn"}),
+                VectorDocument(id="fn2", text="process data", embedding=[0.0] * 384, metadata={"kind": "fn"}),
+            ]
+        )
 
         embedder = MockEmbeddingProvider(dim=384)
         pipeline = RAGPipeline(store, embedder, config=RAGConfig(vector_top_k=5))
@@ -145,9 +153,9 @@ class TestRAGPipeline:
 
     def test_pack_context(self):
         try:
-            from rag.vector_store import ChromaVectorStore, VectorDocument
             from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGPipeline, RAGConfig, RAGResult
+            from rag.search import RAGConfig, RAGPipeline, RAGResult
+            from rag.vector_store import ChromaVectorStore
         except ImportError:
             pytest.skip("chromadb not installed")
 
@@ -166,17 +174,18 @@ class TestRAGPipeline:
     def test_graph_expansion(self):
         """Pipeline should expand results using GraphStore neighbors."""
         try:
-            from rag.vector_store import ChromaVectorStore, VectorDocument
             from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGPipeline, RAGConfig
+            from rag.search import RAGConfig, RAGPipeline
+            from rag.vector_store import ChromaVectorStore, VectorDocument
         except ImportError:
             pytest.skip("chromadb not installed")
 
         store = ChromaVectorStore(collection_name="test_graph_expansion")
-        store.add([
-            VectorDocument(id="fn1", text="validate input",
-                           embedding=[0.0] * 384, metadata={"kind": "fn"}),
-        ])
+        store.add(
+            [
+                VectorDocument(id="fn1", text="validate input", embedding=[0.0] * 384, metadata={"kind": "fn"}),
+            ]
+        )
 
         mock_gs = MockGraphStoreForRAG(
             neighbors={
@@ -192,7 +201,9 @@ class TestRAGPipeline:
 
         embedder = MockEmbeddingProvider(dim=384)
         pipeline = RAGPipeline(
-            store, embedder, graph_store=mock_gs,
+            store,
+            embedder,
+            graph_store=mock_gs,
             config=RAGConfig(vector_top_k=5, expansion_hops=1),
         )
         results = pipeline.search("validate")
@@ -229,9 +240,9 @@ class TestCEGISVerificationIntegration:
     async def test_cegis_with_rag_pipeline(self):
         """CEGIS should enrich prompts via RAG when pipeline is provided."""
         try:
-            from rag.vector_store import ChromaVectorStore, VectorDocument
             from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGPipeline, RAGConfig
+            from rag.search import RAGConfig, RAGPipeline
+            from rag.vector_store import ChromaVectorStore, VectorDocument
         except ImportError:
             pytest.skip("chromadb not installed")
 
@@ -240,10 +251,13 @@ class TestCEGISVerificationIntegration:
         from synthesis.models import Specification, SynthesisConfig, SynthesisStatus
 
         store = ChromaVectorStore(collection_name="test_cegis_rag")
-        store.add([
-            VectorDocument(id="ctx1", text="def helper(): return 42",
-                           embedding=[0.0] * 384, metadata={"kind": "fn"}),
-        ])
+        store.add(
+            [
+                VectorDocument(
+                    id="ctx1", text="def helper(): return 42", embedding=[0.0] * 384, metadata={"kind": "fn"}
+                ),
+            ]
+        )
         embedder = MockEmbeddingProvider(dim=384)
         pipeline = RAGPipeline(store, embedder, config=RAGConfig(vector_top_k=3))
 

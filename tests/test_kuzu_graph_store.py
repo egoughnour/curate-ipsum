@@ -4,10 +4,6 @@ These tests require ``kuzu`` to be installed. If it's not available,
 all tests are skipped automatically.
 """
 
-import json
-import tempfile
-from pathlib import Path
-
 import pytest
 
 kuzu = pytest.importorskip("kuzu", reason="kuzu not installed")
@@ -15,11 +11,11 @@ kuzu = pytest.importorskip("kuzu", reason="kuzu not installed")
 from graph.models import (
     CallGraph,
     EdgeKind,
+    FunctionSignature,
     GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
-    FunctionSignature,
 )
 from storage.kuzu_graph_store import KuzuGraphStore
 
@@ -38,33 +34,47 @@ def sample_graph():
     """Create a small sample call graph."""
     graph = CallGraph()
 
-    graph.add_node(GraphNode(
-        id="mod.foo",
-        kind=NodeKind.FUNCTION,
-        name="foo",
-        location=SourceLocation(file="mod.py", line_start=1, line_end=5),
-        signature=FunctionSignature(name="foo", params=("x",)),
-    ))
-    graph.add_node(GraphNode(
-        id="mod.bar",
-        kind=NodeKind.FUNCTION,
-        name="bar",
-        location=SourceLocation(file="mod.py", line_start=7, line_end=12),
-    ))
-    graph.add_node(GraphNode(
-        id="util.helper",
-        kind=NodeKind.FUNCTION,
-        name="helper",
-        location=SourceLocation(file="util.py", line_start=1, line_end=3),
-    ))
+    graph.add_node(
+        GraphNode(
+            id="mod.foo",
+            kind=NodeKind.FUNCTION,
+            name="foo",
+            location=SourceLocation(file="mod.py", line_start=1, line_end=5),
+            signature=FunctionSignature(name="foo", params=("x",)),
+        )
+    )
+    graph.add_node(
+        GraphNode(
+            id="mod.bar",
+            kind=NodeKind.FUNCTION,
+            name="bar",
+            location=SourceLocation(file="mod.py", line_start=7, line_end=12),
+        )
+    )
+    graph.add_node(
+        GraphNode(
+            id="util.helper",
+            kind=NodeKind.FUNCTION,
+            name="helper",
+            location=SourceLocation(file="util.py", line_start=1, line_end=3),
+        )
+    )
 
-    graph.add_edge(GraphEdge(
-        source_id="mod.foo", target_id="mod.bar", kind=EdgeKind.CALLS,
-    ))
-    graph.add_edge(GraphEdge(
-        source_id="mod.foo", target_id="util.helper", kind=EdgeKind.CALLS,
-        confidence=0.9,
-    ))
+    graph.add_edge(
+        GraphEdge(
+            source_id="mod.foo",
+            target_id="mod.bar",
+            kind=EdgeKind.CALLS,
+        )
+    )
+    graph.add_edge(
+        GraphEdge(
+            source_id="mod.foo",
+            target_id="util.helper",
+            kind=EdgeKind.CALLS,
+            confidence=0.9,
+        )
+    )
 
     return graph
 

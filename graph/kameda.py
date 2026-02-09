@@ -35,10 +35,9 @@ Requires: networkx>=3.0 (for planar embedding utilities)
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from dataclasses import dataclass
 
-from .models import CallGraph, EdgeKind, GraphEdge, GraphNode, NodeKind
+from .models import CallGraph, EdgeKind, GraphEdge
 
 
 @dataclass
@@ -52,10 +51,10 @@ class KamedaIndex:
     set is checked.
     """
 
-    left_rank: Dict[str, int]
+    left_rank: dict[str, int]
     """Left-boundary topological rank for each node."""
 
-    right_rank: Dict[str, int]
+    right_rank: dict[str, int]
     """Right-boundary topological rank for each node."""
 
     source_id: str
@@ -64,25 +63,25 @@ class KamedaIndex:
     sink_id: str
     """The single sink (or virtual sink) of the st-graph."""
 
-    non_planar_reachability: Dict[str, Set[str]]
+    non_planar_reachability: dict[str, set[str]]
     """
     Fallback reachability for edges that were removed during planarization.
     Maps node_id → set of additional nodes reachable via non-planar edges.
     Precomputed during build.
     """
 
-    all_node_ids: FrozenSet[str]
+    all_node_ids: frozenset[str]
     """All node IDs in the indexed graph."""
 
     @classmethod
     def build(
         cls,
         graph: CallGraph,
-        embedding: Optional[Dict] = None,
-        non_planar_edges: Optional[Set[GraphEdge]] = None,
-        source_id: Optional[str] = None,
-        sink_id: Optional[str] = None,
-        edge_kinds: Optional[Set[EdgeKind]] = None,
+        embedding: dict | None = None,
+        non_planar_edges: set[GraphEdge] | None = None,
+        source_id: str | None = None,
+        sink_id: str | None = None,
+        edge_kinds: set[EdgeKind] | None = None,
     ) -> "KamedaIndex":
         """
         Build the reachability index from a planar DAG.
@@ -113,15 +112,17 @@ class KamedaIndex:
 
         if len(all_ids) == 0:
             return cls(
-                left_rank={}, right_rank={},
-                source_id="", sink_id="",
+                left_rank={},
+                right_rank={},
+                source_id="",
+                sink_id="",
                 non_planar_reachability={},
                 all_node_ids=frozenset(),
             )
 
         # Build adjacency structures for the planar subgraph only
-        forward: Dict[str, List[str]] = {nid: [] for nid in all_ids}
-        backward: Dict[str, List[str]] = {nid: [] for nid in all_ids}
+        forward: dict[str, list[str]] = {nid: [] for nid in all_ids}
+        backward: dict[str, list[str]] = {nid: [] for nid in all_ids}
         for edge in graph.edges:
             if edge.kind not in edge_kinds:
                 continue
@@ -157,16 +158,12 @@ class KamedaIndex:
         else:
             # No embedding available — use two different topological orderings
             # as an approximation (correct for trees and simple DAGs)
-            left_rank, right_rank = _compute_ranks_heuristic(
-                forward, backward, all_ids, topo_order
-            )
+            left_rank, right_rank = _compute_ranks_heuristic(forward, backward, all_ids, topo_order)
 
         # Precompute fallback reachability for non-planar edges
-        non_planar_reach: Dict[str, Set[str]] = {}
+        non_planar_reach: dict[str, set[str]] = {}
         if non_planar_edges:
-            non_planar_reach = _compute_non_planar_reachability(
-                non_planar_edges, forward, all_ids, edge_kinds
-            )
+            non_planar_reach = _compute_non_planar_reachability(non_planar_edges, forward, all_ids, edge_kinds)
 
         return cls(
             left_rank=left_rank,
@@ -213,7 +210,7 @@ class KamedaIndex:
 
         return False
 
-    def all_reachable_from(self, source: str) -> Set[str]:
+    def all_reachable_from(self, source: str) -> set[str]:
         """
         Get all nodes reachable from source.
 
@@ -229,7 +226,7 @@ class KamedaIndex:
         if source not in self.all_node_ids:
             return set()
 
-        reachable: Set[str] = set()
+        reachable: set[str] = set()
 
         # Check all nodes via 2D dominance
         s_left = self.left_rank[source]
@@ -247,16 +244,14 @@ class KamedaIndex:
 
         return reachable
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize the index for storage/transmission."""
         return {
             "source_id": self.source_id,
             "sink_id": self.sink_id,
             "left_rank": self.left_rank,
             "right_rank": self.right_rank,
-            "non_planar_reachability": {
-                k: sorted(v) for k, v in self.non_planar_reachability.items()
-            },
+            "non_planar_reachability": {k: sorted(v) for k, v in self.non_planar_reachability.items()},
             "node_count": len(self.all_node_ids),
         }
 
@@ -267,22 +262,22 @@ class KamedaIndex:
 
 
 def _topological_sort_kahn(
-    forward: Dict[str, List[str]],
-    all_ids: FrozenSet[str],
-) -> Optional[List[str]]:
+    forward: dict[str, list[str]],
+    all_ids: frozenset[str],
+) -> list[str] | None:
     """
     Kahn's algorithm for topological sort.
 
     Returns the sorted list, or None if the graph has a cycle.
     """
-    in_degree: Dict[str, int] = {n: 0 for n in all_ids}
+    in_degree: dict[str, int] = dict.fromkeys(all_ids, 0)
     for src in all_ids:
         for tgt in forward.get(src, []):
             if tgt in in_degree:
                 in_degree[tgt] += 1
 
     queue = deque(sorted(n for n in all_ids if in_degree[n] == 0))
-    result: List[str] = []
+    result: list[str] = []
 
     while queue:
         node = queue.popleft()
@@ -299,13 +294,13 @@ def _topological_sort_kahn(
 
 
 def _compute_ranks_from_embedding(
-    forward: Dict[str, List[str]],
-    backward: Dict[str, List[str]],
-    all_ids: FrozenSet[str],
-    embedding: Dict,
-    topo_order: List[str],
+    forward: dict[str, list[str]],
+    backward: dict[str, list[str]],
+    all_ids: frozenset[str],
+    embedding: dict,
+    topo_order: list[str],
     source_id: str,
-) -> Tuple[Dict[str, int], Dict[str, int]]:
+) -> tuple[dict[str, int], dict[str, int]]:
     """
     Compute left and right ranks using the planar embedding.
 
@@ -319,7 +314,7 @@ def _compute_ranks_from_embedding(
     correctly captures reachability.
     """
     # Build ordered successor lists using the embedding
-    ordered_forward: Dict[str, List[str]] = {nid: [] for nid in all_ids}
+    ordered_forward: dict[str, list[str]] = {nid: [] for nid in all_ids}
 
     for node_id in all_ids:
         successors = set(forward.get(node_id, []))
@@ -349,11 +344,11 @@ def _compute_ranks_from_embedding(
 
 
 def _compute_ranks_heuristic(
-    forward: Dict[str, List[str]],
-    backward: Dict[str, List[str]],
-    all_ids: FrozenSet[str],
-    topo_order: List[str],
-) -> Tuple[Dict[str, int], Dict[str, int]]:
+    forward: dict[str, list[str]],
+    backward: dict[str, list[str]],
+    all_ids: frozenset[str],
+    topo_order: list[str],
+) -> tuple[dict[str, int], dict[str, int]]:
     """
     Compute left and right ranks without a planar embedding.
 
@@ -366,30 +361,30 @@ def _compute_ranks_heuristic(
     non-planar DAGs.
     """
     # Forward ordering: standard topological rank
-    left_rank: Dict[str, int] = {}
+    left_rank: dict[str, int] = {}
     for i, nid in enumerate(topo_order):
         left_rank[nid] = i
 
     # Alternative ordering: among nodes at the same topological level,
     # reverse their relative order. This creates a second "perspective."
     # Compute level (longest path from source)
-    level: Dict[str, int] = {nid: 0 for nid in all_ids}
+    level: dict[str, int] = dict.fromkeys(all_ids, 0)
     for nid in topo_order:
         for succ in forward.get(nid, []):
             if succ in level:
                 level[succ] = max(level[succ], level[nid] + 1)
 
     # Group by level, reverse within each level
-    by_level: Dict[int, List[str]] = {}
+    by_level: dict[int, list[str]] = {}
     for nid in topo_order:
         lv = level[nid]
         by_level.setdefault(lv, []).append(nid)
 
-    right_order: List[str] = []
+    right_order: list[str] = []
     for lv in sorted(by_level.keys()):
         right_order.extend(reversed(by_level[lv]))
 
-    right_rank: Dict[str, int] = {}
+    right_rank: dict[str, int] = {}
     for i, nid in enumerate(right_order):
         right_rank[nid] = i
 
@@ -397,11 +392,11 @@ def _compute_ranks_heuristic(
 
 
 def _dfs_rank(
-    ordered_forward: Dict[str, List[str]],
-    all_ids: FrozenSet[str],
-    topo_order: List[str],
+    ordered_forward: dict[str, list[str]],
+    all_ids: frozenset[str],
+    topo_order: list[str],
     reverse_children: bool,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """
     Assign ranks via DFS using a specific child ordering.
 
@@ -415,7 +410,7 @@ def _dfs_rank(
         Dict mapping node_id to its DFS rank (visit order).
     """
     # Find all root nodes (no predecessors in the DAG)
-    has_pred: Set[str] = set()
+    has_pred: set[str] = set()
     for nid in all_ids:
         for succ in ordered_forward.get(nid, []):
             has_pred.add(succ)
@@ -425,8 +420,8 @@ def _dfs_rank(
         # Fallback: use topological order directly
         return {nid: i for i, nid in enumerate(topo_order)}
 
-    visited: Set[str] = set()
-    rank: Dict[str, int] = {}
+    visited: set[str] = set()
+    rank: dict[str, int] = {}
     counter = [0]
 
     def dfs(node: str) -> None:
@@ -455,11 +450,11 @@ def _dfs_rank(
 
 
 def _compute_non_planar_reachability(
-    non_planar_edges: Set[GraphEdge],
-    planar_forward: Dict[str, List[str]],
-    all_ids: FrozenSet[str],
-    edge_kinds: Set[EdgeKind],
-) -> Dict[str, Set[str]]:
+    non_planar_edges: set[GraphEdge],
+    planar_forward: dict[str, list[str]],
+    all_ids: frozenset[str],
+    edge_kinds: set[EdgeKind],
+) -> dict[str, set[str]]:
     """
     Precompute reachability contributed by non-planar edges.
 
@@ -476,7 +471,7 @@ def _compute_non_planar_reachability(
         return {}
 
     # Build full forward adjacency (planar + non-planar)
-    full_forward: Dict[str, Set[str]] = {nid: set(planar_forward.get(nid, [])) for nid in all_ids}
+    full_forward: dict[str, set[str]] = {nid: set(planar_forward.get(nid, [])) for nid in all_ids}
     for edge in non_planar_edges:
         if edge.kind not in edge_kinds:
             continue
@@ -484,7 +479,7 @@ def _compute_non_planar_reachability(
             full_forward[edge.source_id].add(edge.target_id)
 
     # For each non-planar edge (u, v), BFS from v to find what v can reach
-    non_planar_reach: Dict[str, Set[str]] = {}
+    non_planar_reach: dict[str, set[str]] = {}
 
     for edge in non_planar_edges:
         if edge.kind not in edge_kinds:
@@ -494,9 +489,9 @@ def _compute_non_planar_reachability(
             continue
 
         # BFS from v in the full graph
-        reachable_from_v: Set[str] = set()
+        reachable_from_v: set[str] = set()
         queue = deque([v])
-        visited: Set[str] = set()
+        visited: set[str] = set()
         while queue:
             node = queue.popleft()
             if node in visited:

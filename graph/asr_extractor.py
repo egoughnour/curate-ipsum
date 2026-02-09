@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .extractor import CallGraphExtractor, ParseError, UnsupportedFeatureError
 from .models import (
@@ -35,6 +35,7 @@ from .models import (
 
 class LPythonNotFoundError(ImportError):
     """LPython is not installed or not in PATH."""
+
     pass
 
 
@@ -53,8 +54,7 @@ def _check_lpython() -> str:
     lpython_path = shutil.which("lpython")
     if lpython_path is None:
         raise LPythonNotFoundError(
-            "LPython is not installed or not in PATH. "
-            "Install via: conda install -c conda-forge lpython"
+            "LPython is not installed or not in PATH. Install via: conda install -c conda-forge lpython"
         )
     return lpython_path
 
@@ -84,7 +84,7 @@ class ASRExtractor(CallGraphExtractor):
     type annotations may fail to parse or produce incomplete ASR.
     """
 
-    def __init__(self, lpython_path: Optional[str] = None, **kwargs):
+    def __init__(self, lpython_path: str | None = None, **kwargs):
         """
         Initialize ASR extractor.
 
@@ -99,7 +99,7 @@ class ASRExtractor(CallGraphExtractor):
         else:
             self._lpython = _check_lpython()
 
-        self._version: Optional[str] = None
+        self._version: str | None = None
 
     def extract_file(self, file_path: Path) -> CallGraph:
         """Extract call graph from a file using LPython ASR."""
@@ -133,7 +133,7 @@ class ASRExtractor(CallGraphExtractor):
         finally:
             temp_path.unlink()
 
-    def _generate_asr(self, file_path: Path) -> Dict[str, Any]:
+    def _generate_asr(self, file_path: Path) -> dict[str, Any]:
         """
         Generate ASR JSON from Python source using LPython.
 
@@ -153,30 +153,28 @@ class ASRExtractor(CallGraphExtractor):
                 text=True,
                 timeout=60,
             )
-        except subprocess.TimeoutExpired:
-            raise ParseError(f"LPython timed out parsing {file_path}")
-        except FileNotFoundError:
-            raise LPythonNotFoundError(f"LPython not found at {self._lpython}")
+        except subprocess.TimeoutExpired as exc:
+            raise ParseError(f"LPython timed out parsing {file_path}") from exc
+        except FileNotFoundError as exc:
+            raise LPythonNotFoundError(f"LPython not found at {self._lpython}") from exc
 
         if result.returncode != 0:
             # Check for common errors
             stderr = result.stderr
 
             if "type annotation" in stderr.lower():
-                raise UnsupportedFeatureError(
-                    f"LPython requires type annotations: {stderr}"
-                )
+                raise UnsupportedFeatureError(f"LPython requires type annotations: {stderr}")
 
             raise ParseError(f"LPython failed to parse {file_path}: {stderr}")
 
         try:
             return json.loads(result.stdout)
         except json.JSONDecodeError as e:
-            raise ParseError(f"Invalid ASR JSON from LPython: {e}")
+            raise ParseError(f"Invalid ASR JSON from LPython: {e}") from e
 
     def _parse_asr(
         self,
-        asr: Dict[str, Any],
+        asr: dict[str, Any],
         module_name: str,
         file_path: str,
     ) -> CallGraph:
@@ -196,12 +194,14 @@ class ASRExtractor(CallGraphExtractor):
         graph = CallGraph()
 
         # Add module node
-        graph.add_node(GraphNode(
-            id=module_name,
-            kind=NodeKind.MODULE,
-            name=module_name,
-            location=SourceLocation(file=file_path, line_start=1, line_end=1),
-        ))
+        graph.add_node(
+            GraphNode(
+                id=module_name,
+                kind=NodeKind.MODULE,
+                name=module_name,
+                location=SourceLocation(file=file_path, line_start=1, line_end=1),
+            )
+        )
 
         # Parse ASR structure
         asr_root = asr.get("asr", {})
@@ -216,7 +216,7 @@ class ASRExtractor(CallGraphExtractor):
     def _parse_scope(
         self,
         graph: CallGraph,
-        scope: Dict[str, Any],
+        scope: dict[str, Any],
         parent_fqn: str,
         file_path: str,
     ) -> None:
@@ -249,7 +249,7 @@ class ASRExtractor(CallGraphExtractor):
         self,
         graph: CallGraph,
         name: str,
-        func_data: Dict[str, Any],
+        func_data: dict[str, Any],
         parent_fqn: str,
         file_path: str,
     ) -> None:
@@ -282,21 +282,25 @@ class ASRExtractor(CallGraphExtractor):
         # Determine node kind
         kind = NodeKind.FUNCTION  # ASR doesn't distinguish methods in the same way
 
-        graph.add_node(GraphNode(
-            id=fqn,
-            kind=kind,
-            name=name,
-            location=location,
-            signature=signature,
-        ))
+        graph.add_node(
+            GraphNode(
+                id=fqn,
+                kind=kind,
+                name=name,
+                location=location,
+                signature=signature,
+            )
+        )
 
         # Add defines edge
-        graph.add_edge(GraphEdge(
-            source_id=parent_fqn,
-            target_id=fqn,
-            kind=EdgeKind.DEFINES,
-            location=location,
-        ))
+        graph.add_edge(
+            GraphEdge(
+                source_id=parent_fqn,
+                target_id=fqn,
+                kind=EdgeKind.DEFINES,
+                location=location,
+            )
+        )
 
         # Parse function body for calls
         body = func_data.get("body", [])
@@ -306,7 +310,7 @@ class ASRExtractor(CallGraphExtractor):
         self,
         graph: CallGraph,
         name: str,
-        class_data: Dict[str, Any],
+        class_data: dict[str, Any],
         parent_fqn: str,
         file_path: str,
     ) -> None:
@@ -320,19 +324,23 @@ class ASRExtractor(CallGraphExtractor):
             line_end=loc.get("last_line", 1),
         )
 
-        graph.add_node(GraphNode(
-            id=fqn,
-            kind=NodeKind.CLASS,
-            name=name,
-            location=location,
-        ))
+        graph.add_node(
+            GraphNode(
+                id=fqn,
+                kind=NodeKind.CLASS,
+                name=name,
+                location=location,
+            )
+        )
 
-        graph.add_edge(GraphEdge(
-            source_id=parent_fqn,
-            target_id=fqn,
-            kind=EdgeKind.DEFINES,
-            location=location,
-        ))
+        graph.add_edge(
+            GraphEdge(
+                source_id=parent_fqn,
+                target_id=fqn,
+                kind=EdgeKind.DEFINES,
+                location=location,
+            )
+        )
 
         # Parse class members
         members = class_data.get("members", {})
@@ -341,7 +349,7 @@ class ASRExtractor(CallGraphExtractor):
     def _extract_calls(
         self,
         graph: CallGraph,
-        body: List[Dict[str, Any]],
+        body: list[dict[str, Any]],
         caller_fqn: str,
         file_path: str,
     ) -> None:
@@ -377,7 +385,7 @@ class ASRExtractor(CallGraphExtractor):
     def _extract_calls_from_expr(
         self,
         graph: CallGraph,
-        expr: Dict[str, Any],
+        expr: dict[str, Any],
         caller_fqn: str,
         file_path: str,
     ) -> None:
@@ -391,7 +399,7 @@ class ASRExtractor(CallGraphExtractor):
             self._add_call_edge(graph, expr[expr_type], caller_fqn, file_path)
 
         # Recurse into sub-expressions
-        for key, value in expr.get(expr_type, {}).items() if expr_type else []:
+        for _key, value in expr.get(expr_type, {}).items() if expr_type else []:
             if isinstance(value, dict):
                 self._extract_calls_from_expr(graph, value, caller_fqn, file_path)
             elif isinstance(value, list):
@@ -402,7 +410,7 @@ class ASRExtractor(CallGraphExtractor):
     def _add_call_edge(
         self,
         graph: CallGraph,
-        call_data: Dict[str, Any],
+        call_data: dict[str, Any],
         caller_fqn: str,
         file_path: str,
     ) -> None:
@@ -419,15 +427,17 @@ class ASRExtractor(CallGraphExtractor):
             line_end=loc.get("last_line", 1),
         )
 
-        graph.add_edge(GraphEdge(
-            source_id=caller_fqn,
-            target_id=target_name,
-            kind=EdgeKind.CALLS,
-            location=location,
-            confidence=1.0,  # ASR has resolved the call
-        ))
+        graph.add_edge(
+            GraphEdge(
+                source_id=caller_fqn,
+                target_id=target_name,
+                kind=EdgeKind.CALLS,
+                location=location,
+                confidence=1.0,  # ASR has resolved the call
+            )
+        )
 
-    def _type_to_string(self, type_data: Dict[str, Any]) -> str:
+    def _type_to_string(self, type_data: dict[str, Any]) -> str:
         """Convert ASR type to string representation."""
         if not isinstance(type_data, dict):
             return str(type_data)

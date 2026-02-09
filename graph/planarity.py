@@ -18,11 +18,11 @@ Requires: networkx>=3.0
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, Optional, Set, Tuple
+from dataclasses import dataclass
 
 try:
     import networkx as nx
+
     HAS_NETWORKX = True
 except ImportError:
     HAS_NETWORKX = False
@@ -34,8 +34,7 @@ def _require_networkx() -> None:
     """Raise a clear error if networkx is not installed."""
     if not HAS_NETWORKX:
         raise ImportError(
-            "networkx is required for planarity analysis. "
-            "Install with: pip install 'curate-ipsum[graph]'"
+            "networkx is required for planarity analysis. Install with: pip install 'curate-ipsum[graph]'"
         )
 
 
@@ -49,13 +48,13 @@ class PlanarityResult:
     planar_subgraph: CallGraph
     """The maximal planar subgraph (equals the input graph if planar)."""
 
-    non_planar_edges: Set[GraphEdge]
+    non_planar_edges: set[GraphEdge]
     """Edges removed to achieve planarity (empty if already planar)."""
 
-    kuratowski_edges: Optional[Set[Tuple[str, str]]]
+    kuratowski_edges: set[tuple[str, str]] | None
     """Edge set of the Kuratowski subgraph (K₅ or K₃,₃) if non-planar, else None."""
 
-    embedding: Optional[Dict]
+    embedding: dict | None
     """
     Planar embedding as a dict: node_id → ordered list of neighbor IDs
     representing the clockwise order of edges around each vertex.
@@ -65,7 +64,7 @@ class PlanarityResult:
 
 def callgraph_to_networkx(
     graph: CallGraph,
-    edge_kinds: Optional[Set[EdgeKind]] = None,
+    edge_kinds: set[EdgeKind] | None = None,
     as_undirected: bool = False,
 ) -> "nx.DiGraph | nx.Graph":
     """
@@ -114,7 +113,7 @@ def callgraph_to_networkx(
 
 def networkx_to_callgraph(
     nx_graph: "nx.DiGraph | nx.Graph",
-    original: Optional[CallGraph] = None,
+    original: CallGraph | None = None,
 ) -> CallGraph:
     """
     Convert a networkx graph back to a CallGraph.
@@ -137,18 +136,21 @@ def networkx_to_callgraph(
         if original and node_id in original.nodes:
             result.add_node(original.nodes[node_id])
         else:
-            from .models import NodeKind, SourceLocation
+            from .models import NodeKind
+
             attrs = nx_graph.nodes[node_id]
             kind_str = attrs.get("kind", "function")
             try:
                 kind = NodeKind(kind_str)
             except ValueError:
                 kind = NodeKind.FUNCTION
-            result.add_node(GraphNode(
-                id=node_id,
-                kind=kind,
-                name=attrs.get("name", node_id),
-            ))
+            result.add_node(
+                GraphNode(
+                    id=node_id,
+                    kind=kind,
+                    name=attrs.get("name", node_id),
+                )
+            )
 
     for u, v in nx_graph.edges:
         if original:
@@ -160,9 +162,13 @@ def networkx_to_callgraph(
                     found = True
                     break
             if not found:
-                result.add_edge(GraphEdge(
-                    source_id=u, target_id=v, kind=EdgeKind.CALLS,
-                ))
+                result.add_edge(
+                    GraphEdge(
+                        source_id=u,
+                        target_id=v,
+                        kind=EdgeKind.CALLS,
+                    )
+                )
         else:
             attrs = nx_graph.edges[u, v]
             kind_str = attrs.get("kind", "calls")
@@ -170,17 +176,21 @@ def networkx_to_callgraph(
                 kind = EdgeKind(kind_str)
             except ValueError:
                 kind = EdgeKind.CALLS
-            result.add_edge(GraphEdge(
-                source_id=u, target_id=v, kind=kind,
-                confidence=attrs.get("confidence", 1.0),
-            ))
+            result.add_edge(
+                GraphEdge(
+                    source_id=u,
+                    target_id=v,
+                    kind=kind,
+                    confidence=attrs.get("confidence", 1.0),
+                )
+            )
 
     return result
 
 
 def check_planarity(
     graph: CallGraph,
-    edge_kinds: Optional[Set[EdgeKind]] = None,
+    edge_kinds: set[EdgeKind] | None = None,
 ) -> PlanarityResult:
     """
     Test if a CallGraph is planar and extract planarity-related structures.
@@ -244,9 +254,7 @@ def check_planarity(
 
     # Compute maximal planar subgraph by iteratively removing
     # edges from the Kuratowski certificate until planar
-    planar_graph, removed_edges = _compute_maximal_planar_subgraph(
-        graph, G_undirected, kuratowski_edges, edge_kinds
-    )
+    planar_graph, removed_edges = _compute_maximal_planar_subgraph(graph, G_undirected, kuratowski_edges, edge_kinds)
 
     # Get the embedding of the resulting planar subgraph
     G_planar_undirected = callgraph_to_networkx(planar_graph, edge_kinds, as_undirected=True)
@@ -265,9 +273,9 @@ def check_planarity(
     )
 
 
-def _embedding_to_dict(embedding: "nx.PlanarEmbedding") -> Dict:
+def _embedding_to_dict(embedding: "nx.PlanarEmbedding") -> dict:
     """Convert a networkx PlanarEmbedding to a plain dict."""
-    result: Dict[str, list] = {}
+    result: dict[str, list] = {}
     for node in embedding:
         neighbors = list(embedding.neighbors_cw_order(node))
         result[str(node)] = [str(n) for n in neighbors]
@@ -277,9 +285,9 @@ def _embedding_to_dict(embedding: "nx.PlanarEmbedding") -> Dict:
 def _compute_maximal_planar_subgraph(
     original: CallGraph,
     G_undirected: "nx.Graph",
-    kuratowski_edges: Set[Tuple],
-    edge_kinds: Set[EdgeKind],
-) -> Tuple[CallGraph, Set[GraphEdge]]:
+    kuratowski_edges: set[tuple],
+    edge_kinds: set[EdgeKind],
+) -> tuple[CallGraph, set[GraphEdge]]:
     """
     Compute a maximal planar subgraph by iteratively removing
     edges that participate in Kuratowski subgraphs.
@@ -292,7 +300,7 @@ def _compute_maximal_planar_subgraph(
         (planar_callgraph, removed_edges)
     """
     G = G_undirected.copy()
-    removed_undirected: Set[Tuple[str, str]] = set()
+    removed_undirected: set[tuple[str, str]] = set()
 
     max_iterations = G.number_of_edges()  # Safety bound
     iteration = 0
@@ -323,7 +331,7 @@ def _compute_maximal_planar_subgraph(
     for node in original.nodes.values():
         planar_graph.add_node(node)
 
-    removed_callgraph_edges: Set[GraphEdge] = set()
+    removed_callgraph_edges: set[GraphEdge] = set()
     for edge in original.edges:
         if edge.kind not in edge_kinds:
             # Non-matching edge kinds pass through unchanged

@@ -11,7 +11,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 LOG = logging.getLogger("verification.types")
@@ -46,7 +46,7 @@ class Budget:
             max_loop_iters=int(self.max_loop_iters * factor),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "timeout_s": self.timeout_s,
             "max_states": self.max_states,
@@ -55,7 +55,7 @@ class Budget:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "Budget":
+    def from_dict(cls, d: dict[str, Any]) -> "Budget":
         return cls(
             timeout_s=int(d["timeout_s"]),
             max_states=int(d["max_states"]),
@@ -71,16 +71,16 @@ class SymbolSpec:
     name: str
     kind: str = "int"  # "int", "bool", "bytes"
     bits: int = 64
-    length: Optional[int] = None  # Required for kind="bytes"
+    length: int | None = None  # Required for kind="bytes"
 
-    def to_dict(self) -> Dict[str, Any]:
-        d: Dict[str, Any] = {"name": self.name, "kind": self.kind, "bits": self.bits}
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"name": self.name, "kind": self.kind, "bits": self.bits}
         if self.length is not None:
             d["length"] = self.length
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "SymbolSpec":
+    def from_dict(cls, d: dict[str, Any]) -> "SymbolSpec":
         return cls(
             name=d["name"],
             kind=d.get("kind", "int"),
@@ -95,18 +95,18 @@ class VerificationRequest:
 
     target_binary: str
     entry: str
-    symbols: List[SymbolSpec] = field(default_factory=list)
-    constraints: List[str] = field(default_factory=list)
+    symbols: list[SymbolSpec] = field(default_factory=list)
+    constraints: list[str] = field(default_factory=list)
     find_kind: str = "addr_reached"
     find_value: str = ""
-    avoid_kind: Optional[str] = None
-    avoid_value: Optional[str] = None
+    avoid_kind: str | None = None
+    avoid_value: str | None = None
     budget: Budget = field(default_factory=Budget)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    notes: Optional[str] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    notes: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
-        d: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
             "target": {
                 "binary_name": self.target_binary,
                 "entry": self.entry,
@@ -129,7 +129,7 @@ class VerificationRequest:
         return json.dumps(self.to_dict(), indent=2)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "VerificationRequest":
+    def from_dict(cls, d: dict[str, Any]) -> "VerificationRequest":
         target = d["target"]
         find = d["find"]
         avoid = d.get("avoid")
@@ -152,12 +152,12 @@ class VerificationRequest:
 class Counterexample:
     """A concrete counterexample found by a verification backend."""
 
-    model: Dict[str, Any] = field(default_factory=dict)
-    trace: List[Dict[str, Any]] = field(default_factory=list)
-    path_constraints: List[str] = field(default_factory=list)
-    notes: Dict[str, Any] = field(default_factory=dict)
+    model: dict[str, Any] = field(default_factory=dict)
+    trace: list[dict[str, Any]] = field(default_factory=list)
+    path_constraints: list[str] = field(default_factory=list)
+    notes: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "model": self.model,
             "trace": self.trace,
@@ -166,7 +166,7 @@ class Counterexample:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "Counterexample":
+    def from_dict(cls, d: dict[str, Any]) -> "Counterexample":
         return cls(
             model=d.get("model", {}),
             trace=d.get("trace", []),
@@ -181,11 +181,11 @@ class VerificationResult:
 
     id: str = field(default_factory=lambda: str(uuid4())[:8])
     status: VerificationStatus = VerificationStatus.NO_CE_WITHIN_BUDGET
-    counterexample: Optional[Counterexample] = None
-    stats: Dict[str, Any] = field(default_factory=dict)
-    logs: Optional[str] = None
+    counterexample: Counterexample | None = None
+    stats: dict[str, Any] = field(default_factory=dict)
+    logs: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "status": self.status.value,
@@ -195,7 +195,7 @@ class VerificationResult:
         }
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "VerificationResult":
+    def from_dict(cls, d: dict[str, Any]) -> "VerificationResult":
         ce_data = d.get("counterexample")
         return cls(
             id=d.get("id", str(uuid4())[:8]),

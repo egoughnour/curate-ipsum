@@ -24,11 +24,10 @@ import shutil
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from verification.backend import VerificationBackend
 from verification.types import (
-    Counterexample,
     VerificationRequest,
     VerificationResult,
     VerificationStatus,
@@ -59,9 +58,9 @@ class AngrDockerBackend(VerificationBackend):
     def __init__(
         self,
         docker_image: str = DEFAULT_ANGR_IMAGE,
-        runner_script: Optional[str] = None,
-        runner_script_host_path: Optional[str] = None,
-        work_dir: Optional[str] = None,
+        runner_script: str | None = None,
+        runner_script_host_path: str | None = None,
+        work_dir: str | None = None,
         **kwargs: Any,
     ) -> None:
         self._image = docker_image
@@ -69,7 +68,7 @@ class AngrDockerBackend(VerificationBackend):
         self._runner_host_path = runner_script_host_path
         self._work_dir = work_dir or tempfile.gettempdir()
 
-    def supports(self) -> Dict[str, Any]:
+    def supports(self) -> dict[str, Any]:
         return {
             "input": "binary",
             "constraints": ["comparison"],
@@ -105,9 +104,7 @@ class AngrDockerBackend(VerificationBackend):
             )
 
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    proc.communicate(), timeout=timeout
-                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.communicate()
@@ -159,12 +156,18 @@ class AngrDockerBackend(VerificationBackend):
     ) -> list:
         """Build the Docker run command."""
         cmd = [
-            "docker", "run", "--rm",
-            "--security-opt", "no-new-privileges",
-            "--memory", "2g",
-            "--cpus", "2",
+            "docker",
+            "run",
+            "--rm",
+            "--security-opt",
+            "no-new-privileges",
+            "--memory",
+            "2g",
+            "--cpus",
+            "2",
             # Mount artifact directory
-            "-v", f"{artifact_dir}:/work",
+            "-v",
+            f"{artifact_dir}:/work",
         ]
 
         # Mount the runner script if provided on host
@@ -174,7 +177,7 @@ class AngrDockerBackend(VerificationBackend):
         # Mount binary directory — the binary_name in the request
         # should resolve to /bin_in/<binary_name> inside container
         binary_dir = str(Path(request.target_binary).parent)
-        binary_name = Path(request.target_binary).name
+        _binary_name = Path(request.target_binary).name
         if os.path.isfile(request.target_binary):
             cmd.extend(["-v", f"{binary_dir}:/bin_in:ro"])
         else:
@@ -190,10 +193,13 @@ class AngrDockerBackend(VerificationBackend):
             cmd.extend(["/work/request.json", "/work/response.json"])
         else:
             # Upstream image: run the runner script explicitly
-            cmd.extend([
-                "python3", self._runner_script,
-                "/work/request.json",
-                "/work/response.json",
-            ])
+            cmd.extend(
+                [
+                    "python3",
+                    self._runner_script,
+                    "/work/request.json",
+                    "/work/response.json",
+                ]
+            )
 
         return cmd

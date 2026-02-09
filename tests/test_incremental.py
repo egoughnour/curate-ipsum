@@ -1,21 +1,17 @@
 """Tests for storage.incremental — Incremental update engine."""
 
 import hashlib
-import tempfile
-from pathlib import Path
 
 import pytest
 
-from storage.incremental import ChangeSet, IncrementalEngine, UpdateResult
-from storage.sqlite_graph_store import SQLiteGraphStore
 from graph.models import (
     CallGraph,
-    EdgeKind,
-    GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
 )
+from storage.incremental import ChangeSet, IncrementalEngine
+from storage.sqlite_graph_store import SQLiteGraphStore
 
 
 @pytest.fixture
@@ -165,14 +161,22 @@ class TestUpdateGraph:
         """Incremental update removes nodes for deleted files."""
         # Pre-populate graph with nodes for each file
         graph = CallGraph()
-        graph.add_node(GraphNode(
-            id="mod.foo", kind=NodeKind.FUNCTION, name="foo",
-            location=SourceLocation(file="mod.py", line_start=1, line_end=2),
-        ))
-        graph.add_node(GraphNode(
-            id="lib.func", kind=NodeKind.FUNCTION, name="lib_func",
-            location=SourceLocation(file="lib.py", line_start=1, line_end=2),
-        ))
+        graph.add_node(
+            GraphNode(
+                id="mod.foo",
+                kind=NodeKind.FUNCTION,
+                name="foo",
+                location=SourceLocation(file="mod.py", line_start=1, line_end=2),
+            )
+        )
+        graph.add_node(
+            GraphNode(
+                id="lib.func",
+                kind=NodeKind.FUNCTION,
+                name="lib_func",
+                location=SourceLocation(file="lib.py", line_start=1, line_end=2),
+            )
+        )
         store.store_graph(graph, PROJECT_ID)
 
         # Set initial hashes
@@ -212,14 +216,22 @@ class TestForceFullRebuild:
     def test_full_rebuild(self, store, project_dir):
         """Force rebuild stores entire graph and hashes."""
         graph = CallGraph()
-        graph.add_node(GraphNode(
-            id="a", kind=NodeKind.FUNCTION, name="a",
-            location=SourceLocation(file="mod.py", line_start=1, line_end=1),
-        ))
-        graph.add_node(GraphNode(
-            id="b", kind=NodeKind.FUNCTION, name="b",
-            location=SourceLocation(file="util.py", line_start=1, line_end=1),
-        ))
+        graph.add_node(
+            GraphNode(
+                id="a",
+                kind=NodeKind.FUNCTION,
+                name="a",
+                location=SourceLocation(file="mod.py", line_start=1, line_end=1),
+            )
+        )
+        graph.add_node(
+            GraphNode(
+                id="b",
+                kind=NodeKind.FUNCTION,
+                name="b",
+                location=SourceLocation(file="util.py", line_start=1, line_end=1),
+            )
+        )
 
         engine = IncrementalEngine(store)
         result = engine.force_full_rebuild(PROJECT_ID, graph, project_dir)

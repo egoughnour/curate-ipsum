@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from verification.types import VerificationRequest, VerificationResult
 
@@ -42,7 +42,7 @@ class VerificationBackend(ABC):
         ...
 
     @abstractmethod
-    def supports(self) -> Dict[str, Any]:
+    def supports(self) -> dict[str, Any]:
         """
         Declare what this backend supports.
 
@@ -52,8 +52,7 @@ class VerificationBackend(ABC):
 
         Example::
 
-            {"input": "binary", "constraints": ["comparison"],
-             "find": ["addr_reached"], "avoid": ["addr_avoided"]}
+            {"input": "binary", "constraints": ["comparison"], "find": ["addr_reached"], "avoid": ["addr_avoided"]}
         """
         ...
 
@@ -79,18 +78,18 @@ def build_verification_backend(backend: str, **kwargs: Any) -> VerificationBacke
     """
     if backend == "z3":
         from verification.backends.z3_backend import Z3Backend
+
         return Z3Backend(**kwargs)
 
     elif backend == "angr":
         from verification.backends.angr_docker import AngrDockerBackend
+
         return AngrDockerBackend(**kwargs)
 
     elif backend == "mock":
         from verification.backends.mock import MockBackend
+
         return MockBackend(**kwargs)
 
     else:
-        raise ValueError(
-            f"Unknown verification backend: {backend!r}. "
-            f"Supported: 'z3', 'angr', 'mock'"
-        )
+        raise ValueError(f"Unknown verification backend: {backend!r}. Supported: 'z3', 'angr', 'mock'")

@@ -73,10 +73,63 @@ packages = ["."]
 [tool.ruff]
 line-length = 120
 target-version = "py310"
+exclude = [
+    "quick-verification/",      # prototype / scratch directory
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line length handled by formatter
+    "UP007",  # use X | Y for unions — pydantic model compatibility
+    "UP037",  # quoted annotations — needed for TYPE_CHECKING forward refs
+    "SIM102", # collapsible-if — nested ifs often clearer for readability
+    "SIM103", # return negated condition — explicit logic often clearer
+    "SIM108", # ternary — readability preference
+    "SIM105", # contextlib.suppress — readability preference, try/except clearer
+    "SIM110", # use any() instead of for loop — explicit loop often clearer
+    "B008",   # function call in default arg — used in dataclass fields
+    "N815",   # mixed-case variable in class scope — API/Pydantic model field names
+]
+
+[tool.ruff.lint.per-file-ignores]
+# MCP tool params are camelCase (protocol contract); lazy imports in annotations
+"server.py" = ["N803", "N815", "E402", "F821"]
+"tools.py" = ["N803", "N815"]
+# Mathematical code uses uppercase matrix/graph variables
+"graph/spectral.py" = ["N803", "N806"]
+"graph/planarity.py" = ["N803", "N806"]
+"graph/kameda.py" = ["N803", "N806"]
+"graph/hierarchy.py" = ["N803", "N806"]
+"graph/partitioner.py" = ["N803", "N806"]
+# Angr runner is standalone script, has its own style
+"verification/runners/run_angr.py" = ["N803", "N806", "E741", "E402"]
+# Abstract base classes with optional override methods
+"rag/vector_store.py" = ["B027"]
+"synthesis/llm_client.py" = ["B027"]
+"verification/backend.py" = ["B027"]
+# Mathematical code uses uppercase matrix/node variables
+"synthesis/ast_operators.py" = ["N806"]
+"tests/test_spectral.py" = ["N806"]
+# Test files use pytest.importorskip which requires imports after setup
+"tests/test_full_pipeline_end_to_end.py" = ["E402"]
+"tests/test_kuzu_graph_store.py" = ["E402"]
+"tests/test_m3_end_to_end.py" = ["E402"]
+"tests/test_m5_end_to_end.py" = ["E402"]
+"tests/test_mcp_graph.py" = ["E402"]
+"tests/test_rollback.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "adapters", "domains", "graph", "models", "parsers", "rag",
+    "regions", "server", "storage", "synthesis", "theory", "tools",
+    "verification",
+]
 
 [tool.mypy]
 python_version = "3.10"

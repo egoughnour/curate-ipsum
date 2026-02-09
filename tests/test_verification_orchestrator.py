@@ -1,16 +1,17 @@
 """Tests for the verification orchestrator — CEGAR loop with budget escalation."""
 
 import pytest
+
 from verification.backends.mock import MockBackend
 from verification.orchestrator import (
-    VerificationOrchestrator,
-    OrchestratorResult,
     DEFAULT_BUDGET_PRESETS,
+    OrchestratorResult,
+    VerificationOrchestrator,
 )
 from verification.types import (
     Budget,
-    VerificationRequest,
     SymbolSpec,
+    VerificationRequest,
 )
 
 
@@ -98,7 +99,7 @@ class TestOrchestrator:
         """Multi-backend should try backends in order."""
         backends = [
             MockBackend(mode="no_ce"),  # First: no CE
-            MockBackend(mode="ce"),      # Second: finds CE
+            MockBackend(mode="ce"),  # Second: finds CE
         ]
         orch = VerificationOrchestrator(backend=backends[0])
         result = await orch.run_multi_backend(_make_request(), backends)

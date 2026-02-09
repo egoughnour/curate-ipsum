@@ -5,7 +5,11 @@ Uses MockLLMClient with realistic (but simple) code candidates.
 """
 
 import pytest
+
+from synthesis.ast_operators import ASTCrossover, ASTMutator
 from synthesis.cegis import CEGISEngine
+from synthesis.entropy import EntropyManager
+from synthesis.fitness import FitnessEvaluator
 from synthesis.llm_client import MockLLMClient
 from synthesis.models import (
     CodePatch,
@@ -18,9 +22,6 @@ from synthesis.models import (
     SynthesisStatus,
 )
 from synthesis.population import Population
-from synthesis.fitness import FitnessEvaluator
-from synthesis.entropy import EntropyManager
-from synthesis.ast_operators import ASTCrossover, ASTMutator
 
 
 class TestFullPipeline:
@@ -66,11 +67,13 @@ class TestFullPipeline:
             population_size=6,
             top_k=6,
         )
-        client = MockLLMClient(responses=[
-            "def f(x): return x + 1\n",
-            "def f(x): return x * 2\n",
-            "def f(x): return x ** 2\n",
-        ])
+        client = MockLLMClient(
+            responses=[
+                "def f(x): return x + 1\n",
+                "def f(x): return x * 2\n",
+                "def f(x): return x ** 2\n",
+            ]
+        )
         engine = CEGISEngine(config, client)
         spec = Specification()
 
@@ -92,7 +95,7 @@ class TestPopulationEvolution:
             "def d(x):\n    if x > 0:\n        return x\n    return -x\n",
         ]
         pop = Population.from_candidates(codes)
-        original_codes = {ind.code for ind in pop}
+        _original_codes = {ind.code for ind in pop}
 
         # Assign varying fitness
         for i, ind in enumerate(pop):
@@ -118,18 +121,20 @@ class TestPopulationEvolution:
                 new_individuals.append(mutated)
 
         # Should have produced at least some new code
-        new_codes = {ind.code for ind in new_individuals}
+        _new_codes = {ind.code for ind in new_individuals}
         # The new generation should have some novel individuals
         assert len(new_individuals) > 0
 
     def test_elite_preservation(self):
         """Elite individuals should survive across generations."""
-        pop = Population([
-            Individual(code="x=1", fitness=0.9),
-            Individual(code="x=2", fitness=0.1),
-            Individual(code="x=3", fitness=0.5),
-            Individual(code="x=4", fitness=0.3),
-        ])
+        pop = Population(
+            [
+                Individual(code="x=1", fitness=0.9),
+                Individual(code="x=2", fitness=0.1),
+                Individual(code="x=3", fitness=0.5),
+                Individual(code="x=4", fitness=0.3),
+            ]
+        )
         elite = pop.select_elite(1)
         assert elite[0].fitness == 0.9
 

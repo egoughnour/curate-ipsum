@@ -6,10 +6,10 @@ import logging
 import os
 import re
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
 from uuid import uuid4
 
 from models import (
@@ -43,7 +43,7 @@ class CommandResult:
     timed_out: bool = False
 
 
-async def run_command(command: str, working_directory: str, timeout: Optional[float] = None) -> CommandResult:
+async def run_command(command: str, working_directory: str, timeout: float | None = None) -> CommandResult:
     """Run a shell command and capture stdout, stderr, exit code, and duration."""
     cwd_path = Path(working_directory)
     if not cwd_path.exists() or not cwd_path.is_dir():
@@ -142,7 +142,7 @@ def append_run(run: RunResult) -> None:
     _dual_write_to_brs(run)
 
 
-def _deserialize_run(record: Dict) -> Optional[RunResult]:
+def _deserialize_run(record: dict) -> RunResult | None:
     kind = record.get("kind")
     try:
         if kind == RunKind.MUTATION:
@@ -155,10 +155,10 @@ def _deserialize_run(record: Dict) -> Optional[RunResult]:
     return None
 
 
-def _load_runs() -> List[RunResult]:
+def _load_runs() -> list[RunResult]:
     if not RUNS_FILE.exists():
         return []
-    runs: List[RunResult] = []
+    runs: list[RunResult] = []
     with RUNS_FILE.open("r", encoding="utf-8") as handle:
         for line in handle:
             line = line.strip()
@@ -175,7 +175,7 @@ def _load_runs() -> List[RunResult]:
     return runs
 
 
-def get_run_history(project_id: str, region_id: Optional[str], limit: Optional[int]) -> RunHistory:
+def get_run_history(project_id: str, region_id: str | None, limit: int | None) -> RunHistory:
     runs = _load_runs()
     filtered = [
         run
@@ -187,18 +187,18 @@ def get_run_history(project_id: str, region_id: Optional[str], limit: Optional[i
     return RunHistory(projectId=project_id, regionId=region_id, runs=limited)
 
 
-TEST_TOTAL_PATTERNS: Tuple[re.Pattern, ...] = (
+TEST_TOTAL_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"Total tests:\s*(\d+).+Passed:\s*(\d+).+Failed:\s*(\d+)", re.IGNORECASE | re.DOTALL),
     re.compile(r"Tests run:\s*(\d+)\s*,\s*Passed:\s*(\d+)\s*,\s*Failed:\s*(\d+)", re.IGNORECASE),
 )
 
-FAILING_NAME_PATTERNS: Tuple[re.Pattern, ...] = (
+FAILING_NAME_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"Failed\s+(?P<name>[\w\.\:\/\-]+)", re.IGNORECASE),
     re.compile(r"\[FAIL\]\s+(?P<name>[\w\.\:\/\-]+)", re.IGNORECASE),
 )
 
 
-def parse_test_output(stdout: str, stderr: str) -> Tuple[int, int, int, List[str]]:
+def parse_test_output(stdout: str, stderr: str) -> tuple[int, int, int, list[str]]:
     combined = f"{stdout}\n{stderr}"
     total = passed = failed = 0
     for pattern in TEST_TOTAL_PATTERNS:
@@ -207,7 +207,7 @@ def parse_test_output(stdout: str, stderr: str) -> Tuple[int, int, int, List[str
             total, passed, failed = (int(match.group(i)) for i in range(1, 4))
             break
 
-    failing_tests: List[str] = []
+    failing_tests: list[str] = []
     for line in combined.splitlines():
         for pattern in FAILING_NAME_PATTERNS:
             match = pattern.search(line)
@@ -224,8 +224,8 @@ def _compute_mutation_score(killed: int, survived: int, no_coverage: int) -> flo
     return killed / float(denominator)
 
 
-def _collect_mutants(data: Dict) -> Dict[str, List[Dict]]:
-    files: Dict[str, List[Dict]] = {}
+def _collect_mutants(data: dict) -> dict[str, list[dict]]:
+    files: dict[str, list[dict]] = {}
     if "files" in data and isinstance(data["files"], dict):
         for path, file_info in data["files"].items():
             mutants = file_info.get("mutants", [])
@@ -236,7 +236,7 @@ def _collect_mutants(data: Dict) -> Dict[str, List[Dict]]:
     return files
 
 
-def _count_mutants(mutants: Iterable[Dict]) -> Tuple[int, int, int]:
+def _count_mutants(mutants: Iterable[dict]) -> tuple[int, int, int]:
     killed = survived = no_coverage = 0
     for mutant in mutants:
         status = str(mutant.get("status", "")).lower()
@@ -250,8 +250,8 @@ def _count_mutants(mutants: Iterable[Dict]) -> Tuple[int, int, int]:
 
 
 def parse_stryker_output(
-    report_path: Optional[str], working_directory: str
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    report_path: str | None, working_directory: str
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     candidate_paths = []
     cwd_path = Path(working_directory)
     if report_path:
@@ -275,7 +275,7 @@ def parse_stryker_output(
         raise ValueError("Invalid Stryker report format")
 
     files = _collect_mutants(data)
-    by_file: List[FileMutationStats] = []
+    by_file: list[FileMutationStats] = []
     total_killed = total_survived = total_no_coverage = total_mutants = 0
 
     for file_path, mutants in files.items():
@@ -309,7 +309,7 @@ def parse_stryker_output(
     return total_mutants, total_killed, total_survived, total_no_coverage, mutation_score, by_file
 
 
-def compute_region_metrics(project_id: str, commit_sha: str, region_id: str, history: List[RunResult]) -> RegionMetrics:
+def compute_region_metrics(project_id: str, commit_sha: str, region_id: str, history: list[RunResult]) -> RegionMetrics:
     mutation_runs = [run for run in history if isinstance(run, MutationRunResult) and run.regionId == region_id]
     if not mutation_runs:
         raise ValueError("No mutation runs available for region metrics")
@@ -322,7 +322,7 @@ def compute_region_metrics(project_id: str, commit_sha: str, region_id: str, his
     inverted = [1.0 - score for score in scores[-PID_WINDOW:]]
     i_term = 0.0
     for idx, value in enumerate(reversed(inverted)):
-        i_term += value * (PID_DECAY ** idx)
+        i_term += value * (PID_DECAY**idx)
 
     d_term = 0.0
     if len(inverted) >= 2:
@@ -347,7 +347,7 @@ async def _execute_test_run(
     commit_sha: str,
     command: str,
     working_directory: str,
-    region_id: Optional[str],
+    region_id: str | None,
     framework: str,
 ) -> TestRunResult:
     if kind not in (RunKind.UNIT, RunKind.INTEGRATION):
@@ -385,7 +385,7 @@ async def run_unit_tests(
     commitSha: str,
     command: str,
     workingDirectory: str,
-    regionId: Optional[str] = None,
+    regionId: str | None = None,
     framework: str = "generic",
 ) -> TestRunResult:
     return await _execute_test_run(
@@ -404,7 +404,7 @@ async def run_integration_tests(
     commitSha: str,
     command: str,
     workingDirectory: str,
-    regionId: Optional[str] = None,
+    regionId: str | None = None,
     framework: str = "generic",
 ) -> TestRunResult:
     return await _execute_test_run(
@@ -423,9 +423,9 @@ async def run_mutation_tests(
     commitSha: str,
     command: str,
     workingDirectory: str,
-    regionId: Optional[str] = None,
-    tool: Optional[str] = None,  # Now optional - auto-detected if None
-    reportPath: Optional[str] = None,
+    regionId: str | None = None,
+    tool: str | None = None,  # Now optional - auto-detected if None
+    reportPath: str | None = None,
 ) -> MutationRunResult:
     """
     Run mutation tests and parse results.
@@ -436,7 +436,7 @@ async def run_mutation_tests(
     result = await run_command(command, workingDirectory)
 
     # Use unified parser with auto-detection
-    from parsers import parse_mutation_output, get_detected_tool
+    from parsers import get_detected_tool, parse_mutation_output
 
     try:
         total_mutants, killed, survived, no_coverage, mutation_score, by_file = parse_mutation_output(
@@ -472,8 +472,8 @@ async def run_mutation_tests(
     return mutation_run
 
 
-def history_tool(projectId: str, regionId: Optional[str] = None, limit: Optional[int] = None) -> RunHistory:
-    parsed_limit: Optional[int]
+def history_tool(projectId: str, regionId: str | None = None, limit: int | None = None) -> RunHistory:
+    parsed_limit: int | None
     if limit is None:
         parsed_limit = None
     else:

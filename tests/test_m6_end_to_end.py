@@ -3,19 +3,16 @@
 Tests the full flow: extract → persist → query → modify → incremental update.
 """
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from graph.models import (
     CallGraph,
     EdgeKind,
+    FunctionSignature,
     GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
-    FunctionSignature,
 )
 from storage.graph_store import build_graph_store
 from storage.incremental import IncrementalEngine
@@ -29,12 +26,8 @@ def project_dir(tmp_path):
     project = tmp_path / "my_project"
     project.mkdir()
 
-    (project / "main.py").write_text(
-        "from helper import do_thing\n\ndef run():\n    return do_thing(42)\n"
-    )
-    (project / "helper.py").write_text(
-        "def do_thing(x):\n    return x * 2\n"
-    )
+    (project / "main.py").write_text("from helper import do_thing\n\ndef run():\n    return do_thing(42)\n")
+    (project / "helper.py").write_text("def do_thing(x):\n    return x * 2\n")
 
     return project
 
@@ -43,21 +36,33 @@ def _make_graph() -> CallGraph:
     """Build a small graph matching the project fixtures."""
     graph = CallGraph()
 
-    graph.add_node(GraphNode(
-        id="main.run", kind=NodeKind.FUNCTION, name="run",
-        location=SourceLocation(file="main.py", line_start=3, line_end=4),
-        signature=FunctionSignature(name="run", params=()),
-    ))
-    graph.add_node(GraphNode(
-        id="helper.do_thing", kind=NodeKind.FUNCTION, name="do_thing",
-        location=SourceLocation(file="helper.py", line_start=1, line_end=2),
-        signature=FunctionSignature(name="do_thing", params=("x",), return_type="int"),
-    ))
+    graph.add_node(
+        GraphNode(
+            id="main.run",
+            kind=NodeKind.FUNCTION,
+            name="run",
+            location=SourceLocation(file="main.py", line_start=3, line_end=4),
+            signature=FunctionSignature(name="run", params=()),
+        )
+    )
+    graph.add_node(
+        GraphNode(
+            id="helper.do_thing",
+            kind=NodeKind.FUNCTION,
+            name="do_thing",
+            location=SourceLocation(file="helper.py", line_start=1, line_end=2),
+            signature=FunctionSignature(name="do_thing", params=("x",), return_type="int"),
+        )
+    )
 
-    graph.add_edge(GraphEdge(
-        source_id="main.run", target_id="helper.do_thing",
-        kind=EdgeKind.CALLS, confidence=1.0,
-    ))
+    graph.add_edge(
+        GraphEdge(
+            source_id="main.run",
+            target_id="helper.do_thing",
+            kind=EdgeKind.CALLS,
+            confidence=1.0,
+        )
+    )
 
     return graph
 
@@ -119,9 +124,7 @@ class TestSQLiteEndToEnd:
         assert result.added_nodes == 2
 
         # 2. Modify a file
-        (project_dir / "helper.py").write_text(
-            "def do_thing(x):\n    return x * 3  # changed\n"
-        )
+        (project_dir / "helper.py").write_text("def do_thing(x):\n    return x * 3  # changed\n")
 
         # 3. Incremental update (without extractor, just hash tracking + deletion)
         result = engine.update_graph(project_id, project_dir)

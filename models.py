@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Literal, Optional, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel
 
@@ -17,7 +17,7 @@ class RunMeta(BaseModel):
     id: str
     projectId: str
     commitSha: str
-    regionId: Optional[str] = None
+    regionId: str | None = None
     timestamp: datetime
 
 
@@ -29,7 +29,7 @@ class TestRunResult(RunMeta):
     failedTests: int
     durationMs: int
     framework: str
-    failingTests: List[str]
+    failingTests: list[str]
 
 
 class FileMutationStats(BaseModel):
@@ -50,7 +50,7 @@ class MutationRunResult(RunMeta):
     noCoverage: int
     mutationScore: float
     runtimeMs: int
-    byFile: List[FileMutationStats]
+    byFile: list[FileMutationStats]
 
 
 class PIDComponents(BaseModel):
@@ -74,5 +74,5 @@ RunResult = Union[TestRunResult, MutationRunResult]
 
 class RunHistory(BaseModel):
     projectId: str
-    regionId: Optional[str] = None
-    runs: List[RunResult]
+    regionId: str | None = None
+    runs: list[RunResult]

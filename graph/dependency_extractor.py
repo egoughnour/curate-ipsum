@@ -12,7 +12,6 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 from .models import (
     CallGraph,
@@ -31,8 +30,8 @@ class ImportInfo:
 
     def __init__(
         self,
-        module: Optional[str],
-        names: Tuple[str, ...],
+        module: str | None,
+        names: tuple[str, ...],
         level: int,
         line: int,
         is_from_import: bool,
@@ -65,9 +64,9 @@ def _module_name_from_path(file_path: Path, root: Path) -> str:
 
 def _resolve_relative_import(
     importing_module: str,
-    import_module: Optional[str],
+    import_module: str | None,
     level: int,
-) -> Optional[str]:
+) -> str | None:
     """
     Resolve a relative import to an absolute module name.
 
@@ -98,20 +97,65 @@ def _resolve_relative_import(
 
 # Standard library module names (Python 3.10+).
 # We use sys.stdlib_module_names when available, else a fallback set.
-_STDLIB_MODULES: Set[str] = getattr(sys, "stdlib_module_names", set()) or {
-    "abc", "ast", "asyncio", "collections", "concurrent", "contextlib",
-    "copy", "csv", "dataclasses", "datetime", "decimal", "enum",
-    "functools", "glob", "hashlib", "heapq", "html", "http",
-    "importlib", "inspect", "io", "itertools", "json", "logging",
-    "math", "multiprocessing", "operator", "os", "pathlib", "pickle",
-    "pprint", "queue", "random", "re", "shutil", "signal", "socket",
-    "sqlite3", "string", "struct", "subprocess", "sys", "tempfile",
-    "textwrap", "threading", "time", "traceback", "typing", "unittest",
-    "urllib", "uuid", "warnings", "xml", "zipfile",
+_STDLIB_MODULES: set[str] = getattr(sys, "stdlib_module_names", set()) or {
+    "abc",
+    "ast",
+    "asyncio",
+    "collections",
+    "concurrent",
+    "contextlib",
+    "copy",
+    "csv",
+    "dataclasses",
+    "datetime",
+    "decimal",
+    "enum",
+    "functools",
+    "glob",
+    "hashlib",
+    "heapq",
+    "html",
+    "http",
+    "importlib",
+    "inspect",
+    "io",
+    "itertools",
+    "json",
+    "logging",
+    "math",
+    "multiprocessing",
+    "operator",
+    "os",
+    "pathlib",
+    "pickle",
+    "pprint",
+    "queue",
+    "random",
+    "re",
+    "shutil",
+    "signal",
+    "socket",
+    "sqlite3",
+    "string",
+    "struct",
+    "subprocess",
+    "sys",
+    "tempfile",
+    "textwrap",
+    "threading",
+    "time",
+    "traceback",
+    "typing",
+    "unittest",
+    "urllib",
+    "uuid",
+    "warnings",
+    "xml",
+    "zipfile",
 }
 
 
-def _is_stdlib_or_thirdparty(module_name: str, known_local: Set[str]) -> bool:
+def _is_stdlib_or_thirdparty(module_name: str, known_local: set[str]) -> bool:
     """
     Determine if a module is stdlib/third-party (True) or local (False).
 
@@ -127,7 +171,7 @@ def _is_stdlib_or_thirdparty(module_name: str, known_local: Set[str]) -> bool:
     return True
 
 
-def extract_imports_from_source(source: str, file_path: str = "<string>") -> List[ImportInfo]:
+def extract_imports_from_source(source: str, file_path: str = "<string>") -> list[ImportInfo]:
     """
     Extract all import statements from Python source code.
 
@@ -138,27 +182,31 @@ def extract_imports_from_source(source: str, file_path: str = "<string>") -> Lis
     except SyntaxError:
         return []
 
-    imports: List[ImportInfo] = []
+    imports: list[ImportInfo] = []
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                imports.append(ImportInfo(
-                    module=alias.name,
-                    names=(alias.asname or alias.name,),
-                    level=0,
-                    line=node.lineno,
-                    is_from_import=False,
-                ))
+                imports.append(
+                    ImportInfo(
+                        module=alias.name,
+                        names=(alias.asname or alias.name,),
+                        level=0,
+                        line=node.lineno,
+                        is_from_import=False,
+                    )
+                )
         elif isinstance(node, ast.ImportFrom):
             names = tuple(alias.name for alias in node.names)
-            imports.append(ImportInfo(
-                module=node.module,
-                names=names,
-                level=node.level or 0,
-                line=node.lineno,
-                is_from_import=True,
-            ))
+            imports.append(
+                ImportInfo(
+                    module=node.module,
+                    names=names,
+                    level=node.level or 0,
+                    line=node.lineno,
+                    is_from_import=True,
+                )
+            )
 
     return imports
 
@@ -191,7 +239,7 @@ class DependencyExtractor:
         self,
         directory: Path,
         pattern: str = "**/*.py",
-        exclude: Optional[Set[str]] = None,
+        exclude: set[str] | None = None,
     ) -> CallGraph:
         """
         Build a module-level dependency graph from all Python files in a directory.
@@ -207,7 +255,7 @@ class DependencyExtractor:
         exclude = exclude or {"__pycache__", ".git", ".venv", "venv", "node_modules", ".tox", ".mypy_cache"}
 
         # Phase 1: Discover all local modules
-        file_to_module: Dict[Path, str] = {}
+        file_to_module: dict[Path, str] = {}
         for file_path in sorted(directory.glob(pattern)):
             if any(part in exclude for part in file_path.parts):
                 continue
@@ -216,7 +264,7 @@ class DependencyExtractor:
             module_name = _module_name_from_path(file_path, directory)
             file_to_module[file_path] = module_name
 
-        known_local: Set[str] = set()
+        known_local: set[str] = set()
         for mod in file_to_module.values():
             known_local.add(mod.split(".")[0])
             known_local.add(mod)
@@ -232,16 +280,18 @@ class DependencyExtractor:
                 continue
 
             line_count = source.count("\n") + 1
-            graph.add_node(GraphNode(
-                id=module_name,
-                kind=NodeKind.MODULE,
-                name=module_name,
-                location=SourceLocation(
-                    file=str(file_path),
-                    line_start=1,
-                    line_end=line_count,
-                ),
-            ))
+            graph.add_node(
+                GraphNode(
+                    id=module_name,
+                    kind=NodeKind.MODULE,
+                    name=module_name,
+                    location=SourceLocation(
+                        file=str(file_path),
+                        line_start=1,
+                        line_end=line_count,
+                    ),
+                )
+            )
 
         # Phase 3: Extract imports and create edges
         for file_path, module_name in file_to_module.items():
@@ -291,12 +341,14 @@ class DependencyExtractor:
                     if not found:
                         if is_external:
                             # Add external node if configured to include
-                            graph.add_node(GraphNode(
-                                id=target,
-                                kind=NodeKind.MODULE,
-                                name=target,
-                                metadata={"external": True},
-                            ))
+                            graph.add_node(
+                                GraphNode(
+                                    id=target,
+                                    kind=NodeKind.MODULE,
+                                    name=target,
+                                    metadata={"external": True},
+                                )
+                            )
                         else:
                             # Local module not found — might be a sub-import
                             # Try the top-level package
@@ -306,21 +358,23 @@ class DependencyExtractor:
                             else:
                                 continue  # Skip unresolvable
 
-                graph.add_edge(GraphEdge(
-                    source_id=module_name,
-                    target_id=target,
-                    kind=EdgeKind.IMPORTS,
-                    location=SourceLocation(
-                        file=str(file_path),
-                        line_start=imp.line,
-                        line_end=imp.line,
-                    ),
-                    confidence=confidence,
-                ))
+                graph.add_edge(
+                    GraphEdge(
+                        source_id=module_name,
+                        target_id=target,
+                        kind=EdgeKind.IMPORTS,
+                        location=SourceLocation(
+                            file=str(file_path),
+                            line_start=imp.line,
+                            line_end=imp.line,
+                        ),
+                        confidence=confidence,
+                    )
+                )
 
         return graph
 
-    def extract_file(self, file_path: Path) -> List[ImportInfo]:
+    def extract_file(self, file_path: Path) -> list[ImportInfo]:
         """
         Extract imports from a single Python file.
 

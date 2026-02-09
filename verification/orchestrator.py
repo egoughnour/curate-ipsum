@@ -11,15 +11,15 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from verification.backend import VerificationBackend
 from verification.types import (
     Budget,
     Counterexample,
     VerificationRequest,
-    VerificationResult,
     VerificationStatus,
 )
 
@@ -38,13 +38,13 @@ class OrchestratorResult:
     """Aggregated result from the orchestrator's CEGAR loop."""
 
     status: str = "unknown"
-    counterexample: Optional[Counterexample] = None
+    counterexample: Counterexample | None = None
     iterations: int = 0
     total_elapsed_s: float = 0.0
-    backend_results: List[Dict[str, Any]] = field(default_factory=list)
-    logs: List[str] = field(default_factory=list)
+    backend_results: list[dict[str, Any]] = field(default_factory=list)
+    logs: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
             "counterexample": self.counterexample.to_dict() if self.counterexample else None,
@@ -71,8 +71,8 @@ class VerificationOrchestrator:
     def __init__(
         self,
         backend: VerificationBackend,
-        budget_presets: Optional[List[Budget]] = None,
-        spurious_checker: Optional[Callable[[Counterexample], bool]] = None,
+        budget_presets: list[Budget] | None = None,
+        spurious_checker: Callable[[Counterexample], bool] | None = None,
         max_iterations: int = 5,
     ) -> None:
         self._backend = backend
@@ -114,7 +114,9 @@ class VerificationOrchestrator:
 
             LOG.info(
                 "Orchestrator iteration %d: budget timeout=%ds, max_states=%d",
-                i + 1, budget.timeout_s, budget.max_states,
+                i + 1,
+                budget.timeout_s,
+                budget.max_states,
             )
 
             vr = await self._backend.verify(req)
@@ -123,9 +125,7 @@ class VerificationOrchestrator:
             if vr.status == VerificationStatus.CE_FOUND and vr.counterexample:
                 # Check if spurious
                 if self._spurious_checker and self._spurious_checker(vr.counterexample):
-                    result.logs.append(
-                        f"Iteration {i + 1}: spurious CE, escalating budget"
-                    )
+                    result.logs.append(f"Iteration {i + 1}: spurious CE, escalating budget")
                     LOG.info("Spurious CE at iteration %d, escalating", i + 1)
                     continue
 
@@ -142,9 +142,7 @@ class VerificationOrchestrator:
                 return result
 
             # no_ce_within_budget — continue to next budget
-            result.logs.append(
-                f"Iteration {i + 1}: no CE within budget (timeout={budget.timeout_s}s)"
-            )
+            result.logs.append(f"Iteration {i + 1}: no CE within budget (timeout={budget.timeout_s}s)")
 
         # All budgets exhausted without finding a CE
         result.status = "bounded_safe"
@@ -154,7 +152,7 @@ class VerificationOrchestrator:
     async def run_multi_backend(
         self,
         request: VerificationRequest,
-        backends: List[VerificationBackend],
+        backends: list[VerificationBackend],
     ) -> OrchestratorResult:
         """
         Run verification across multiple backends (cheap → expensive).
@@ -174,9 +172,7 @@ class VerificationOrchestrator:
 
             if vr.status == VerificationStatus.CE_FOUND and vr.counterexample:
                 if self._spurious_checker and self._spurious_checker(vr.counterexample):
-                    result.logs.append(
-                        f"Backend {i + 1}: spurious CE, trying next backend"
-                    )
+                    result.logs.append(f"Backend {i + 1}: spurious CE, trying next backend")
                     continue
 
                 result.status = "ce_found"
@@ -189,9 +185,7 @@ class VerificationOrchestrator:
                 # Don't stop on error — try next backend
                 continue
 
-            result.logs.append(
-                f"Backend {i + 1}: no CE within budget"
-            )
+            result.logs.append(f"Backend {i + 1}: no CE within budget")
 
         result.status = "bounded_safe"
         result.total_elapsed_s = time.monotonic() - t0

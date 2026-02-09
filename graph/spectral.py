@@ -16,14 +16,14 @@ Requires: scipy>=1.10
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from dataclasses import dataclass
 
 import numpy as np
 
 try:
     import scipy.sparse as sp
     import scipy.sparse.linalg as spla
+
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -34,17 +34,14 @@ from .models import CallGraph, EdgeKind
 def _require_scipy() -> None:
     """Raise a clear error if scipy is not installed."""
     if not HAS_SCIPY:
-        raise ImportError(
-            "scipy is required for spectral analysis. "
-            "Install with: pip install 'curate-ipsum[graph]'"
-        )
+        raise ImportError("scipy is required for spectral analysis. Install with: pip install 'curate-ipsum[graph]'")
 
 
 def build_adjacency_matrix(
     graph: CallGraph,
-    edge_kinds: Optional[Set[EdgeKind]] = None,
+    edge_kinds: set[EdgeKind] | None = None,
     weighted: bool = True,
-) -> Tuple["sp.csr_matrix", List[str]]:
+) -> tuple["sp.csr_matrix", list[str]]:
     """
     Build a sparse adjacency matrix from a CallGraph.
 
@@ -64,12 +61,12 @@ def build_adjacency_matrix(
 
     # Stable ordering of nodes
     node_ids = sorted(graph.nodes.keys())
-    node_index: Dict[str, int] = {nid: i for i, nid in enumerate(node_ids)}
+    node_index: dict[str, int] = {nid: i for i, nid in enumerate(node_ids)}
     n = len(node_ids)
 
-    rows: List[int] = []
-    cols: List[int] = []
-    data: List[float] = []
+    rows: list[int] = []
+    cols: list[int] = []
+    data: list[float] = []
 
     for edge in graph.edges:
         if edge.kind not in edge_kinds:
@@ -90,8 +87,8 @@ def build_adjacency_matrix(
 
 def build_laplacian(
     graph: CallGraph,
-    edge_kinds: Optional[Set[EdgeKind]] = None,
-) -> Tuple["sp.csr_matrix", List[str]]:
+    edge_kinds: set[EdgeKind] | None = None,
+) -> tuple["sp.csr_matrix", list[str]]:
     """
     Build the symmetric graph Laplacian L = D - A_sym.
 
@@ -132,8 +129,8 @@ def build_laplacian(
 
 def find_connected_components(
     graph: CallGraph,
-    edge_kinds: Optional[Set[EdgeKind]] = None,
-) -> List[FrozenSet[str]]:
+    edge_kinds: set[EdgeKind] | None = None,
+) -> list[frozenset[str]]:
     """
     Find connected components of the graph (treating edges as undirected).
 
@@ -148,7 +145,7 @@ def find_connected_components(
         edge_kinds = {EdgeKind.CALLS}
 
     # Build undirected adjacency list
-    adj: Dict[str, Set[str]] = {nid: set() for nid in graph.nodes}
+    adj: dict[str, set[str]] = {nid: set() for nid in graph.nodes}
     for edge in graph.edges:
         if edge.kind not in edge_kinds:
             continue
@@ -156,14 +153,14 @@ def find_connected_components(
             adj[edge.source_id].add(edge.target_id)
             adj[edge.target_id].add(edge.source_id)
 
-    visited: Set[str] = set()
-    components: List[FrozenSet[str]] = []
+    visited: set[str] = set()
+    components: list[frozenset[str]] = []
 
     for start in graph.nodes:
         if start in visited:
             continue
         # BFS
-        component: Set[str] = set()
+        component: set[str] = set()
         queue = deque([start])
         while queue:
             node = queue.popleft()
@@ -189,16 +186,16 @@ class FiedlerResult:
     algebraic_connectivity: float
     """Second-smallest eigenvalue (λ₂). Measures how well-connected the graph is."""
 
-    node_ids: List[str]
+    node_ids: list[str]
     """Mapping: vector[i] corresponds to node_ids[i]."""
 
-    partition: Dict[str, int]
+    partition: dict[str, int]
     """Node ID → partition label (0 or 1) based on sign of Fiedler vector."""
 
 
 def compute_fiedler(
     laplacian: "sp.csr_matrix",
-    node_ids: List[str],
+    node_ids: list[str],
     tolerance: float = 1e-8,
 ) -> FiedlerResult:
     """
@@ -229,7 +226,7 @@ def compute_fiedler(
             vector=vec,
             algebraic_connectivity=0.0,
             node_ids=node_ids,
-            partition={nid: 0 for nid in node_ids},
+            partition=dict.fromkeys(node_ids, 0),
         )
 
     if n == 2:
@@ -284,7 +281,7 @@ def compute_fiedler(
         )
 
     # Build partition from sign of Fiedler vector
-    partition: Dict[str, int] = {}
+    partition: dict[str, int] = {}
     for i, nid in enumerate(node_ids):
         partition[nid] = 0 if fiedler_vec[i] < 0 else 1
 
@@ -298,9 +295,9 @@ def compute_fiedler(
 
 def compute_fiedler_components(
     graph: CallGraph,
-    edge_kinds: Optional[Set[EdgeKind]] = None,
+    edge_kinds: set[EdgeKind] | None = None,
     tolerance: float = 1e-8,
-) -> List[FiedlerResult]:
+) -> list[FiedlerResult]:
     """
     Compute Fiedler vectors per connected component.
 
@@ -322,7 +319,7 @@ def compute_fiedler_components(
         edge_kinds = {EdgeKind.CALLS}
 
     components = find_connected_components(graph, edge_kinds)
-    results: List[FiedlerResult] = []
+    results: list[FiedlerResult] = []
 
     for component in components:
         comp_ids = sorted(component)
@@ -334,12 +331,14 @@ def compute_fiedler_components(
             if n == 2:
                 vec[1] = 1.0
             partition = {nid: (0 if i == 0 else 1) for i, nid in enumerate(comp_ids)}
-            results.append(FiedlerResult(
-                vector=vec,
-                algebraic_connectivity=0.0,
-                node_ids=comp_ids,
-                partition=partition,
-            ))
+            results.append(
+                FiedlerResult(
+                    vector=vec,
+                    algebraic_connectivity=0.0,
+                    node_ids=comp_ids,
+                    partition=partition,
+                )
+            )
             continue
 
         # Build subgraph for this component
@@ -353,21 +352,23 @@ def compute_fiedler_components(
             # Component is further disconnected at this edge_kinds filter;
             # treat as trivial
             vec = np.zeros(n)
-            partition = {nid: 0 for nid in comp_ids}
-            results.append(FiedlerResult(
-                vector=vec,
-                algebraic_connectivity=0.0,
-                node_ids=comp_ids,
-                partition=partition,
-            ))
+            partition = dict.fromkeys(comp_ids, 0)
+            results.append(
+                FiedlerResult(
+                    vector=vec,
+                    algebraic_connectivity=0.0,
+                    node_ids=comp_ids,
+                    partition=partition,
+                )
+            )
 
     return results
 
 
 def _extract_subgraph(
     graph: CallGraph,
-    node_ids: FrozenSet[str],
-    edge_kinds: Optional[Set[EdgeKind]] = None,
+    node_ids: frozenset[str],
+    edge_kinds: set[EdgeKind] | None = None,
 ) -> CallGraph:
     """Extract a subgraph containing only the specified nodes."""
     subgraph = CallGraph()

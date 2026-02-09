@@ -5,32 +5,29 @@ Tests spectral graph analysis (Fiedler vectors, Laplacians, adjacency matrices)
 and recursive Fiedler-based partitioning with virtual source/sink augmentation.
 """
 
-import pytest
 import numpy as np
-from typing import Dict, List, Set, FrozenSet
+import pytest
 
 from graph.models import (
     CallGraph,
-    GraphNode,
-    GraphEdge,
-    NodeKind,
     EdgeKind,
+    GraphEdge,
+    GraphNode,
+    NodeKind,
     SourceLocation,
-)
-from graph.spectral import (
-    build_adjacency_matrix,
-    build_laplacian,
-    find_connected_components,
-    compute_fiedler,
-    compute_fiedler_components,
-    FiedlerResult,
 )
 from graph.partitioner import (
     GraphPartitioner,
-    Partition,
     augment_partition,
 )
-
+from graph.spectral import (
+    FiedlerResult,
+    build_adjacency_matrix,
+    build_laplacian,
+    compute_fiedler,
+    compute_fiedler_components,
+    find_connected_components,
+)
 
 # ─────────────────────────────────────────────────────────────────
 # Helper Functions: Build Common Test Graphs
@@ -340,10 +337,7 @@ class TestBuildAdjacencyMatrix:
         assert adj_defines.nnz == 1  # Only B→A
 
         # Include both
-        adj_both, _ = build_adjacency_matrix(
-            graph,
-            edge_kinds={EdgeKind.CALLS, EdgeKind.DEFINES}
-        )
+        adj_both, _ = build_adjacency_matrix(graph, edge_kinds={EdgeKind.CALLS, EdgeKind.DEFINES})
         assert adj_both.nnz == 2  # Both edges
 
 
@@ -391,6 +385,7 @@ class TestBuildLaplacian:
 
         # Check type
         import scipy.sparse as sp
+
         assert isinstance(laplacian, sp.csr_matrix)
 
     def test_laplacian_empty_graph(self):
@@ -519,8 +514,8 @@ class TestComputeFiedler:
         clique1_in_part1 = len(part1 & clique1_nodes)
 
         # At least one clique should be mostly on one side
-        assert (clique0_in_part0 >= 2 or clique0_in_part1 >= 2)
-        assert (clique1_in_part0 >= 2 or clique1_in_part1 >= 2)
+        assert clique0_in_part0 >= 2 or clique0_in_part1 >= 2
+        assert clique1_in_part0 >= 2 or clique1_in_part1 >= 2
 
     def test_star_graph_fiedler(self):
         """Star graph should have meaningful Fiedler partition."""
@@ -746,7 +741,7 @@ class TestGetLeafPartitions:
         leaves = GraphPartitioner.get_leaf_partitions(root)
 
         # Collect all nodes
-        node_counts: Dict[str, int] = {}
+        node_counts: dict[str, int] = {}
         for leaf in leaves:
             for nid in leaf.node_ids:
                 node_counts[nid] = node_counts.get(nid, 0) + 1
@@ -997,9 +992,7 @@ class TestIntegration:
 
         # At least one leaf should contain only clique 0 or only clique 1
         # (unless barbell is very tightly connected)
-        has_pure_leaf = any(
-            len(cliques) == 1 for cliques in leaf_cliques.values()
-        )
+        _has_pure_leaf = any(len(cliques) == 1 for cliques in leaf_cliques.values())
         # This is a soft test; accept either way
         # Just verify the partitioning completes without error
         assert len(leaves) >= 1

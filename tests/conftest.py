@@ -13,10 +13,10 @@ Run stringent tests:
     pytest -m "not integration"       # skip all integration tests (fast CI)
 """
 
-import os
+from __future__ import annotations
+
 import shutil
 import subprocess
-from typing import Optional
 
 import pytest
 
@@ -28,7 +28,8 @@ def _docker_available() -> bool:
     try:
         result = subprocess.run(
             ["docker", "info"],
-            capture_output=True, timeout=10,
+            capture_output=True,
+            timeout=10,
         )
         return result.returncode == 0
     except Exception:
@@ -39,6 +40,7 @@ def _embedding_model_available() -> bool:
     """Check if all-MiniLM-L6-v2 can be loaded (already cached or downloadable)."""
     try:
         from sentence_transformers import SentenceTransformer
+
         model = SentenceTransformer("all-MiniLM-L6-v2")
         vec = model.encode(["test"])
         return vec.shape[1] == 384
@@ -47,8 +49,8 @@ def _embedding_model_available() -> bool:
 
 
 # Cache the checks at module level so they run once per session
-_DOCKER_OK: Optional[bool] = None
-_EMBEDDING_OK: Optional[bool] = None
+_DOCKER_OK: bool | None = None
+_EMBEDDING_OK: bool | None = None
 
 
 def pytest_configure(config):

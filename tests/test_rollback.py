@@ -1,14 +1,11 @@
 """Tests for theory.rollback module."""
 
 import pytest
-import tempfile
-from pathlib import Path
 
 brs = pytest.importorskip("brs")
 
 from theory.manager import TheoryManager
-from theory.provenance import ProvenanceDAG
-from theory.rollback import Checkpoint, RollbackError, RollbackManager
+from theory.rollback import Checkpoint, RollbackError
 
 
 @pytest.fixture
@@ -89,7 +86,7 @@ class TestRollbackManager:
         )
 
         # Verify world changed
-        current = populated_manager.get_theory_snapshot()
+        _current = populated_manager.get_theory_snapshot()
         # The world should have more nodes now
 
         # Restore checkpoint
@@ -129,7 +126,7 @@ class TestRollbackManager:
 
         dag = populated_manager.provenance_dag
         events = dag.get_history()
-        n_events = len(events)
+        _n_events = len(events)
 
         # Undo last 2
         undone = rb.undo_last(2)
@@ -176,7 +173,7 @@ class TestRollbackManager:
 
     def test_rollback_records_provenance_event(self, populated_manager):
         rb = populated_manager.get_rollback_manager()
-        cp = rb.create_checkpoint("safe")
+        _cp = rb.create_checkpoint("safe")
 
         # Add something
         populated_manager.add_assertion(

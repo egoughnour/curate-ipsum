@@ -13,7 +13,6 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
 
 LOG = logging.getLogger("parsers.detection")
 
@@ -44,12 +43,12 @@ class ProjectLanguage:
     """Detected project language(s)."""
 
     primary: str
-    secondary: List[str]
+    secondary: list[str]
     confidence: float
 
 
 # Language detection: file extension to language mapping
-_EXTENSION_LANGUAGE_MAP: Dict[str, str] = {
+_EXTENSION_LANGUAGE_MAP: dict[str, str] = {
     ".py": "python",
     ".pyi": "python",
     ".js": "javascript",
@@ -74,7 +73,7 @@ _EXTENSION_LANGUAGE_MAP: Dict[str, str] = {
 }
 
 # Config files that strongly indicate language
-_CONFIG_LANGUAGE_SIGNALS: Dict[str, str] = {
+_CONFIG_LANGUAGE_SIGNALS: dict[str, str] = {
     "pyproject.toml": "python",
     "setup.py": "python",
     "setup.cfg": "python",
@@ -140,7 +139,7 @@ def detect_language(working_directory: str) -> ProjectLanguage:
         return ProjectLanguage(primary="unknown", secondary=[], confidence=0.0)
 
     # Count files by extension (limited depth to avoid scanning huge dirs)
-    ext_counts: Dict[str, int] = {}
+    ext_counts: dict[str, int] = {}
     max_files = 1000  # Limit to avoid performance issues
     files_scanned = 0
 
@@ -159,7 +158,7 @@ def detect_language(working_directory: str) -> ProjectLanguage:
                 ext_counts[ext] = ext_counts.get(ext, 0) + 1
 
     # Score languages from file counts
-    lang_scores: Dict[str, float] = {}
+    lang_scores: dict[str, float] = {}
     for ext, count in ext_counts.items():
         lang = _EXTENSION_LANGUAGE_MAP.get(ext)
         if lang:
@@ -200,7 +199,7 @@ def detect_language(working_directory: str) -> ProjectLanguage:
     )
 
 
-def detect_available_frameworks(working_directory: str) -> List[FrameworkDetection]:
+def detect_available_frameworks(working_directory: str) -> list[FrameworkDetection]:
     """
     Detect which mutation frameworks have been run or are configured.
 
@@ -216,7 +215,7 @@ def detect_available_frameworks(working_directory: str) -> List[FrameworkDetecti
         List of detected frameworks with confidence scores
     """
     cwd = Path(working_directory)
-    detections: List[FrameworkDetection] = []
+    detections: list[FrameworkDetection] = []
 
     # Stryker detection (JavaScript/TypeScript)
     stryker_signals = [
@@ -386,7 +385,7 @@ def recommend_framework(working_directory: str) -> FrameworkDetection:
         return FrameworkDetection(
             framework=MutationFramework.MUTMUT,
             confidence=0.6,
-            evidence=f"Python project detected (no mutation tool configured yet)",
+            evidence="Python project detected (no mutation tool configured yet)",
         )
 
     if lang.primary in ("javascript", "typescript"):

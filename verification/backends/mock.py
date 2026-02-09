@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 from verification.backend import VerificationBackend
 from verification.types import (
@@ -35,9 +35,9 @@ class MockBackend(VerificationBackend):
 
     def __init__(self, mode: str = "no_ce", **kwargs: Any) -> None:
         self.mode = mode
-        self.call_log: List[VerificationRequest] = []
+        self.call_log: list[VerificationRequest] = []
 
-    def supports(self) -> Dict[str, Any]:
+    def supports(self) -> dict[str, Any]:
         return {
             "input": "mock",
             "constraints": ["any"],

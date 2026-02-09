@@ -1,6 +1,8 @@
 """Tests for genetic operators, population management, fitness, and entropy."""
 
-import pytest
+from synthesis.ast_operators import ASTCrossover, ASTMutator
+from synthesis.entropy import EntropyManager
+from synthesis.fitness import FitnessEvaluator
 from synthesis.models import (
     Counterexample,
     Individual,
@@ -9,12 +11,9 @@ from synthesis.models import (
     SynthesisConfig,
 )
 from synthesis.population import Population
-from synthesis.fitness import FitnessEvaluator
-from synthesis.ast_operators import ASTCrossover, ASTMutator
-from synthesis.entropy import EntropyManager
-
 
 # ── Population ──────────────────────────────────────────────────────────────
+
 
 class TestPopulation:
     def test_from_candidates_filters_invalid(self):
@@ -65,7 +64,7 @@ class TestPopulation:
         assert elite[1].fitness == 0.5
 
     def test_tournament_select(self):
-        inds = [Individual(code=f"x={i}", fitness=float(i)/10) for i in range(10)]
+        inds = [Individual(code=f"x={i}", fitness=float(i) / 10) for i in range(10)]
         pop = Population(inds)
         selected = pop.tournament_select(5, k=3)
         assert len(selected) == 5
@@ -99,6 +98,7 @@ class TestPopulation:
 
 # ── Fitness ─────────────────────────────────────────────────────────────────
 
+
 class TestFitnessEvaluator:
     def setup_method(self):
         self.config = SynthesisConfig()
@@ -107,9 +107,8 @@ class TestFitnessEvaluator:
     def test_invalid_code_gets_worst_fitness(self):
         ind = Individual(code="def foo( return")
         import asyncio
-        fitness = asyncio.get_event_loop().run_until_complete(
-            self.evaluator.evaluate(ind, Specification(), [])
-        )
+
+        fitness = asyncio.get_event_loop().run_until_complete(self.evaluator.evaluate(ind, Specification(), []))
         assert fitness == -1.0
 
     def test_complexity_penalty_simple(self):
@@ -153,6 +152,7 @@ class TestFitnessEvaluator:
 
 
 # ── AST Operators ───────────────────────────────────────────────────────────
+
 
 class TestASTCrossover:
     def test_crossover_produces_valid_children(self):
@@ -218,12 +218,13 @@ class TestASTMutator:
         results = [mutator.mutate(ind) for _ in range(20)]
         valid_codes = [r.code for r in results if r is not None]
         # At least one mutation should change the constant
-        has_different = any("42" not in code for code in valid_codes)
+        _has_different = any("42" not in code for code in valid_codes)
         # It's probabilistic, so this might not always hold; just check we got some results
         assert len(valid_codes) > 0
 
 
 # ── Entropy ─────────────────────────────────────────────────────────────────
+
 
 class TestEntropyManager:
     def setup_method(self):
@@ -257,7 +258,9 @@ class TestEntropyManager:
         # Create very diverse individuals
         inds = [
             Individual(code="x = 1"),
-            Individual(code="def foo(a, b, c, d):\n    if a > b:\n        for i in range(c):\n            d += i\n    return d\n"),
+            Individual(
+                code="def foo(a, b, c, d):\n    if a > b:\n        for i in range(c):\n            d += i\n    return d\n"
+            ),
             Individual(code="class Foo:\n    def bar(self):\n        return 42\n    def baz(self): pass\n"),
         ]
         # This may or may not exceed threshold=1.0 depending on binning

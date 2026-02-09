@@ -13,8 +13,7 @@ References:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from dataclasses import dataclass
 
 from .models import (
     CallGraph,
@@ -22,10 +21,8 @@ from .models import (
     GraphEdge,
     GraphNode,
     NodeKind,
-    SourceLocation,
 )
 from .spectral import (
-    FiedlerResult,
     _extract_subgraph,
     build_laplacian,
     compute_fiedler,
@@ -45,13 +42,13 @@ class Partition:
     id: str
     """Partition identifier. Binary tree scheme: root='0', left='0.0', right='0.1'."""
 
-    node_ids: FrozenSet[str]
+    node_ids: frozenset[str]
     """Original graph node IDs belonging to this partition (and all descendants)."""
 
-    children: Optional[Tuple["Partition", "Partition"]] = None
+    children: tuple["Partition", "Partition"] | None = None
     """Left and right child partitions, or None for leaf nodes."""
 
-    fiedler_value: Optional[float] = None
+    fiedler_value: float | None = None
     """Algebraic connectivity (λ₂) of this subgraph. Higher = more connected."""
 
     depth: int = 0
@@ -86,7 +83,7 @@ class GraphPartitioner:
         min_partition_size: int = 3,
         max_depth: int = 20,
         connectivity_threshold: float = 0.0,
-        edge_kinds: Optional[Set[EdgeKind]] = None,
+        edge_kinds: set[EdgeKind] | None = None,
     ):
         """
         Args:
@@ -126,7 +123,7 @@ class GraphPartitioner:
             return self._partition_recursive(graph, all_ids, "0", 0)
         else:
             # Multiple components — each gets its own subtree
-            children_partitions: List[Partition] = []
+            children_partitions: list[Partition] = []
             for i, comp in enumerate(sorted(components, key=len, reverse=True)):
                 sub = _extract_subgraph(graph, comp, self.edge_kinds)
                 child = self._partition_recursive(sub, comp, f"0.{i}", 1)
@@ -148,7 +145,7 @@ class GraphPartitioner:
     def _partition_recursive(
         self,
         graph: CallGraph,
-        node_ids: FrozenSet[str],
+        node_ids: frozenset[str],
         partition_id: str,
         depth: int,
     ) -> Partition:
@@ -195,8 +192,8 @@ class GraphPartitioner:
             )
 
         # Split by Fiedler sign
-        left_ids: Set[str] = set()
-        right_ids: Set[str] = set()
+        left_ids: set[str] = set()
+        right_ids: set[str] = set()
         for nid, label in result.partition.items():
             if label == 0:
                 left_ids.add(nid)
@@ -216,12 +213,8 @@ class GraphPartitioner:
         right_frozen = frozenset(right_ids)
 
         # Recurse
-        left_child = self._partition_recursive(
-            graph, left_frozen, f"{partition_id}.0", depth + 1
-        )
-        right_child = self._partition_recursive(
-            graph, right_frozen, f"{partition_id}.1", depth + 1
-        )
+        left_child = self._partition_recursive(graph, left_frozen, f"{partition_id}.0", depth + 1)
+        right_child = self._partition_recursive(graph, right_frozen, f"{partition_id}.1", depth + 1)
 
         return Partition(
             id=partition_id,
@@ -233,7 +226,7 @@ class GraphPartitioner:
 
     def _build_balanced_tree(
         self,
-        partitions: List[Partition],
+        partitions: list[Partition],
         prefix: str,
         depth: int,
     ) -> Partition:
@@ -260,13 +253,13 @@ class GraphPartitioner:
         )
 
     @staticmethod
-    def get_leaf_partitions(root: Partition) -> List[Partition]:
+    def get_leaf_partitions(root: Partition) -> list[Partition]:
         """
         Return all leaf partitions as a flat list.
 
         Every node in the original graph appears in exactly one leaf.
         """
-        leaves: List[Partition] = []
+        leaves: list[Partition] = []
         stack = [root]
         while stack:
             p = stack.pop()
@@ -279,7 +272,7 @@ class GraphPartitioner:
         return leaves
 
     @staticmethod
-    def find_partition(root: Partition, node_id: str) -> Optional[Partition]:
+    def find_partition(root: Partition, node_id: str) -> Partition | None:
         """
         Find which leaf partition a node belongs to.
 
@@ -306,8 +299,8 @@ class GraphPartitioner:
 def augment_partition(
     graph: CallGraph,
     partition: Partition,
-    edge_kinds: Optional[Set[EdgeKind]] = None,
-) -> Tuple[str, str]:
+    edge_kinds: set[EdgeKind] | None = None,
+) -> tuple[str, str]:
     """
     Add virtual source and sink nodes to a leaf partition.
 
@@ -336,8 +329,8 @@ def augment_partition(
     partition_nodes = partition.node_ids
 
     # Find entry points: nodes with no incoming edges from within partition
-    has_internal_incoming: Set[str] = set()
-    has_internal_outgoing: Set[str] = set()
+    has_internal_incoming: set[str] = set()
+    has_internal_outgoing: set[str] = set()
     for edge in graph.edges:
         if edge.kind not in edge_kinds:
             continue
@@ -356,37 +349,45 @@ def augment_partition(
         exit_points = partition_nodes
 
     # Add virtual source node
-    graph.add_node(GraphNode(
-        id=source_id,
-        kind=NodeKind.MODULE,
-        name=f"source({pid})",
-        metadata={"virtual": True, "role": "source", "partition": pid},
-    ))
+    graph.add_node(
+        GraphNode(
+            id=source_id,
+            kind=NodeKind.MODULE,
+            name=f"source({pid})",
+            metadata={"virtual": True, "role": "source", "partition": pid},
+        )
+    )
 
     # Add virtual sink node
-    graph.add_node(GraphNode(
-        id=sink_id,
-        kind=NodeKind.MODULE,
-        name=f"sink({pid})",
-        metadata={"virtual": True, "role": "sink", "partition": pid},
-    ))
+    graph.add_node(
+        GraphNode(
+            id=sink_id,
+            kind=NodeKind.MODULE,
+            name=f"sink({pid})",
+            metadata={"virtual": True, "role": "sink", "partition": pid},
+        )
+    )
 
     # Connect source → entry points
     for entry in entry_points:
-        graph.add_edge(GraphEdge(
-            source_id=source_id,
-            target_id=entry,
-            kind=EdgeKind.CALLS,
-            confidence=1.0,
-        ))
+        graph.add_edge(
+            GraphEdge(
+                source_id=source_id,
+                target_id=entry,
+                kind=EdgeKind.CALLS,
+                confidence=1.0,
+            )
+        )
 
     # Connect exit points → sink
     for exit_node in exit_points:
-        graph.add_edge(GraphEdge(
-            source_id=exit_node,
-            target_id=sink_id,
-            kind=EdgeKind.CALLS,
-            confidence=1.0,
-        ))
+        graph.add_edge(
+            GraphEdge(
+                source_id=exit_node,
+                target_id=sink_id,
+                kind=EdgeKind.CALLS,
+                confidence=1.0,
+            )
+        )
 
     return source_id, sink_id

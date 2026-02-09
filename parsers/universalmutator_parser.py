@@ -25,7 +25,6 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from models import FileMutationStats
 
@@ -33,17 +32,13 @@ LOG = logging.getLogger("parsers.universalmutator")
 
 # Pattern to extract original file from mutant filename
 # Matches: <filepath>.mutant.<number>[.<operator>]
-_MUTANT_FILENAME_PATTERN = re.compile(
-    r"^(.+?)\.mutant\.(\d+)(?:\.(.+))?$"
-)
+_MUTANT_FILENAME_PATTERN = re.compile(r"^(.+?)\.mutant\.(\d+)(?:\.(.+))?$")
 
 # Alternative pattern: <filepath>_mutant_<number>
-_ALT_MUTANT_FILENAME_PATTERN = re.compile(
-    r"^(.+?)_mutant_(\d+)$"
-)
+_ALT_MUTANT_FILENAME_PATTERN = re.compile(r"^(.+?)_mutant_(\d+)$")
 
 
-def find_universalmutator_results(working_directory: str) -> Optional[Path]:
+def find_universalmutator_results(working_directory: str) -> Path | None:
     """
     Locate universalmutator result files.
 
@@ -103,7 +98,7 @@ def _extract_source_file(mutant_filename: str) -> str:
     return name
 
 
-def _read_mutant_list(file_path: Path) -> List[str]:
+def _read_mutant_list(file_path: Path) -> list[str]:
     """
     Read a list of mutant filenames from a text file.
 
@@ -131,8 +126,8 @@ def _read_mutant_list(file_path: Path) -> List[str]:
 
 def parse_universalmutator_output(
     working_directory: str,
-    report_path: Optional[str] = None,
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    report_path: str | None = None,
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Parse universalmutator results from killed.txt / not-killed.txt.
 
@@ -177,8 +172,7 @@ def parse_universalmutator_output(
     if not killed_mutants and not survived_mutants:
         # No results found at all
         raise FileNotFoundError(
-            f"No universalmutator results found. "
-            f"Expected killed.txt and/or not-killed.txt in: {results_dir}"
+            f"No universalmutator results found. Expected killed.txt and/or not-killed.txt in: {results_dir}"
         )
 
     LOG.debug(
@@ -188,7 +182,7 @@ def parse_universalmutator_output(
     )
 
     # Group by source file
-    by_file_map: Dict[str, Dict[str, int]] = {}  # file -> {killed, survived}
+    by_file_map: dict[str, dict[str, int]] = {}  # file -> {killed, survived}
 
     for mutant_name in killed_mutants:
         source = _extract_source_file(mutant_name)
@@ -203,7 +197,7 @@ def parse_universalmutator_output(
         by_file_map[source]["survived"] += 1
 
     # Build per-file stats
-    file_stats: List[FileMutationStats] = []
+    file_stats: list[FileMutationStats] = []
     total_killed = 0
     total_survived = 0
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class AssertionKind(str, Enum):
@@ -46,23 +46,19 @@ class Assertion:
     kind: AssertionKind
     content: str
     confidence: float  # 0.0 to 1.0
-    region_id: Optional[str] = None
-    grounding_evidence_ids: List[str] = field(default_factory=list)
-    created_utc: str = field(
-        default_factory=lambda: datetime.datetime.utcnow().isoformat() + "Z"
-    )
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    region_id: str | None = None
+    grounding_evidence_ids: list[str] = field(default_factory=list)
+    created_utc: str = field(default_factory=lambda: datetime.datetime.utcnow().isoformat() + "Z")
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.confidence <= 1.0:
-            raise ValueError(
-                f"confidence must be between 0.0 and 1.0, got {self.confidence}"
-            )
+            raise ValueError(f"confidence must be between 0.0 and 1.0, got {self.confidence}")
         if isinstance(self.kind, str):
             self.kind = AssertionKind(self.kind)
 
 
-def assertion_to_node_dict(assertion: Assertion) -> Dict[str, Any]:
+def assertion_to_node_dict(assertion: Assertion) -> dict[str, Any]:
     """
     Serialize an Assertion to a CASStore-compatible node dict.
 
@@ -88,7 +84,7 @@ def assertion_to_node_dict(assertion: Assertion) -> Dict[str, Any]:
     }
 
 
-def node_dict_to_assertion(node: Dict[str, Any]) -> Assertion:
+def node_dict_to_assertion(node: dict[str, Any]) -> Assertion:
     """
     Deserialize a CASStore node dict to an Assertion.
 
@@ -168,8 +164,8 @@ class ContradictionDetector:
     def find_contradictions(
         cls,
         new_assertion: Assertion,
-        existing_assertions: List[Assertion],
-    ) -> List[Assertion]:
+        existing_assertions: list[Assertion],
+    ) -> list[Assertion]:
         """
         Find assertions that contradict the new one.
 
@@ -208,16 +204,10 @@ class ContradictionDetector:
             return cls._is_negated(a.content, b.content)
 
         # Contract conflicts: pre/postcondition inconsistencies
-        if (
-            a.kind == AssertionKind.PRECONDITION
-            and b.kind == AssertionKind.PRECONDITION
-        ):
+        if a.kind == AssertionKind.PRECONDITION and b.kind == AssertionKind.PRECONDITION:
             return cls._is_negated(a.content, b.content)
 
-        if (
-            a.kind == AssertionKind.POSTCONDITION
-            and b.kind == AssertionKind.POSTCONDITION
-        ):
+        if a.kind == AssertionKind.POSTCONDITION and b.kind == AssertionKind.POSTCONDITION:
             return cls._is_negated(a.content, b.content)
 
         return False

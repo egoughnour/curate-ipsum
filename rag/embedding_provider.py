@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, List
 
 LOG = logging.getLogger("rag.embedding_provider")
 
@@ -20,7 +19,7 @@ class EmbeddingProvider(ABC):
     """Abstract interface for text → embedding vector conversion."""
 
     @abstractmethod
-    def embed(self, texts: List[str]) -> List[List[float]]:
+    def embed(self, texts: list[str]) -> list[list[float]]:
         """
         Convert a batch of texts into embedding vectors.
 
@@ -51,7 +50,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         self._model = SentenceTransformer(model_name)
         self._dim = self._model.get_sentence_embedding_dimension()
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
+    def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
         embeddings = self._model.encode(texts, show_progress_bar=False)
@@ -67,7 +66,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
     def __init__(self, dim: int = 384) -> None:
         self._dim = dim
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
+    def embed(self, texts: list[str]) -> list[list[float]]:
         return [[0.0] * self._dim for _ in texts]
 
     def dimension(self) -> int:

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rag.embedding_provider import EmbeddingProvider
 from rag.vector_store import VectorSearchResult, VectorStore
@@ -42,7 +42,7 @@ class RAGResult:
     text: str
     score: float
     source: str = "vector"  # "vector", "graph_caller", "graph_callee"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class RAGPipeline:
@@ -66,15 +66,15 @@ class RAGPipeline:
         self,
         vector_store: VectorStore,
         embedding_provider: EmbeddingProvider,
-        graph_store: Optional["GraphStore"] = None,
-        config: Optional[RAGConfig] = None,
+        graph_store: "GraphStore" | None = None,
+        config: RAGConfig | None = None,
     ) -> None:
         self._vs = vector_store
         self._embed = embedding_provider
         self._gs = graph_store
         self._config = config or RAGConfig()
 
-    def search(self, query: str) -> List[RAGResult]:
+    def search(self, query: str) -> list[RAGResult]:
         """
         Search for code relevant to the query.
 
@@ -95,7 +95,7 @@ class RAGPipeline:
         vector_results = self._vs.search(query_vec, top_k=config.vector_top_k)
 
         # Convert to RAGResults
-        results: Dict[str, RAGResult] = {}
+        results: dict[str, RAGResult] = {}
         for vr in vector_results:
             results[vr.id] = RAGResult(
                 node_id=vr.id,
@@ -115,8 +115,8 @@ class RAGPipeline:
 
     def _expand_graph(
         self,
-        results: Dict[str, RAGResult],
-        vector_results: List[VectorSearchResult],
+        results: dict[str, RAGResult],
+        vector_results: list[VectorSearchResult],
         config: RAGConfig,
     ) -> None:
         """Expand vector results using graph neighborhood."""
@@ -128,9 +128,7 @@ class RAGPipeline:
 
                 # Callees (outgoing)
                 try:
-                    callees = self._gs.get_neighbors(
-                        node_id, config.project_id, direction="outgoing"
-                    )
+                    callees = self._gs.get_neighbors(node_id, config.project_id, direction="outgoing")
                     for callee_id in callees:
                         if callee_id not in results:
                             # Try to get node data for text
@@ -151,9 +149,7 @@ class RAGPipeline:
                 # Callers (incoming)
                 caller_decay = config.caller_decay ** (hop + 1)
                 try:
-                    callers = self._gs.get_neighbors(
-                        node_id, config.project_id, direction="incoming"
-                    )
+                    callers = self._gs.get_neighbors(node_id, config.project_id, direction="incoming")
                     for caller_id in callers:
                         if caller_id not in results:
                             node_data = self._gs.get_node(caller_id, config.project_id)
@@ -170,7 +166,7 @@ class RAGPipeline:
                 except Exception as exc:
                     LOG.debug("Graph expansion (callers) failed for %s: %s", node_id, exc)
 
-    def pack_context(self, results: List[RAGResult], max_tokens: Optional[int] = None) -> str:
+    def pack_context(self, results: list[RAGResult], max_tokens: int | None = None) -> str:
         """
         Pack RAG results into a single context string for LLM prompt injection.
 
@@ -179,7 +175,7 @@ class RAGPipeline:
         limit = max_tokens or self._config.max_context_tokens
         char_limit = limit * 4  # rough chars-per-token estimate
 
-        parts: List[str] = []
+        parts: list[str] = []
         total_chars = 0
 
         for r in results:

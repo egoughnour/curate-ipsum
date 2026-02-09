@@ -15,8 +15,11 @@ Contract:
   - Writes response JSON (see schemas/response.schema.json)
 """
 
-import json, sys, time, re
-from typing import Dict, Any
+import json
+import re
+import sys
+import time
+from typing import Any
 
 import angr
 import claripy
@@ -46,9 +49,12 @@ def _parse_addr(proj: angr.Project, value: Any) -> int:
     raise TypeError(f"Unsupported address type: {type(value)}")
 
 
-_cmp_re = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=|<=|>=|<|>)\s*([A-Za-z_][A-Za-z0-9_]*|0x[0-9a-fA-F]+|-?\d+)\s*$")
+_cmp_re = re.compile(
+    r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=|<=|>=|<|>)\s*([A-Za-z_][A-Za-z0-9_]*|0x[0-9a-fA-F]+|-?\d+)\s*$"
+)
 
-def _parse_atom(atom: str, symmap: Dict[str, claripy.ast.BV]) -> claripy.ast.BV:
+
+def _parse_atom(atom: str, symmap: dict[str, claripy.ast.BV]) -> claripy.ast.BV:
     atom = atom.strip()
     if atom in symmap:
         return symmap[atom]
@@ -58,7 +64,8 @@ def _parse_atom(atom: str, symmap: Dict[str, claripy.ast.BV]) -> claripy.ast.BV:
         return claripy.BVV(int(atom), 64)
     raise ValueError(f"Unknown atom in constraint: {atom!r}")
 
-def _apply_constraints(state: angr.SimState, constraints, symmap: Dict[str, claripy.ast.BV]):
+
+def _apply_constraints(state: angr.SimState, constraints, symmap: dict[str, claripy.ast.BV]):
     for c in constraints:
         m = _cmp_re.match(c)
         if not m:
@@ -67,8 +74,10 @@ def _apply_constraints(state: angr.SimState, constraints, symmap: Dict[str, clar
         a = _parse_atom(lhs, symmap)
         b = _parse_atom(rhs, symmap)
         w = max(a.size(), b.size())
-        if a.size() != w: a = a.zero_extend(w - a.size())
-        if b.size() != w: b = b.zero_extend(w - b.size())
+        if a.size() != w:
+            a = a.zero_extend(w - a.size())
+        if b.size() != w:
+            b = b.zero_extend(w - b.size())
         if op == "==":
             state.solver.add(a == b)
         elif op == "!=":
@@ -83,6 +92,7 @@ def _apply_constraints(state: angr.SimState, constraints, symmap: Dict[str, clar
             state.solver.add(a > b)
         else:
             raise ValueError(f"Unknown operator: {op}")
+
 
 def _mk_symbol(spec: dict) -> claripy.ast.BV:
     name = spec["name"]
@@ -99,19 +109,16 @@ def _mk_symbol(spec: dict) -> claripy.ast.BV:
         return claripy.BVS(name, int(ln) * 8)
     raise ValueError(f"Unsupported kind: {kind!r}")
 
+
 def _write_error(resp_path: str, msg: str, t0: float, extra: dict):
-    out = {
-        "status": "error",
-        "counterexample": None,
-        "stats": {"elapsed_s": time.time() - t0, **extra},
-        "logs": msg
-    }
+    out = {"status": "error", "counterexample": None, "stats": {"elapsed_s": time.time() - t0, **extra}, "logs": msg}
     with open(resp_path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
 
+
 def main(req_path: str, resp_path: str):
     t0 = time.time()
-    with open(req_path, "r", encoding="utf-8") as f:
+    with open(req_path, encoding="utf-8") as f:
         req = json.load(f)
 
     target = req["target"]
@@ -133,7 +140,7 @@ def main(req_path: str, resp_path: str):
 
     sym_specs = req.get("symbols", [])
     syms = []
-    symmap: Dict[str, claripy.ast.BV] = {}
+    symmap: dict[str, claripy.ast.BV] = {}
     for s in sym_specs:
         sym = _mk_symbol(s)
         symmap[s["name"]] = sym
@@ -243,13 +250,14 @@ def main(req_path: str, resp_path: str):
                 "avoid_addr": hex(avoid_addr) if avoid_addr is not None else None,
                 "binary": bin_path,
                 "entry": hex(entry_addr),
-            }
+            },
         },
         "stats": stats,
-        "logs": None
+        "logs": None,
     }
     with open(resp_path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

@@ -15,9 +15,6 @@ embedding model is replaced with a deterministic hash-based provider
 
 import hashlib
 import math
-import tempfile
-from pathlib import Path
-from typing import List
 from uuid import uuid4
 
 import pytest
@@ -25,17 +22,16 @@ import pytest
 from graph.models import (
     CallGraph,
     EdgeKind,
+    FunctionSignature,
     GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
-    FunctionSignature,
 )
 from rag.embedding_provider import EmbeddingProvider
-from rag.vector_store import ChromaVectorStore, VectorDocument
 from rag.search import RAGConfig, RAGPipeline, RAGResult
+from rag.vector_store import ChromaVectorStore, VectorDocument
 from storage.graph_store import build_graph_store
-
 
 # ─── Deterministic Embedding Provider ─────────────────────────────────────────
 #
@@ -44,6 +40,7 @@ from storage.graph_store import build_graph_store
 # works. This is NOT a mock — it's a lightweight, deterministic alternative
 # to the real sentence-transformers model that still exercises the full
 # pipeline end-to-end.
+
 
 class DeterministicEmbeddingProvider(EmbeddingProvider):
     """
@@ -56,13 +53,13 @@ class DeterministicEmbeddingProvider(EmbeddingProvider):
 
     DIM = 384
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
+    def embed(self, texts: list[str]) -> list[list[float]]:
         return [self._text_to_vec(t) for t in texts]
 
     def dimension(self) -> int:
         return self.DIM
 
-    def _text_to_vec(self, text: str) -> List[float]:
+    def _text_to_vec(self, text: str) -> list[float]:
         # Hash the full text for the base vector
         h = hashlib.sha512(text.encode()).digest()
         # Expand to 384 floats by cycling through hash bytes
@@ -79,6 +76,7 @@ class DeterministicEmbeddingProvider(EmbeddingProvider):
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def embedder():
@@ -117,42 +115,48 @@ def _build_code_graph() -> CallGraph:
 
     nodes = [
         GraphNode(
-            id="validator.validate_input", kind=NodeKind.FUNCTION,
+            id="validator.validate_input",
+            kind=NodeKind.FUNCTION,
             name="validate_input",
             location=SourceLocation(file="validator.py", line_start=10, line_end=25),
             signature=FunctionSignature(name="validate_input", params=("data",), return_type="bool"),
             docstring="Validate user input: sanitize, check length and format.",
         ),
         GraphNode(
-            id="validator.sanitize_string", kind=NodeKind.FUNCTION,
+            id="validator.sanitize_string",
+            kind=NodeKind.FUNCTION,
             name="sanitize_string",
             location=SourceLocation(file="validator.py", line_start=28, line_end=35),
             signature=FunctionSignature(name="sanitize_string", params=("s",), return_type="str"),
             docstring="Strip dangerous characters from input string.",
         ),
         GraphNode(
-            id="validator.check_length", kind=NodeKind.FUNCTION,
+            id="validator.check_length",
+            kind=NodeKind.FUNCTION,
             name="check_length",
             location=SourceLocation(file="validator.py", line_start=38, line_end=42),
             signature=FunctionSignature(name="check_length", params=("s", "max_len"), return_type="bool"),
             docstring="Ensure string length is within bounds.",
         ),
         GraphNode(
-            id="validator.check_format", kind=NodeKind.FUNCTION,
+            id="validator.check_format",
+            kind=NodeKind.FUNCTION,
             name="check_format",
             location=SourceLocation(file="validator.py", line_start=45, line_end=55),
             signature=FunctionSignature(name="check_format", params=("s", "pattern"), return_type="bool"),
             docstring="Check if string matches expected format pattern.",
         ),
         GraphNode(
-            id="pipeline.process_data", kind=NodeKind.FUNCTION,
+            id="pipeline.process_data",
+            kind=NodeKind.FUNCTION,
             name="process_data",
             location=SourceLocation(file="pipeline.py", line_start=5, line_end=20),
             signature=FunctionSignature(name="process_data", params=("raw_data",), return_type="dict"),
             docstring="Main data processing pipeline: validate then transform.",
         ),
         GraphNode(
-            id="pipeline.transform", kind=NodeKind.FUNCTION,
+            id="pipeline.transform",
+            kind=NodeKind.FUNCTION,
             name="transform",
             location=SourceLocation(file="pipeline.py", line_start=23, line_end=35),
             signature=FunctionSignature(name="transform", params=("validated_data",), return_type="dict"),
@@ -179,6 +183,7 @@ def _build_code_graph() -> CallGraph:
 
 # ─── 1. Chroma + Embedding: index → search → retrieve ─────────────────────────
 
+
 class TestChromaEmbeddingEndToEnd:
     """Real Chroma with deterministic embeddings — no mocks."""
 
@@ -189,12 +194,14 @@ class TestChromaEmbeddingEndToEnd:
         for node in _build_code_graph().nodes.values():
             text = f"{node.name}: {node.docstring or ''}"
             embedding = embedder.embed([text])[0]
-            docs.append(VectorDocument(
-                id=node.id,
-                text=text,
-                embedding=embedding,
-                metadata={"file": node.location.file if node.location else "", "kind": node.kind.value},
-            ))
+            docs.append(
+                VectorDocument(
+                    id=node.id,
+                    text=text,
+                    embedding=embedding,
+                    metadata={"file": node.location.file if node.location else "", "kind": node.kind.value},
+                )
+            )
 
         chroma_store.add(docs)
         assert chroma_store.count() == 6
@@ -218,10 +225,14 @@ class TestChromaEmbeddingEndToEnd:
         for node in _build_code_graph().nodes.values():
             text = f"{node.name}: {node.docstring or ''}"
             embedding = embedder.embed([text])[0]
-            docs.append(VectorDocument(
-                id=node.id, text=text, embedding=embedding,
-                metadata={"file": node.location.file if node.location else "", "kind": node.kind.value},
-            ))
+            docs.append(
+                VectorDocument(
+                    id=node.id,
+                    text=text,
+                    embedding=embedding,
+                    metadata={"file": node.location.file if node.location else "", "kind": node.kind.value},
+                )
+            )
 
         chroma_store.add(docs)
 
@@ -240,14 +251,16 @@ class TestChromaEmbeddingEndToEnd:
         text_v2 = "validate_input: Comprehensive input validation with sanitization"
 
         doc_v1 = VectorDocument(
-            id="validator.validate_input", text=text_v1,
+            id="validator.validate_input",
+            text=text_v1,
             embedding=embedder.embed([text_v1])[0],
         )
         chroma_store.add([doc_v1])
         assert chroma_store.count() == 1
 
         doc_v2 = VectorDocument(
-            id="validator.validate_input", text=text_v2,
+            id="validator.validate_input",
+            text=text_v2,
             embedding=embedder.embed([text_v2])[0],
         )
         chroma_store.add([doc_v2])
@@ -261,6 +274,7 @@ class TestChromaEmbeddingEndToEnd:
 
 # ─── 2. RAG Pipeline with graph expansion ─────────────────────────────────────
 
+
 class TestRAGPipelineEndToEnd:
     """Full RAG pipeline: embed → vector search → graph expand → pack."""
 
@@ -270,10 +284,16 @@ class TestRAGPipelineEndToEnd:
         for node in _build_code_graph().nodes.values():
             text = f"{node.name}: {node.docstring or ''}"
             embedding = embedder.embed([text])[0]
-            chroma_store.add([VectorDocument(
-                id=node.id, text=text, embedding=embedding,
-                metadata={"kind": node.kind.value},
-            )])
+            chroma_store.add(
+                [
+                    VectorDocument(
+                        id=node.id,
+                        text=text,
+                        embedding=embedding,
+                        metadata={"kind": node.kind.value},
+                    )
+                ]
+            )
 
         pipeline = RAGPipeline(
             vector_store=chroma_store,
@@ -301,10 +321,16 @@ class TestRAGPipelineEndToEnd:
             node = graph.nodes[node_id]
             text = f"{node.name}: {node.docstring or ''}"
             embedding = embedder.embed([text])[0]
-            chroma_store.add([VectorDocument(
-                id=node.id, text=text, embedding=embedding,
-                metadata={"kind": node.kind.value},
-            )])
+            chroma_store.add(
+                [
+                    VectorDocument(
+                        id=node.id,
+                        text=text,
+                        embedding=embedding,
+                        metadata={"kind": node.kind.value},
+                    )
+                ]
+            )
 
         pipeline = RAGPipeline(
             vector_store=chroma_store,
@@ -338,9 +364,15 @@ class TestRAGPipelineEndToEnd:
         node = graph.nodes["validator.check_length"]
         text = f"{node.name}: {node.docstring or ''}"
         embedding = embedder.embed([text])[0]
-        chroma_store.add([VectorDocument(
-            id=node.id, text=text, embedding=embedding,
-        )])
+        chroma_store.add(
+            [
+                VectorDocument(
+                    id=node.id,
+                    text=text,
+                    embedding=embedding,
+                )
+            ]
+        )
 
         pipeline = RAGPipeline(
             vector_store=chroma_store,
@@ -350,13 +382,14 @@ class TestRAGPipelineEndToEnd:
         )
 
         results = pipeline.search("check string length bounds")
-        result_ids = {r.node_id for r in results}
+        _result_ids = {r.node_id for r in results}
 
         # validate_input calls check_length, so it should appear as a caller
         caller_results = [r for r in results if r.source == "graph_caller"]
         caller_ids = {r.node_id for r in caller_results}
-        assert "validator.validate_input" in caller_ids, \
+        assert "validator.validate_input" in caller_ids, (
             f"validate_input should appear as caller of check_length, got {caller_ids}"
+        )
 
     def test_pack_context_respects_token_limit(self, chroma_store, embedder):
         """Context packing stops at the token budget."""
@@ -398,13 +431,19 @@ class TestRAGPipelineEndToEnd:
         assert "score=" in context
         assert "via=" in context
         # Should contain at least one node ID
-        assert any(node_id in context for node_id in [
-            "validator.validate_input", "validator.sanitize_string",
-            "pipeline.process_data", "pipeline.transform",
-        ])
+        assert any(
+            node_id in context
+            for node_id in [
+                "validator.validate_input",
+                "validator.sanitize_string",
+                "pipeline.process_data",
+                "pipeline.transform",
+            ]
+        )
 
 
 # ─── 3. RAG decay scoring ─────────────────────────────────────────────────────
+
 
 class TestRAGDecayScoring:
     """Verify that graph-expanded results have decayed scores."""
@@ -421,8 +460,10 @@ class TestRAGDecayScoring:
         chroma_store.add([VectorDocument(id=node.id, text=text, embedding=embedding)])
 
         config = RAGConfig(
-            vector_top_k=5, expansion_hops=1,
-            callee_decay=0.8, caller_decay=0.7,
+            vector_top_k=5,
+            expansion_hops=1,
+            callee_decay=0.8,
+            caller_decay=0.7,
             project_id=project_id,
         )
         pipeline = RAGPipeline(
@@ -440,13 +481,16 @@ class TestRAGDecayScoring:
             vi_score = result_map["validator.validate_input"].score
             for callee_id in ["validator.sanitize_string", "validator.check_length", "validator.check_format"]:
                 if callee_id in result_map:
-                    assert result_map[callee_id].score < vi_score, \
+                    assert result_map[callee_id].score < vi_score, (
                         f"Callee {callee_id} should have lower score than parent"
-                    assert result_map[callee_id].score == pytest.approx(vi_score * 0.8, abs=0.01), \
+                    )
+                    assert result_map[callee_id].score == pytest.approx(vi_score * 0.8, abs=0.01), (
                         f"Callee {callee_id} score should be parent * decay"
+                    )
 
 
 # ─── 4. RAG → CEGIS integration ──────────────────────────────────────────────
+
 
 class TestRAGCEGISIntegration:
     """
@@ -473,9 +517,15 @@ class TestRAGCEGISIntegration:
         # Index a document that will be found by RAG
         text = "validate_input: Comprehensive input validation with bounds checking"
         embedding = embedder.embed([text])[0]
-        chroma_store.add([VectorDocument(
-            id="validator.validate_input", text=text, embedding=embedding,
-        )])
+        chroma_store.add(
+            [
+                VectorDocument(
+                    id="validator.validate_input",
+                    text=text,
+                    embedding=embedding,
+                )
+            ]
+        )
 
         pipeline = RAGPipeline(
             vector_store=chroma_store,
@@ -491,9 +541,11 @@ class TestRAGCEGISIntegration:
                 captured_prompts.append(prompt)
                 return await super().generate_candidates(prompt, n, temperature)
 
-        client = CapturingLLMClient(responses=[
-            "def fix(x):\n    return x + 1\n",
-        ])
+        client = CapturingLLMClient(
+            responses=[
+                "def fix(x):\n    return x + 1\n",
+            ]
+        )
 
         config = SynthesisConfig(max_iterations=2, population_size=4, top_k=4)
         engine = CEGISEngine(config, client, rag_pipeline=pipeline)
@@ -508,8 +560,9 @@ class TestRAGCEGISIntegration:
         # The LLM should have received a prompt containing RAG context
         assert len(captured_prompts) >= 1
         full_prompt = captured_prompts[0]
-        assert "validate_input" in full_prompt or "Retrieved context" in full_prompt, \
+        assert "validate_input" in full_prompt or "Retrieved context" in full_prompt, (
             f"RAG context should be in the synthesis prompt, got: {full_prompt[:200]}"
+        )
 
     @pytest.mark.asyncio
     async def test_rag_context_combined_with_spec_context(self, chroma_store, embedder):
@@ -520,9 +573,15 @@ class TestRAGCEGISIntegration:
 
         text = "sanitize_string: Strip dangerous characters from input"
         embedding = embedder.embed([text])[0]
-        chroma_store.add([VectorDocument(
-            id="validator.sanitize_string", text=text, embedding=embedding,
-        )])
+        chroma_store.add(
+            [
+                VectorDocument(
+                    id="validator.sanitize_string",
+                    text=text,
+                    embedding=embedding,
+                )
+            ]
+        )
 
         pipeline = RAGPipeline(
             vector_store=chroma_store,
@@ -556,6 +615,7 @@ class TestRAGCEGISIntegration:
 
 
 # ─── 5. Empty / edge cases ───────────────────────────────────────────────────
+
 
 class TestRAGEdgeCases:
     """Edge cases that should not crash the pipeline."""

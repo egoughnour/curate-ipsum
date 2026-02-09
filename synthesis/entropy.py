@@ -14,9 +14,8 @@ import ast
 import logging
 import math
 from collections import Counter
-from typing import Any, Dict, List, Optional, Tuple
 
-from synthesis.models import Individual, Specification, SynthesisConfig
+from synthesis.models import Individual, SynthesisConfig
 
 LOG = logging.getLogger("synthesis.entropy")
 
@@ -27,7 +26,7 @@ class EntropyManager:
     def __init__(self, config: SynthesisConfig) -> None:
         self._config = config
 
-    def compute_entropy(self, individuals: List[Individual]) -> float:
+    def compute_entropy(self, individuals: list[Individual]) -> float:
         """
         Compute Shannon entropy over structural feature clusters.
 
@@ -53,16 +52,16 @@ class EntropyManager:
 
         return entropy
 
-    def needs_injection(self, individuals: List[Individual]) -> bool:
+    def needs_injection(self, individuals: list[Individual]) -> bool:
         """Check if population entropy is below threshold."""
         entropy = self.compute_entropy(individuals)
         return entropy < self._config.entropy_threshold
 
     def select_for_replacement(
         self,
-        individuals: List[Individual],
+        individuals: list[Individual],
         n: int,
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Select indices of the n most similar individuals for replacement.
 
@@ -77,16 +76,12 @@ class EntropyManager:
         most_common_bin = bin_counts.most_common(1)[0][0]
 
         # Collect indices in that bin, sorted by fitness (ascending)
-        candidates = [
-            (i, individuals[i].fitness)
-            for i, b in enumerate(bins)
-            if b == most_common_bin
-        ]
+        candidates = [(i, individuals[i].fitness) for i, b in enumerate(bins) if b == most_common_bin]
         candidates.sort(key=lambda x: x[1])
 
         return [idx for idx, _ in candidates[:n]]
 
-    def _extract_features(self, individual: Individual) -> Dict[str, float]:
+    def _extract_features(self, individual: Individual) -> dict[str, float]:
         """
         Extract structural features from code for diversity measurement.
 
@@ -100,18 +95,11 @@ class EntropyManager:
         try:
             tree = ast.parse(individual.code)
         except SyntaxError:
-            return {"ast_depth": 0, "node_count": 0, "branch_count": 0,
-                    "func_count": 0, "var_count": 0}
+            return {"ast_depth": 0, "node_count": 0, "branch_count": 0, "func_count": 0, "var_count": 0}
 
         node_count = sum(1 for _ in ast.walk(tree))
-        branch_count = sum(
-            1 for n in ast.walk(tree)
-            if isinstance(n, (ast.If, ast.For, ast.While))
-        )
-        func_count = sum(
-            1 for n in ast.walk(tree)
-            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-        )
+        branch_count = sum(1 for n in ast.walk(tree) if isinstance(n, (ast.If, ast.For, ast.While)))
+        func_count = sum(1 for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
         var_names = set()
         for n in ast.walk(tree):
             if isinstance(n, ast.Name):
@@ -136,13 +124,14 @@ class EntropyManager:
         return max_child
 
     @staticmethod
-    def _feature_to_bin(features: Dict[str, float]) -> str:
+    def _feature_to_bin(features: dict[str, float]) -> str:
         """
         Map features to a discrete bin for entropy computation.
 
         Simple binning: quantize each feature to a small number of levels.
         """
-        def _bin(val: float, boundaries: List[float]) -> int:
+
+        def _bin(val: float, boundaries: list[float]) -> int:
             for i, b in enumerate(boundaries):
                 if val <= b:
                     return i

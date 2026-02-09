@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from brs import CASStore
@@ -27,7 +27,7 @@ def run_smoke(
     store: "CASStore",
     domain_id: str,
     world_label: str,
-) -> Tuple[int, int, List[str]]:
+) -> tuple[int, int, list[str]]:
     """
     Basic smoke tests for the code_mutation domain.
 
@@ -46,7 +46,7 @@ def run_smoke(
     """
     tests = 0
     failures = 0
-    messages: List[str] = []
+    messages: list[str] = []
 
     try:
         world_data = store.get_world(domain_id, world_label)["json"]
@@ -80,8 +80,7 @@ def run_smoke(
     for edge_id in edge_ids:
         # Find the edge object
         row = store._conn.execute(
-            "SELECT json FROM objects WHERE kind='Edge' AND json LIKE ?",
-            (f'%"id": "{edge_id}"%',)
+            "SELECT json FROM objects WHERE kind='Edge' AND json LIKE ?", (f'%"id": "{edge_id}"%',)
         ).fetchone()
         if row:
             edge = json.loads(row[0])
@@ -96,17 +95,14 @@ def run_smoke(
 
     if orphaned_edges:
         failures += 1
-        messages.append(
-            f"Orphaned edges found: {len(orphaned_edges)} edges reference non-existent nodes"
-        )
+        messages.append(f"Orphaned edges found: {len(orphaned_edges)} edges reference non-existent nodes")
 
     # Test 3: Evidence metadata well-formed
     tests += 1
     malformed_evidence = []
     for evidence_id in evidence_ids:
         row = store._conn.execute(
-            "SELECT json FROM objects WHERE kind='Evidence' AND json LIKE ?",
-            (f'%"id": "{evidence_id}"%',)
+            "SELECT json FROM objects WHERE kind='Evidence' AND json LIKE ?", (f'%"id": "{evidence_id}"%',)
         ).fetchone()
         if row:
             evidence = json.loads(row[0])
@@ -118,9 +114,7 @@ def run_smoke(
 
     if malformed_evidence:
         failures += 1
-        messages.append(
-            f"Malformed evidence: {len(malformed_evidence)} evidence objects have issues"
-        )
+        messages.append(f"Malformed evidence: {len(malformed_evidence)} evidence objects have issues")
 
     LOG.info(
         "Smoke tests for %s:%s: %d/%d passed",
@@ -137,7 +131,7 @@ def run_regression(
     store: "CASStore",
     domain_id: str,
     world_label: str,
-) -> Tuple[int, int, List[str]]:
+) -> tuple[int, int, list[str]]:
     """
     Regression tests for the code_mutation domain.
 
@@ -155,7 +149,7 @@ def run_regression(
     """
     tests = 0
     failures = 0
-    messages: List[str] = []
+    messages: list[str] = []
 
     try:
         world_data = store.get_world(domain_id, world_label)["json"]
@@ -168,8 +162,7 @@ def run_regression(
     mutation_evidence = []
     for evidence_id in evidence_ids:
         row = store._conn.execute(
-            "SELECT json FROM objects WHERE kind='Evidence' AND json LIKE ?",
-            (f'%"id": "{evidence_id}"%',)
+            "SELECT json FROM objects WHERE kind='Evidence' AND json LIKE ?", (f'%"id": "{evidence_id}"%',)
         ).fetchone()
         if row:
             evidence = json.loads(row[0])
@@ -198,10 +191,7 @@ def run_regression(
             curr_score = scores[i][1]
             if curr_score < prev_score - 0.1:
                 failures += 1
-                messages.append(
-                    f"Mutation score regression: {prev_score:.2f} -> {curr_score:.2f} "
-                    f"at {scores[i][0]}"
-                )
+                messages.append(f"Mutation score regression: {prev_score:.2f} -> {curr_score:.2f} at {scores[i][0]}")
                 break
 
     LOG.info(
@@ -219,7 +209,7 @@ def run_deep(
     store: "CASStore",
     domain_id: str,
     world_label: str,
-) -> Tuple[int, int, List[str]]:
+) -> tuple[int, int, list[str]]:
     """
     Deep validation tests for the code_mutation domain.
 
@@ -269,9 +259,7 @@ def run_deep(
 
     if invalid_entrenchment:
         total_failures += 1
-        all_messages.append(
-            f"Invalid entrenchment scores: {len(invalid_entrenchment)} nodes have out-of-range scores"
-        )
+        all_messages.append(f"Invalid entrenchment scores: {len(invalid_entrenchment)} nodes have out-of-range scores")
 
     LOG.info(
         "Deep tests for %s:%s: %d/%d passed",

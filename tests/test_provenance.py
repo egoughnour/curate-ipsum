@@ -1,7 +1,5 @@
 """Tests for theory.provenance module."""
 
-import pytest
-
 from theory.provenance import (
     ProvenanceDAG,
     RevisionEvent,
@@ -119,26 +117,32 @@ class TestProvenanceDAG:
 
     def test_why_believe(self):
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a1",
-            evidence_id="ev1",
-        ))
-        dag.add_event(_make_event(
-            event_type=RevisionType.REVISE,
-            assertion_id="a1",
-            evidence_id="ev2",
-            from_hash="h1",
-            to_hash="h2",
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a1",
+                evidence_id="ev1",
+            )
+        )
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.REVISE,
+                assertion_id="a1",
+                evidence_id="ev2",
+                from_hash="h1",
+                to_hash="h2",
+            )
+        )
         # Evidence event shouldn't be counted
-        dag.add_event(_make_event(
-            event_type=RevisionType.EVIDENCE,
-            assertion_id="a1",
-            evidence_id="ev3",
-            from_hash="h2",
-            to_hash="h3",
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EVIDENCE,
+                assertion_id="a1",
+                evidence_id="ev3",
+                from_hash="h2",
+                to_hash="h3",
+            )
+        )
 
         evidence = dag.why_believe("a1")
         assert "ev1" in evidence
@@ -151,17 +155,21 @@ class TestProvenanceDAG:
 
     def test_when_added(self):
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a1",
-            to_hash="h1",
-        ))
-        dag.add_event(_make_event(
-            event_type=RevisionType.CONTRACT,
-            assertion_id="a2",
-            to_hash="h2",
-            nodes_removed=["a1"],
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a1",
+                to_hash="h1",
+            )
+        )
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.CONTRACT,
+                assertion_id="a2",
+                to_hash="h2",
+                nodes_removed=["a1"],
+            )
+        )
 
         event = dag.when_added("a1")
         assert event is not None
@@ -169,12 +177,14 @@ class TestProvenanceDAG:
 
     def test_when_added_via_nodes_added(self):
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.REVISE,
-            assertion_id="a_main",
-            nodes_added=["a_side"],
-            to_hash="h1",
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.REVISE,
+                assertion_id="a_main",
+                nodes_added=["a_side"],
+                to_hash="h1",
+            )
+        )
 
         event = dag.when_added("a_side")
         assert event is not None
@@ -186,17 +196,21 @@ class TestProvenanceDAG:
 
     def test_when_removed(self):
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a1",
-            to_hash="h1",
-        ))
-        dag.add_event(_make_event(
-            event_type=RevisionType.CONTRACT,
-            assertion_id="a1",
-            to_hash="h2",
-            nodes_removed=["a1"],
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a1",
+                to_hash="h1",
+            )
+        )
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.CONTRACT,
+                assertion_id="a1",
+                to_hash="h2",
+                nodes_removed=["a1"],
+            )
+        )
 
         event = dag.when_removed("a1")
         assert event is not None
@@ -204,33 +218,41 @@ class TestProvenanceDAG:
 
     def test_when_removed_still_present(self):
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a1",
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a1",
+            )
+        )
         assert dag.when_removed("a1") is None
 
     def test_belief_stability_never_revised(self):
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a1",
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a1",
+            )
+        )
         assert dag.belief_stability("a1") == 1.0
 
     def test_belief_stability_once_removed(self):
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a1",
-            to_hash="h1",
-        ))
-        dag.add_event(_make_event(
-            event_type=RevisionType.CONTRACT,
-            assertion_id="a1",
-            to_hash="h2",
-            nodes_removed=["a1"],
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a1",
+                to_hash="h1",
+            )
+        )
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.CONTRACT,
+                assertion_id="a1",
+                to_hash="h2",
+                nodes_removed=["a1"],
+            )
+        )
         # 1 / (1 + 1) = 0.5
         assert dag.belief_stability("a1") == 0.5
 
@@ -259,13 +281,15 @@ class TestProvenanceDAG:
     def test_to_dict_from_dict_round_trip(self):
         dag = ProvenanceDAG()
         dag.add_event(_make_event(assertion_id="a1", from_hash="h0", to_hash="h1"))
-        dag.add_event(_make_event(
-            event_type=RevisionType.CONTRACT,
-            assertion_id="a2",
-            from_hash="h1",
-            to_hash="h2",
-            nodes_removed=["a1"],
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.CONTRACT,
+                assertion_id="a2",
+                from_hash="h1",
+                to_hash="h2",
+                nodes_removed=["a1"],
+            )
+        )
 
         data = dag.to_dict()
         restored = ProvenanceDAG.from_dict(data)
@@ -284,16 +308,20 @@ class TestProvenanceDAG:
     def test_index_by_assertion(self):
         """Verify internal indexing works for assertion lookups."""
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a1",
-            evidence_id="ev1",
-        ))
-        dag.add_event(_make_event(
-            event_type=RevisionType.EXPAND,
-            assertion_id="a2",
-            evidence_id="ev2",
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a1",
+                evidence_id="ev1",
+            )
+        )
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.EXPAND,
+                assertion_id="a2",
+                evidence_id="ev2",
+            )
+        )
 
         # why_believe uses the index
         assert dag.why_believe("a1") == ["ev1"]
@@ -302,12 +330,14 @@ class TestProvenanceDAG:
     def test_index_nodes_added(self):
         """Nodes in nodes_added should also be indexed."""
         dag = ProvenanceDAG()
-        dag.add_event(_make_event(
-            event_type=RevisionType.REVISE,
-            assertion_id="main",
-            nodes_added=["side_a", "side_b"],
-            evidence_id="ev1",
-        ))
+        dag.add_event(
+            _make_event(
+                event_type=RevisionType.REVISE,
+                assertion_id="main",
+                nodes_added=["side_a", "side_b"],
+                evidence_id="ev1",
+            )
+        )
 
         # side_a should be traceable
         assert dag.when_added("side_a") is not None

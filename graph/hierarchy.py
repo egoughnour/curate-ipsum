@@ -16,9 +16,8 @@ References:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, FrozenSet, List, Optional, Set
 
-from .models import CallGraph, EdgeKind, GraphEdge, GraphNode, NodeKind
+from .models import CallGraph, EdgeKind
 from .partitioner import GraphPartitioner, Partition
 from .spectral import _extract_subgraph
 
@@ -41,16 +40,16 @@ class HierarchyNode:
     operation: str
     """'condense' or 'partition' — which operation produced this level."""
 
-    node_ids: FrozenSet[str]
+    node_ids: frozenset[str]
     """Original graph node IDs in this subtree (all descendants included)."""
 
-    scc_members: Optional[List[FrozenSet[str]]] = None
+    scc_members: list[frozenset[str]] | None = None
     """If operation == 'condense': list of SCCs found at this level."""
 
-    partition_info: Optional[Partition] = None
+    partition_info: Partition | None = None
     """If operation == 'partition': the Partition tree from Fiedler splitting."""
 
-    children: List["HierarchyNode"] = field(default_factory=list)
+    children: list["HierarchyNode"] = field(default_factory=list)
     """Child hierarchy nodes."""
 
     @property
@@ -72,10 +71,10 @@ class HierarchyBuilder:
 
     def __init__(
         self,
-        partitioner: Optional[GraphPartitioner] = None,
+        partitioner: GraphPartitioner | None = None,
         min_scc_size: int = 2,
         max_levels: int = 10,
-        edge_kinds: Optional[Set[EdgeKind]] = None,
+        edge_kinds: set[EdgeKind] | None = None,
     ):
         """
         Args:
@@ -113,7 +112,7 @@ class HierarchyBuilder:
     def _decompose(
         self,
         graph: CallGraph,
-        node_ids: FrozenSet[str],
+        node_ids: frozenset[str],
         level: int,
         prefix: str,
     ) -> HierarchyNode:
@@ -136,7 +135,7 @@ class HierarchyBuilder:
     def _condense_step(
         self,
         graph: CallGraph,
-        node_ids: FrozenSet[str],
+        node_ids: frozenset[str],
         level: int,
         prefix: str,
     ) -> HierarchyNode:
@@ -174,7 +173,7 @@ class HierarchyBuilder:
         condensed = subgraph.condensation()
 
         # Create a mapping from SCC index to original node sets
-        scc_map: Dict[str, FrozenSet[str]] = {}
+        scc_map: dict[str, frozenset[str]] = {}
         for scc_node in condensed.nodes.values():
             members = scc_node.metadata.get("members", [])
             scc_map[scc_node.id] = frozenset(members)
@@ -190,9 +189,7 @@ class HierarchyBuilder:
         # Map partition results back to original nodes
         # Each leaf in the partition tree references SCC node IDs;
         # we need to expand those back to original node IDs
-        expanded = self._expand_partition_to_original(
-            partition_result, scc_map, graph, level + 2, prefix
-        )
+        expanded = self._expand_partition_to_original(partition_result, scc_map, graph, level + 2, prefix)
 
         node.children = expanded
         return node
@@ -200,7 +197,7 @@ class HierarchyBuilder:
     def _partition_step(
         self,
         graph: CallGraph,
-        node_ids: FrozenSet[str],
+        node_ids: frozenset[str],
         level: int,
         prefix: str,
     ) -> HierarchyNode:
@@ -234,9 +231,7 @@ class HierarchyBuilder:
                     node_ids=leaf.node_ids,
                 )
             else:
-                child = self._decompose(
-                    graph, leaf.node_ids, level + 1, f"{prefix}_{i}"
-                )
+                child = self._decompose(graph, leaf.node_ids, level + 1, f"{prefix}_{i}")
             node.children.append(child)
 
         return node
@@ -244,11 +239,11 @@ class HierarchyBuilder:
     def _expand_partition_to_original(
         self,
         partition_node: HierarchyNode,
-        scc_map: Dict[str, FrozenSet[str]],
+        scc_map: dict[str, frozenset[str]],
         original_graph: CallGraph,
         base_level: int,
         prefix: str,
-    ) -> List[HierarchyNode]:
+    ) -> list[HierarchyNode]:
         """
         Expand a hierarchy over condensed nodes back to original graph nodes.
 
@@ -256,11 +251,11 @@ class HierarchyBuilder:
         with their original member sets, then recurses for further decomposition.
         """
         leaves = self._collect_leaves(partition_node)
-        children: List[HierarchyNode] = []
+        children: list[HierarchyNode] = []
 
         for i, leaf in enumerate(leaves):
             # Expand SCC IDs to original node IDs
-            original_ids: Set[str] = set()
+            original_ids: set[str] = set()
             for scc_id in leaf.node_ids:
                 if scc_id in scc_map:
                     original_ids.update(scc_map[scc_id])
@@ -270,31 +265,31 @@ class HierarchyBuilder:
             frozen = frozenset(original_ids)
 
             if len(frozen) <= 1:
-                children.append(HierarchyNode(
-                    id=f"{prefix}_e{i}",
-                    level=base_level,
-                    operation="leaf",
-                    node_ids=frozen,
-                ))
+                children.append(
+                    HierarchyNode(
+                        id=f"{prefix}_e{i}",
+                        level=base_level,
+                        operation="leaf",
+                        node_ids=frozen,
+                    )
+                )
             else:
                 # Continue decomposition on the expanded node set
-                child = self._decompose(
-                    original_graph, frozen, base_level, f"{prefix}_e{i}"
-                )
+                child = self._decompose(original_graph, frozen, base_level, f"{prefix}_e{i}")
                 children.append(child)
 
         return children
 
-    def _collect_leaves(self, node: HierarchyNode) -> List[HierarchyNode]:
+    def _collect_leaves(self, node: HierarchyNode) -> list[HierarchyNode]:
         """Collect all leaf nodes from a hierarchy subtree."""
         if node.is_leaf:
             return [node]
-        result: List[HierarchyNode] = []
+        result: list[HierarchyNode] = []
         for child in node.children:
             result.extend(self._collect_leaves(child))
         return result
 
-    def flatten(self, root: HierarchyNode) -> List[FrozenSet[str]]:
+    def flatten(self, root: HierarchyNode) -> list[frozenset[str]]:
         """
         Get all leaf-level node groups from the hierarchy.
 
@@ -304,13 +299,13 @@ class HierarchyBuilder:
         leaves = self._collect_leaves(root)
         return [leaf.node_ids for leaf in leaves if leaf.node_ids]
 
-    def summary(self, root: HierarchyNode) -> Dict:
+    def summary(self, root: HierarchyNode) -> dict:
         """
         Produce a summary of the hierarchy for serialization/display.
 
         Returns a nested dict with operation types, sizes, and children.
         """
-        result: Dict = {
+        result: dict = {
             "id": root.id,
             "level": root.level,
             "operation": root.operation,
@@ -319,9 +314,7 @@ class HierarchyBuilder:
 
         if root.scc_members is not None:
             result["scc_count"] = len(root.scc_members)
-            result["non_trivial_sccs"] = sum(
-                1 for scc in root.scc_members if len(scc) >= 2
-            )
+            result["non_trivial_sccs"] = sum(1 for scc in root.scc_members if len(scc) >= 2)
 
         if root.partition_info is not None:
             result["fiedler_value"] = root.partition_info.fiedler_value

@@ -15,16 +15,14 @@ from __future__ import annotations
 import json
 import logging
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
 
 from models import FileMutationStats
 
 LOG = logging.getLogger("parsers.stryker")
 
-DEFAULT_STRYKER_REPORT = os.environ.get(
-    "MUTATION_TOOL_STRYKER_REPORT", "reports/mutation/mutation.json"
-)
+DEFAULT_STRYKER_REPORT = os.environ.get("MUTATION_TOOL_STRYKER_REPORT", "reports/mutation/mutation.json")
 
 
 def _compute_mutation_score(killed: int, survived: int, no_coverage: int) -> float:
@@ -40,7 +38,7 @@ def _compute_mutation_score(killed: int, survived: int, no_coverage: int) -> flo
     return killed / float(denominator)
 
 
-def _collect_mutants(data: Dict) -> Dict[str, List[Dict]]:
+def _collect_mutants(data: dict) -> dict[str, list[dict]]:
     """
     Extract mutants from Stryker report, handling different report formats.
 
@@ -48,7 +46,7 @@ def _collect_mutants(data: Dict) -> Dict[str, List[Dict]]:
     - files.{path}.mutants format (newer)
     - mutantResults array format (older)
     """
-    files: Dict[str, List[Dict]] = {}
+    files: dict[str, list[dict]] = {}
 
     if "files" in data and isinstance(data["files"], dict):
         # Newer format: files grouped by path
@@ -63,7 +61,7 @@ def _collect_mutants(data: Dict) -> Dict[str, List[Dict]]:
     return files
 
 
-def _count_mutants(mutants: Iterable[Dict]) -> Tuple[int, int, int]:
+def _count_mutants(mutants: Iterable[dict]) -> tuple[int, int, int]:
     """
     Count mutants by status.
 
@@ -86,8 +84,8 @@ def _count_mutants(mutants: Iterable[Dict]) -> Tuple[int, int, int]:
 
 def find_stryker_report(
     working_directory: str,
-    report_path: Optional[str] = None,
-) -> Optional[Path]:
+    report_path: str | None = None,
+) -> Path | None:
     """
     Locate the Stryker report file.
 
@@ -99,7 +97,7 @@ def find_stryker_report(
         Path to report file, or None if not found
     """
     cwd_path = Path(working_directory)
-    candidate_paths: List[Path] = []
+    candidate_paths: list[Path] = []
 
     # Explicit path takes priority
     if report_path:
@@ -112,16 +110,18 @@ def find_stryker_report(
     if DEFAULT_STRYKER_REPORT:
         candidate_paths.append(cwd_path / DEFAULT_STRYKER_REPORT)
 
-    candidate_paths.extend([
-        cwd_path / "reports" / "mutation" / "mutation.json",
-        cwd_path / "reports" / "stryker-report.json",
-        cwd_path / "stryker-report.json",
-    ])
+    candidate_paths.extend(
+        [
+            cwd_path / "reports" / "mutation" / "mutation.json",
+            cwd_path / "reports" / "stryker-report.json",
+            cwd_path / "stryker-report.json",
+        ]
+    )
 
     return next((p for p in candidate_paths if p.exists()), None)
 
 
-def parse_stryker_report(report_path: Path) -> Dict:
+def parse_stryker_report(report_path: Path) -> dict:
     """
     Parse a Stryker JSON report file.
 
@@ -148,9 +148,9 @@ def parse_stryker_report(report_path: Path) -> Dict:
 
 
 def parse_stryker_output(
-    report_path: Optional[str],
+    report_path: str | None,
     working_directory: str,
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Parse Stryker mutation testing output.
 
@@ -170,16 +170,13 @@ def parse_stryker_output(
     report_file = find_stryker_report(working_directory, report_path)
 
     if report_file is None:
-        raise FileNotFoundError(
-            f"Stryker report not found in expected locations. "
-            f"Searched in: {working_directory}"
-        )
+        raise FileNotFoundError(f"Stryker report not found in expected locations. Searched in: {working_directory}")
 
     LOG.debug("Parsing Stryker report: %s", report_file)
     data = parse_stryker_report(report_file)
 
     files = _collect_mutants(data)
-    by_file: List[FileMutationStats] = []
+    by_file: list[FileMutationStats] = []
     total_killed = total_survived = total_no_coverage = total_mutants = 0
 
     for file_path, mutants in sorted(files.items()):
@@ -213,9 +210,7 @@ def parse_stryker_output(
             reported_score /= 100.0
         mutation_score = reported_score
     else:
-        mutation_score = _compute_mutation_score(
-            total_killed, total_survived, total_no_coverage
-        )
+        mutation_score = _compute_mutation_score(total_killed, total_survived, total_no_coverage)
 
     LOG.info(
         "Stryker results: %d mutants, %d killed, %d survived, score=%.2f",

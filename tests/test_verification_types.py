@@ -1,6 +1,5 @@
 """Tests for verification.types — data models and serialization."""
 
-import pytest
 from verification.types import (
     Budget,
     Counterexample,
@@ -95,6 +94,7 @@ class TestVerificationRequest:
         assert '"binary_name": "bin.elf"' in json_str
 
         import json
+
         d = json.loads(json_str)
         req2 = VerificationRequest.from_dict(d)
         assert req2.target_binary == req.target_binary

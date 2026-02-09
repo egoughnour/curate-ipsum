@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from tools import (
     DATA_DIR,
@@ -38,7 +38,7 @@ def _require_server() -> "FastMCP":
     return FastMCP("mutation-tool-server")
 
 
-def _validate_required(name: str, value: Optional[str]) -> None:
+def _validate_required(name: str, value: str | None) -> None:
     if value is None or (isinstance(value, str) and not value.strip()):
         raise ValueError(f"Missing required field: {name}")
 
@@ -51,35 +51,33 @@ def build_server() -> "FastMCP":
     server = _require_server()
 
     # ── M6: Persistent storage singletons ─────────────────────────────────────
-    _graph_stores: Dict[str, Any] = {}   # project_path → GraphStore
-    _synthesis_store_cache: Dict[str, Any] = {}  # sentinel → SynthesisStore
+    _graph_stores: dict[str, Any] = {}  # project_path → GraphStore
+    _synthesis_store_cache: dict[str, Any] = {}  # sentinel → SynthesisStore
 
     def _get_graph_store(project_path: str) -> Any:
         """Get or create a GraphStore for the given project path."""
         if project_path not in _graph_stores:
             from storage.graph_store import build_graph_store
-            _graph_stores[project_path] = build_graph_store(
-                GRAPH_BACKEND, Path(project_path)
-            )
+
+            _graph_stores[project_path] = build_graph_store(GRAPH_BACKEND, Path(project_path))
         return _graph_stores[project_path]
 
     def _get_synthesis_store() -> Any:
         """Get or create the SynthesisStore singleton."""
         if "store" not in _synthesis_store_cache:
             from storage.synthesis_store import SynthesisStore
+
             store_dir = DATA_DIR / "synthesis"
             _synthesis_store_cache["store"] = SynthesisStore(store_dir)
         return _synthesis_store_cache["store"]
 
-    @server.tool(
-            description="Run unit tests for a project and return a summarized result."
-    )
+    @server.tool(description="Run unit tests for a project and return a summarized result.")
     async def run_unit_tests_tool(
         projectId: str,
         commitSha: str,
         command: str,
         workingDirectory: str,
-        regionId: Optional[str] = None,
+        regionId: str | None = None,
         framework: str = "generic",
     ) -> dict:
         _validate_required("projectId", projectId)
@@ -96,15 +94,13 @@ def build_server() -> "FastMCP":
         )
         return _json_payload(run)
 
-    @server.tool(
-            description="Run integration tests for a project and return a summarized result."
-    )
+    @server.tool(description="Run integration tests for a project and return a summarized result.")
     async def run_integration_tests_tool(
         projectId: str,
         commitSha: str,
         command: str,
         workingDirectory: str,
-        regionId: Optional[str] = None,
+        regionId: str | None = None,
         framework: str = "generic",
     ) -> dict:
         _validate_required("projectId", projectId)
@@ -133,9 +129,9 @@ def build_server() -> "FastMCP":
         commitSha: str,
         command: str,
         workingDirectory: str,
-        regionId: Optional[str] = None,
-        tool: Optional[str] = None,  # Now optional - auto-detected
-        reportPath: Optional[str] = None,
+        regionId: str | None = None,
+        tool: str | None = None,  # Now optional - auto-detected
+        reportPath: str | None = None,
     ) -> dict:
         _validate_required("projectId", projectId)
         _validate_required("commitSha", commitSha)
@@ -152,17 +148,13 @@ def build_server() -> "FastMCP":
         )
         return _json_payload(run)
 
-    @server.tool(
-            description="Return recent unit, integration, and mutation runs for a project and optional region."
-    )
-    def get_run_history_tool(projectId: str, regionId: Optional[str] = None, limit: Optional[int] = None) -> dict:
+    @server.tool(description="Return recent unit, integration, and mutation runs for a project and optional region.")
+    def get_run_history_tool(projectId: str, regionId: str | None = None, limit: int | None = None) -> dict:
         _validate_required("projectId", projectId)
         history = history_tool(projectId=projectId, regionId=regionId, limit=limit)
         return _json_payload(history)
 
-    @server.tool(
-            description="Compute PID-like metrics and mutation score for a specific region within a project."
-                 )
+    @server.tool(description="Compute PID-like metrics and mutation score for a specific region within a project.")
     def get_region_metrics_tool(projectId: str, commitSha: str, regionId: str) -> dict:
         _validate_required("projectId", projectId)
         _validate_required("commitSha", commitSha)
@@ -279,10 +271,10 @@ def build_server() -> "FastMCP":
     def create_region_tool(
         filePath: str,
         level: str = "file",
-        className: Optional[str] = None,
-        funcName: Optional[str] = None,
-        lineStart: Optional[int] = None,
-        lineEnd: Optional[int] = None,
+        className: str | None = None,
+        funcName: str | None = None,
+        lineStart: int | None = None,
+        lineEnd: int | None = None,
     ) -> dict:
         """Create a region identifier."""
         _validate_required("filePath", filePath)
@@ -302,10 +294,7 @@ def build_server() -> "FastMCP":
         elif level == "lines":
             if lineStart is None or lineEnd is None:
                 raise ValueError("lineStart and lineEnd required for lines-level region")
-            region = Region.for_lines(
-                filePath, lineStart, lineEnd,
-                func_name=funcName, class_name=className
-            )
+            region = Region.for_lines(filePath, lineStart, lineEnd, func_name=funcName, class_name=className)
         else:
             raise ValueError(f"Invalid level: {level}. Must be one of: file, class, function, lines")
 
@@ -321,6 +310,7 @@ def build_server() -> "FastMCP":
     def _get_theory_manager(project_id: str) -> "TheoryManager":
         """Get or create a TheoryManager for a project."""
         from theory import TheoryManager
+
         return TheoryManager(Path(DATA_DIR) / project_id)
 
     @server.tool(
@@ -336,7 +326,7 @@ def build_server() -> "FastMCP":
         content: str,
         evidenceId: str,
         confidence: float = 0.5,
-        regionId: Optional[str] = None,
+        regionId: str | None = None,
     ) -> dict:
         """Add a typed assertion to the theory."""
         _validate_required("projectId", projectId)
@@ -413,9 +403,7 @@ def build_server() -> "FastMCP":
             "node_id": nodeId,
             "entrenchment": score,
             "interpretation": (
-                "highly entrenched" if score > 0.7
-                else "moderately entrenched" if score > 0.4
-                else "weakly entrenched"
+                "highly entrenched" if score > 0.7 else "moderately entrenched" if score > 0.4 else "weakly entrenched"
             ),
         }
 
@@ -428,8 +416,8 @@ def build_server() -> "FastMCP":
     )
     def list_assertions_tool(
         projectId: str,
-        assertionType: Optional[str] = None,
-        regionId: Optional[str] = None,
+        assertionType: str | None = None,
+        regionId: str | None = None,
     ) -> dict:
         """List assertions with optional filtering."""
         _validate_required("projectId", projectId)
@@ -509,7 +497,7 @@ def build_server() -> "FastMCP":
             contraction_strategy=contractionStrategy,
         )
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "new_world_hash": new_hash,
             "contraction_performed": contraction is not None,
         }
@@ -545,8 +533,9 @@ def build_server() -> "FastMCP":
         _validate_required("evidenceId", evidenceId)
         _validate_required("citation", citation)
 
-        from brs import Evidence
         import datetime
+
+        from brs import Evidence
 
         evidence = Evidence(
             id=evidenceId,
@@ -597,7 +586,7 @@ def build_server() -> "FastMCP":
         evidence_ids = manager.why_believe(assertionId)
         event = manager.when_added(assertionId)
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "assertion_id": assertionId,
             "grounding_evidence_ids": evidence_ids,
             "evidence_count": len(evidence_ids),
@@ -631,9 +620,12 @@ def build_server() -> "FastMCP":
             "assertion_id": assertionId,
             "stability": score,
             "interpretation": (
-                "very stable" if score > 0.8
-                else "stable" if score > 0.5
-                else "unstable" if score > 0.2
+                "very stable"
+                if score > 0.8
+                else "stable"
+                if score > 0.5
+                else "unstable"
+                if score > 0.2
                 else "highly unstable"
             ),
         }
@@ -697,9 +689,9 @@ def build_server() -> "FastMCP":
     def analyze_failure_tool(
         projectId: str,
         errorMessage: str = "",
-        testPassRate: Optional[float] = None,
-        mutationScore: Optional[float] = None,
-        regionId: Optional[str] = None,
+        testPassRate: float | None = None,
+        mutationScore: float | None = None,
+        regionId: str | None = None,
     ) -> dict:
         """Analyze a synthesis failure."""
         _validate_required("projectId", projectId)
@@ -749,25 +741,24 @@ def build_server() -> "FastMCP":
         """Raise a clear error if graph optional dependencies are missing."""
         try:
             import scipy  # noqa: F401
-        except ImportError:
+        except ImportError as exc:
             raise ValueError(
-                "scipy is required for graph-spectral analysis. "
-                "Install with: pip install 'curate-ipsum[graph]'"
-            )
+                "scipy is required for graph-spectral analysis. Install with: pip install 'curate-ipsum[graph]'"
+            ) from exc
 
     def _require_networkx_extra() -> None:
         """Raise a clear error if networkx is not installed."""
         try:
             import networkx  # noqa: F401
-        except ImportError:
+        except ImportError as exc:
             raise ValueError(
                 "networkx is required for planarity/reachability analysis. "
                 "Install with: pip install 'curate-ipsum[graph]'"
-            )
+            ) from exc
 
     def _extract_graph(working_directory: str, backend: str = "auto") -> "CallGraph":
         """Extract a call graph from a project directory."""
-        from graph import get_extractor, CallGraph as CG
+        from graph import get_extractor
 
         directory = Path(working_directory)
         if not directory.is_dir():
@@ -796,7 +787,7 @@ def build_server() -> "FastMCP":
         non_trivial_sccs = [scc for scc in sccs if len(scc) >= 2]
 
         # Compute connected components (undirected) via union-find
-        parent: Dict[str, str] = {n: n for n in graph.nodes}
+        parent: dict[str, str] = {n: n for n in graph.nodes}
 
         def find(x: str) -> str:
             while parent[x] != x:
@@ -813,7 +804,7 @@ def build_server() -> "FastMCP":
             if edge.source_id in parent and edge.target_id in parent:
                 union(edge.source_id, edge.target_id)
 
-        components: Dict[str, List[str]] = {}
+        components: dict[str, list[str]] = {}
         for node_id in graph.nodes:
             root = find(node_id)
             components.setdefault(root, []).append(node_id)
@@ -833,9 +824,7 @@ def build_server() -> "FastMCP":
             "scc_count": len(sccs),
             "non_trivial_scc_count": len(non_trivial_sccs),
             "connected_component_count": len(components),
-            "component_sizes": sorted(
-                [len(c) for c in components.values()], reverse=True
-            ),
+            "component_sizes": sorted([len(c) for c in components.values()], reverse=True),
             "functions": [
                 {"id": n.id, "name": n.name, "kind": n.kind.value}
                 for n in sorted(graph.nodes.values(), key=lambda n: n.id)
@@ -900,7 +889,7 @@ def build_server() -> "FastMCP":
         return {
             "total_nodes": root.size,
             "leaf_partition_count": len(leaves),
-            "leaf_sizes": sorted([l.size for l in leaves], reverse=True),
+            "leaf_sizes": sorted([leaf.size for leaf in leaves], reverse=True),
             "partition_tree": _serialize_partition(root),
             "persisted": persisted,
         }
@@ -925,8 +914,7 @@ def build_server() -> "FastMCP":
         _require_graph_extras()
         _require_networkx_extra()
 
-        from graph import check_planarity, KamedaIndex
-        from graph.partitioner import augment_partition, GraphPartitioner
+        from graph import KamedaIndex, check_planarity
 
         graph = _extract_graph(workingDirectory)
 
@@ -934,7 +922,8 @@ def build_server() -> "FastMCP":
         if source_function not in graph.nodes:
             # Try fuzzy match: search by short name
             matches = [
-                nid for nid, n in graph.nodes.items()
+                nid
+                for nid, n in graph.nodes.items()
                 if n.name == source_function or nid.endswith(f".{source_function}")
             ]
             if len(matches) == 1:
@@ -953,7 +942,8 @@ def build_server() -> "FastMCP":
 
         if target_function not in graph.nodes:
             matches = [
-                nid for nid, n in graph.nodes.items()
+                nid
+                for nid, n in graph.nodes.items()
                 if n.name == target_function or nid.endswith(f".{target_function}")
             ]
             if len(matches) == 1:
@@ -972,11 +962,12 @@ def build_server() -> "FastMCP":
 
         # BFS-based path finding (always available, used as ground truth)
         bfs_reachable = target_function in graph.reachable_from(source_function)
-        bfs_path: Optional[List[str]] = None
+        bfs_path: list[str] | None = None
         if bfs_reachable:
             # Reconstruct path via BFS
             from collections import deque
-            visited: Dict[str, Optional[str]] = {source_function: None}
+
+            visited: dict[str, str | None] = {source_function: None}
             queue = deque([source_function])
             while queue:
                 current = queue.popleft()
@@ -987,7 +978,7 @@ def build_server() -> "FastMCP":
                         visited[callee] = current
                         queue.append(callee)
             if target_function in visited:
-                path: List[str] = []
+                path: list[str] = []
                 node = target_function
                 while node is not None:
                     path.append(node)
@@ -1009,7 +1000,7 @@ def build_server() -> "FastMCP":
 
             # Map original function IDs to their SCC IDs
             sccs = graph.strongly_connected_components()
-            node_to_scc: Dict[str, str] = {}
+            node_to_scc: dict[str, str] = {}
             for i, scc in enumerate(sccs):
                 for n in scc:
                     node_to_scc[n] = f"scc_{i}"
@@ -1019,9 +1010,9 @@ def build_server() -> "FastMCP":
 
             if src_scc and tgt_scc:
                 if src_scc == tgt_scc:
-                    kameda_reachable = True
+                    _kameda_reachable = True
                 else:
-                    kameda_reachable = kameda_index.reaches(src_scc, tgt_scc)
+                    _kameda_reachable = kameda_index.reaches(src_scc, tgt_scc)
                 method = "kameda"
         except (ValueError, ImportError):
             # Kameda build failed — fall back to BFS (already computed)
@@ -1058,8 +1049,7 @@ def build_server() -> "FastMCP":
 
         summary["leaf_group_count"] = len(leaf_groups)
         summary["leaf_groups"] = [
-            {"size": len(group), "members": sorted(group)}
-            for group in sorted(leaf_groups, key=len, reverse=True)
+            {"size": len(group), "members": sorted(group)} for group in sorted(leaf_groups, key=len, reverse=True)
         ]
 
         return summary
@@ -1088,8 +1078,7 @@ def build_server() -> "FastMCP":
         resolved = function_name
         if function_name not in graph.nodes:
             matches = [
-                nid for nid, n in graph.nodes.items()
-                if n.name == function_name or nid.endswith(f".{function_name}")
+                nid for nid, n in graph.nodes.items() if n.name == function_name or nid.endswith(f".{function_name}")
             ]
             if len(matches) == 1:
                 resolved = matches[0]
@@ -1138,8 +1127,8 @@ def build_server() -> "FastMCP":
     # ── M4: Synthesis Loop Tools ──────────────────────────────────────────────
 
     # In-memory store for active synthesis runs (run_id → engine)
-    _synthesis_engines: Dict[str, Any] = {}
-    _synthesis_results: Dict[str, Any] = {}
+    _synthesis_engines: dict[str, Any] = {}
+    _synthesis_results: dict[str, Any] = {}
 
     @server.tool(
         description=(
@@ -1153,7 +1142,7 @@ def build_server() -> "FastMCP":
         workingDirectory: str,
         testCommand: str,
         regionId: str = "",
-        targetMutantIds: Optional[List[str]] = None,
+        targetMutantIds: list[str] | None = None,
         mutationCommand: str = "",
         originalCode: str = "",
         contextCode: str = "",
@@ -1165,9 +1154,9 @@ def build_server() -> "FastMCP":
         _validate_required("workingDirectory", workingDirectory)
         _validate_required("testCommand", testCommand)
 
-        from synthesis.models import Specification, SynthesisConfig
         from synthesis.cegis import CEGISEngine
         from synthesis.llm_client import MockLLMClient
+        from synthesis.models import Specification, SynthesisConfig
 
         config = SynthesisConfig(
             llm_backend=llmBackend,
@@ -1179,12 +1168,14 @@ def build_server() -> "FastMCP":
         if llmBackend == "cloud":
             try:
                 from synthesis.cloud_llm import CloudLLMClient
+
                 llm_client = CloudLLMClient()
             except (ImportError, ValueError) as exc:
                 return {"error": f"Cloud LLM not available: {exc}"}
         elif llmBackend == "local":
             try:
                 from synthesis.local_llm import LocalLLMClient
+
                 llm_client = LocalLLMClient()
             except ImportError as exc:
                 return {"error": f"Local LLM not available: {exc}"}
@@ -1220,7 +1211,8 @@ def build_server() -> "FastMCP":
         rag_pipeline = None
         try:
             from rag.embedding_provider import LocalEmbeddingProvider
-            from rag.search import RAGPipeline, RAGConfig as _RAGCfg
+            from rag.search import RAGConfig as _RAGCfg
+            from rag.search import RAGPipeline
 
             _vs = _get_vector_store("code_nodes")
             _emb = LocalEmbeddingProvider()
@@ -1230,13 +1222,18 @@ def build_server() -> "FastMCP":
             except Exception:
                 pass
             rag_pipeline = RAGPipeline(
-                _vs, _emb, _gs, _RAGCfg(project_id=projectId),
+                _vs,
+                _emb,
+                _gs,
+                _RAGCfg(project_id=projectId),
             )
         except Exception as exc:
             LOG.debug("RAG pipeline not available: %s", exc)
 
         engine = CEGISEngine(
-            config, llm_client, theory_manager,
+            config,
+            llm_client,
+            theory_manager,
             verification_backend=verification_backend,
             rag_pipeline=rag_pipeline,
         )
@@ -1274,8 +1271,7 @@ def build_server() -> "FastMCP":
 
     @server.tool(
         description=(
-            "Cancel a running synthesis. Sets a cancellation flag that the CEGIS "
-            "engine checks between iterations."
+            "Cancel a running synthesis. Sets a cancellation flag that the CEGIS engine checks between iterations."
         )
     )
     def cancel_synthesis_tool(
@@ -1310,28 +1306,32 @@ def build_server() -> "FastMCP":
             stored_results = synth_store.load_all(projectId)
             for result in stored_results:
                 seen_ids.add(result.id)
-                runs.append({
-                    "id": result.id,
-                    "status": result.status.value,
-                    "iterations": result.iterations,
-                    "counterexamples_resolved": result.counterexamples_resolved,
-                    "duration_ms": result.duration_ms,
-                    "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
-                })
+                runs.append(
+                    {
+                        "id": result.id,
+                        "status": result.status.value,
+                        "iterations": result.iterations,
+                        "counterexamples_resolved": result.counterexamples_resolved,
+                        "duration_ms": result.duration_ms,
+                        "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
+                    }
+                )
         except Exception:
             pass
 
         # Second: add in-memory results not yet persisted
         for run_id, result in _synthesis_results.items():
             if run_id not in seen_ids:
-                runs.append({
-                    "id": run_id,
-                    "status": result.status.value,
-                    "iterations": result.iterations,
-                    "counterexamples_resolved": result.counterexamples_resolved,
-                    "duration_ms": result.duration_ms,
-                    "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
-                })
+                runs.append(
+                    {
+                        "id": run_id,
+                        "status": result.status.value,
+                        "iterations": result.iterations,
+                        "counterexamples_resolved": result.counterexamples_resolved,
+                        "duration_ms": result.duration_ms,
+                        "best_fitness": max(result.fitness_history) if result.fitness_history else 0.0,
+                    }
+                )
 
         return {"projectId": projectId, "total_runs": len(runs), "runs": runs}
 
@@ -1463,13 +1463,14 @@ def build_server() -> "FastMCP":
     # M5: Verification Backend Tools
     # =========================================================================
 
-    _verification_backends: Dict[str, Any] = {}
+    _verification_backends: dict[str, Any] = {}
 
     def _get_verification_backend(backend: str = "z3", **kwargs: Any) -> Any:
         """Get or create a VerificationBackend. Defaults to Z3 (the cheap tier)."""
         key = f"{backend}_default"
         if key not in _verification_backends:
             from verification.backend import build_verification_backend
+
             _verification_backends[key] = build_verification_backend(backend, **kwargs)
         return _verification_backends[key]
 
@@ -1484,16 +1485,16 @@ def build_server() -> "FastMCP":
         backend: str = "z3",
         targetBinary: str = "",
         entry: str = "",
-        constraints: Optional[List[str]] = None,
+        constraints: list[str] | None = None,
         findKind: str = "addr_reached",
         findValue: str = "",
-        avoidKind: Optional[str] = None,
-        avoidValue: Optional[str] = None,
+        avoidKind: str | None = None,
+        avoidValue: str | None = None,
         timeoutSeconds: int = 30,
         maxStates: int = 50000,
     ) -> dict:
         """Run verification with the specified backend."""
-        from verification.types import VerificationRequest, Budget
+        from verification.types import Budget, VerificationRequest
 
         request = VerificationRequest(
             target_binary=targetBinary,
@@ -1523,14 +1524,14 @@ def build_server() -> "FastMCP":
         backend: str = "z3",
         targetBinary: str = "",
         entry: str = "",
-        constraints: Optional[List[str]] = None,
+        constraints: list[str] | None = None,
         findKind: str = "addr_reached",
         findValue: str = "",
         maxIterations: int = 3,
     ) -> dict:
         """Run CEGAR orchestrator with budget escalation."""
-        from verification.types import VerificationRequest, Budget
         from verification.orchestrator import VerificationOrchestrator
+        from verification.types import Budget, VerificationRequest
 
         request = VerificationRequest(
             target_binary=targetBinary,
@@ -1573,13 +1574,14 @@ def build_server() -> "FastMCP":
     # M6-deferred: RAG / Semantic Search Tools
     # =========================================================================
 
-    _vector_stores: Dict[str, Any] = {}
+    _vector_stores: dict[str, Any] = {}
 
-    def _get_vector_store(collection: str = "code_nodes", persist_dir: Optional[str] = None) -> Any:
+    def _get_vector_store(collection: str = "code_nodes", persist_dir: str | None = None) -> Any:
         """Get or create a VectorStore."""
         if collection not in _vector_stores:
             from rag.vector_store import build_vector_store
-            kwargs: Dict[str, Any] = {"collection_name": collection}
+
+            kwargs: dict[str, Any] = {"collection_name": collection}
             if persist_dir:
                 kwargs["persist_directory"] = persist_dir
             _vector_stores[collection] = build_vector_store("chroma", **kwargs)
@@ -1593,9 +1595,9 @@ def build_server() -> "FastMCP":
     )
     def rag_index_nodes_tool(
         projectId: str,
-        nodes: List[Dict[str, Any]],
+        nodes: list[dict[str, Any]],
         collection: str = "code_nodes",
-        persistDirectory: Optional[str] = None,
+        persistDirectory: str | None = None,
     ) -> dict:
         """Index code nodes for RAG retrieval."""
         _validate_required("projectId", projectId)
@@ -1628,17 +1630,18 @@ def build_server() -> "FastMCP":
         collection: str = "code_nodes",
         topK: int = 10,
         useGraphExpansion: bool = False,
-        workingDirectory: Optional[str] = None,
+        workingDirectory: str | None = None,
     ) -> dict:
         """Search for relevant code via RAG pipeline."""
         _validate_required("query", query)
 
         from rag.embedding_provider import MockEmbeddingProvider
-        from rag.search import RAGPipeline, RAGConfig
+        from rag.search import RAGConfig, RAGPipeline
 
         store = _get_vector_store(collection)
         try:
             from rag.embedding_provider import LocalEmbeddingProvider
+
             embedder = LocalEmbeddingProvider()
         except ImportError:
             embedder = MockEmbeddingProvider()
@@ -1658,16 +1661,18 @@ def build_server() -> "FastMCP":
         return {
             "result_count": len(results),
             "results": [
-                {"node_id": r.node_id, "score": round(r.score, 4), "source": r.source,
-                 "text_preview": r.text[:200] if r.text else ""}
+                {
+                    "node_id": r.node_id,
+                    "score": round(r.score, 4),
+                    "source": r.source,
+                    "text_preview": r.text[:200] if r.text else "",
+                }
                 for r in results[:topK]
             ],
             "packed_context_length": len(packed),
         }
 
-    @server.tool(
-        description="Get statistics about the RAG vector store."
-    )
+    @server.tool(description="Get statistics about the RAG vector store.")
     def rag_stats_tool(collection: str = "code_nodes") -> dict:
         """Get RAG vector store statistics."""
         try:

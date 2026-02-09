@@ -157,8 +157,11 @@ class TestContradictionDetector:
 
     def _make(self, id, kind, content, region_id="file:test.py", confidence=0.5):
         return Assertion(
-            id=id, kind=kind, content=content,
-            confidence=confidence, region_id=region_id,
+            id=id,
+            kind=kind,
+            content=content,
+            confidence=confidence,
+            region_id=region_id,
         )
 
     def test_type_conflict_same_region(self):

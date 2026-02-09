@@ -47,7 +47,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from models import FileMutationStats
 
@@ -69,7 +68,7 @@ _IGNORED_STATUSES = {
 }
 
 
-def find_poodle_report(working_directory: str) -> Optional[Path]:
+def find_poodle_report(working_directory: str) -> Path | None:
     """
     Locate the poodle mutation testing report.
 
@@ -106,16 +105,11 @@ def find_poodle_report(working_directory: str) -> Optional[Path]:
         try:
             with json_file.open("r", encoding="utf-8") as f:
                 data = json.load(f)
-            if (
-                isinstance(data, dict)
-                and "files" in data
-                and "schemaVersion" in data
-            ):
+            if isinstance(data, dict) and "files" in data and "schemaVersion" in data:
                 # Check if it looks like a mutation-testing-report
                 files_val = data["files"]
                 if isinstance(files_val, dict) and any(
-                    isinstance(v, dict) and "mutants" in v
-                    for v in files_val.values()
+                    isinstance(v, dict) and "mutants" in v for v in files_val.values()
                 ):
                     LOG.debug("Found poodle-compatible report: %s", json_file)
                     return json_file
@@ -131,8 +125,8 @@ def _normalize_status(status: str) -> str:
 
 
 def _count_mutants_by_status(
-    mutants: List[Dict],
-) -> Tuple[int, int, int]:
+    mutants: list[dict],
+) -> tuple[int, int, int]:
     """
     Count mutants by status category.
 
@@ -157,7 +151,7 @@ def _count_mutants_by_status(
     return killed, survived, no_coverage
 
 
-def parse_poodle_report(report_path: Path) -> Dict:
+def parse_poodle_report(report_path: Path) -> dict:
     """
     Parse a poodle JSON report file.
 
@@ -182,17 +176,15 @@ def parse_poodle_report(report_path: Path) -> Dict:
         data = json.load(f)
 
     if not isinstance(data, dict):
-        raise ValueError(
-            f"Invalid poodle report format: expected dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"Invalid poodle report format: expected dict, got {type(data).__name__}")
 
     return data
 
 
 def parse_poodle_output(
     working_directory: str,
-    report_path: Optional[str] = None,
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    report_path: str | None = None,
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Parse poodle mutation testing output.
 
@@ -219,10 +211,7 @@ def parse_poodle_output(
         report_file = find_poodle_report(working_directory)
 
     if report_file is None or not report_file.exists():
-        raise FileNotFoundError(
-            f"Poodle report not found. Run 'poodle' first. "
-            f"Searched in: {working_directory}"
-        )
+        raise FileNotFoundError(f"Poodle report not found. Run 'poodle' first. Searched in: {working_directory}")
 
     LOG.debug("Parsing poodle report: %s", report_file)
     data = parse_poodle_report(report_file)
@@ -233,7 +222,7 @@ def parse_poodle_output(
         LOG.warning("No 'files' section in poodle report")
         return (0, 0, 0, 0, 0.0, [])
 
-    by_file: List[FileMutationStats] = []
+    by_file: list[FileMutationStats] = []
     total_killed = 0
     total_survived = 0
     total_no_coverage = 0

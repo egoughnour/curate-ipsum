@@ -7,8 +7,8 @@ Provides:
 - IncrementalEngine: File-change detection for incremental graph updates
 """
 
-from storage.synthesis_store import SynthesisStore
 from storage.graph_store import GraphStore, build_graph_store
+from storage.synthesis_store import SynthesisStore
 
 __all__ = [
     "SynthesisStore",

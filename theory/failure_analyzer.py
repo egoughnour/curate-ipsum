@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from theory.assertions import Assertion, AssertionKind
 
@@ -44,12 +44,12 @@ class FailureAnalysis:
 
     mode: FailureMode
     confidence: float  # 0.0 to 1.0
-    root_cause_assertion_id: Optional[str] = None
+    root_cause_assertion_id: str | None = None
     evidence_summary: str = ""
-    suggested_contraction_ids: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    suggested_contraction_ids: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict for MCP tool output."""
         return {
             "failure_mode": self.mode.value,
@@ -198,11 +198,11 @@ class FailureModeAnalyzer:
     def analyze(
         cls,
         error_message: str = "",
-        test_pass_rate: Optional[float] = None,
-        mutation_score: Optional[float] = None,
-        failing_tests: Optional[List[str]] = None,
-        assertions: Optional[List[Assertion]] = None,
-        region_id: Optional[str] = None,
+        test_pass_rate: float | None = None,
+        mutation_score: float | None = None,
+        failing_tests: list[str] | None = None,
+        assertions: list[Assertion] | None = None,
+        region_id: str | None = None,
     ) -> FailureAnalysis:
         """
         Full failure analysis combining all heuristics.
@@ -258,9 +258,7 @@ class FailureModeAnalyzer:
             )
 
         # Step 5: Suggest contraction targets
-        suggested_ids = cls._suggest_contractions(
-            mode, assertions or [], region_id
-        )
+        suggested_ids = cls._suggest_contractions(mode, assertions or [], region_id)
 
         return FailureAnalysis(
             mode=mode,
@@ -277,9 +275,9 @@ class FailureModeAnalyzer:
     @staticmethod
     def _suggest_contractions(
         mode: FailureMode,
-        assertions: List[Assertion],
-        region_id: Optional[str],
-    ) -> List[str]:
+        assertions: list[Assertion],
+        region_id: str | None,
+    ) -> list[str]:
         """
         Suggest which assertions should be contracted based on failure mode.
 
@@ -302,7 +300,7 @@ class FailureModeAnalyzer:
             return []
 
         # Map failure mode to target assertion kinds
-        target_kinds: Dict[FailureMode, List[AssertionKind]] = {
+        target_kinds: dict[FailureMode, list[AssertionKind]] = {
             FailureMode.TYPE_MISMATCH: [AssertionKind.TYPE],
             FailureMode.PRECONDITION_VIOLATION: [
                 AssertionKind.PRECONDITION,

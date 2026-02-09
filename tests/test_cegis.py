@@ -1,7 +1,9 @@
 """Tests for the CEGIS synthesis engine."""
 
 import asyncio
+
 import pytest
+
 from synthesis.cegis import CEGISEngine
 from synthesis.llm_client import MockLLMClient
 from synthesis.models import (
@@ -21,10 +23,12 @@ class TestCEGISBasic:
             population_size=5,
             top_k=5,
         )
-        client = MockLLMClient(responses=[
-            "def patched_func(x):\n    return x + 1\n",
-            "def patched_func(x):\n    return x * 2\n",
-        ])
+        client = MockLLMClient(
+            responses=[
+                "def patched_func(x):\n    return x + 1\n",
+                "def patched_func(x):\n    return x * 2\n",
+            ]
+        )
         engine = CEGISEngine(config, client)
         spec = Specification()
 
@@ -40,10 +44,12 @@ class TestCEGISBasic:
     async def test_all_invalid_candidates_fails(self):
         """If LLM returns only syntactically invalid candidates, synthesis should fail."""
         config = SynthesisConfig(max_iterations=5, population_size=3, top_k=3)
-        client = MockLLMClient(responses=[
-            "def foo( return",  # Invalid syntax
-            "class { broken",  # Invalid syntax
-        ])
+        client = MockLLMClient(
+            responses=[
+                "def foo( return",  # Invalid syntax
+                "class { broken",  # Invalid syntax
+            ]
+        )
         engine = CEGISEngine(config, client)
         spec = Specification()
 
@@ -61,10 +67,12 @@ class TestCEGISBasic:
             top_k=4,
         )
         # Provide candidates that won't satisfy spec easily
-        client = MockLLMClient(responses=[
-            "x = 1\n",
-            "y = 2\n",
-        ])
+        client = MockLLMClient(
+            responses=[
+                "x = 1\n",
+                "y = 2\n",
+            ]
+        )
         engine = CEGISEngine(config, client)
         spec = Specification(
             test_commands=["pytest nonexistent/"],  # Will fail
@@ -84,6 +92,7 @@ class TestCEGISBasic:
 
         class SlowMockClient(LLMClient):
             """LLM client that sleeps, giving time for cancellation."""
+
             async def generate_candidates(self, prompt, n=5, temperature=0.8):
                 await asyncio.sleep(0.2)  # Slow enough for cancel to fire
                 return [f"def f(x): return x + {i}\n" for i in range(n)]

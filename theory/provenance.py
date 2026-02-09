@@ -15,12 +15,11 @@ Design decisions:
 
 from __future__ import annotations
 
-import datetime
 import json
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from brs import CASStore
@@ -48,17 +47,17 @@ class RevisionEvent:
 
     event_type: RevisionType
     timestamp: str  # ISO 8601 UTC
-    assertion_id: Optional[str] = None  # Which assertion was affected
-    evidence_id: Optional[str] = None  # Which evidence triggered this
-    from_world_hash: Optional[str] = None  # World state before
-    to_world_hash: Optional[str] = None  # World state after
-    strategy: Optional[str] = None  # For contractions: entrenchment/minimal/full_cascade
-    reason: Optional[str] = None  # Human-readable explanation
-    nodes_removed: List[str] = field(default_factory=list)
-    nodes_added: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    assertion_id: str | None = None  # Which assertion was affected
+    evidence_id: str | None = None  # Which evidence triggered this
+    from_world_hash: str | None = None  # World state before
+    to_world_hash: str | None = None  # World state after
+    strategy: str | None = None  # For contractions: entrenchment/minimal/full_cascade
+    reason: str | None = None  # Human-readable explanation
+    nodes_removed: list[str] = field(default_factory=list)
+    nodes_added: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "event_type": self.event_type.value,
@@ -75,7 +74,7 @@ class RevisionEvent:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RevisionEvent":
+    def from_dict(cls, data: dict[str, Any]) -> "RevisionEvent":
         """Deserialize from dict."""
         return cls(
             event_type=RevisionType(data["event_type"]),
@@ -101,13 +100,13 @@ class ProvenanceDAG:
     """
 
     def __init__(self) -> None:
-        self._events: List[RevisionEvent] = []
+        self._events: list[RevisionEvent] = []
         # Indexes for fast lookups
-        self._by_assertion: Dict[str, List[int]] = {}  # assertion_id → event indices
-        self._by_world: Dict[str, int] = {}  # to_world_hash → event index
+        self._by_assertion: dict[str, list[int]] = {}  # assertion_id → event indices
+        self._by_world: dict[str, int] = {}  # to_world_hash → event index
 
     @property
-    def events(self) -> List[RevisionEvent]:
+    def events(self) -> list[RevisionEvent]:
         """All events in chronological order."""
         return list(self._events)
 
@@ -140,13 +139,11 @@ class ProvenanceDAG:
             event.to_world_hash and event.to_world_hash[:8],
         )
 
-    def get_history(self) -> List[RevisionEvent]:
+    def get_history(self) -> list[RevisionEvent]:
         """Get all events in chronological order."""
         return list(self._events)
 
-    def get_path(
-        self, from_hash: str, to_hash: str
-    ) -> List[RevisionEvent]:
+    def get_path(self, from_hash: str, to_hash: str) -> list[RevisionEvent]:
         """
         Get the chain of events between two world states.
 
@@ -177,7 +174,7 @@ class ProvenanceDAG:
 
         return []  # No path found
 
-    def why_believe(self, assertion_id: str) -> List[str]:
+    def why_believe(self, assertion_id: str) -> list[str]:
         """
         Trace which evidence grounds an assertion.
 
@@ -198,7 +195,7 @@ class ProvenanceDAG:
 
         return evidence_ids
 
-    def when_added(self, assertion_id: str) -> Optional[RevisionEvent]:
+    def when_added(self, assertion_id: str) -> RevisionEvent | None:
         """
         Find the first event that added this assertion.
 
@@ -213,15 +210,12 @@ class ProvenanceDAG:
         for idx in indices:
             event = self._events[idx]
             if event.event_type in (RevisionType.EXPAND, RevisionType.REVISE):
-                if (
-                    event.assertion_id == assertion_id
-                    or assertion_id in event.nodes_added
-                ):
+                if event.assertion_id == assertion_id or assertion_id in event.nodes_added:
                     return event
 
         return None
 
-    def when_removed(self, assertion_id: str) -> Optional[RevisionEvent]:
+    def when_removed(self, assertion_id: str) -> RevisionEvent | None:
         """
         Find the event that removed this assertion.
 
@@ -270,15 +264,14 @@ class ProvenanceDAG:
             ):
                 # Count removals and revisions
                 if assertion_id in event.nodes_removed or (
-                    event.event_type == RevisionType.REVISE
-                    and event.assertion_id == assertion_id
+                    event.event_type == RevisionType.REVISE and event.assertion_id == assertion_id
                 ):
                     revision_count += 1
 
         # stability = 1 / (1 + revisions)
         return 1.0 / (1.0 + revision_count)
 
-    def get_world_hashes(self) -> List[str]:
+    def get_world_hashes(self) -> list[str]:
         """Get all world hashes in chronological order."""
         hashes = []
         seen = set()
@@ -291,14 +284,14 @@ class ProvenanceDAG:
                 seen.add(event.to_world_hash)
         return hashes
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the entire DAG to a dict."""
         return {
             "events": [e.to_dict() for e in self._events],
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProvenanceDAG":
+    def from_dict(cls, data: dict[str, Any]) -> "ProvenanceDAG":
         """Deserialize from a dict."""
         dag = cls()
         for event_data in data.get("events", []):
@@ -329,7 +322,7 @@ class ProvenanceStore:
         Returns:
             Content hash of the stored DAG
         """
-        from brs import content_hash, canonical_json
+        from brs import canonical_json, content_hash
 
         dag_data = {
             "domain_id": domain_id,
@@ -395,7 +388,5 @@ class ProvenanceStore:
         dag_data = json.loads(dag_row[0])
         dag = ProvenanceDAG.from_dict(dag_data)
 
-        LOG.debug(
-            "Loaded provenance DAG for %s (%d events)", domain_id, len(dag.events)
-        )
+        LOG.debug("Loaded provenance DAG for %s (%d events)", domain_id, len(dag.events))
         return dag

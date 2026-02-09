@@ -15,7 +15,7 @@ from __future__ import annotations
 import datetime
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from theory.provenance import ProvenanceDAG, RevisionEvent, RevisionType
 
@@ -59,7 +59,7 @@ class RollbackManager:
         """
         self._manager = manager
         self._dag = dag
-        self._checkpoints: List[Checkpoint] = []
+        self._checkpoints: list[Checkpoint] = []
 
     def rollback_to(self, target_world_hash: str) -> None:
         """
@@ -89,12 +89,10 @@ class RollbackManager:
         ).fetchone()
 
         if not row:
-            raise RollbackError(
-                f"Target world {target_world_hash} not found in store"
-            )
+            raise RollbackError(f"Target world {target_world_hash} not found in store")
 
         # Get current world hash before rollback
-        current = self._manager.get_theory_snapshot()
+        _current = self._manager.get_theory_snapshot()
         from_hash = None
         try:
             world_row = self._manager.store._conn.execute(
@@ -109,8 +107,7 @@ class RollbackManager:
         # Update the world pointer
         now = datetime.datetime.utcnow().isoformat() + "Z"
         self._manager.store._conn.execute(
-            "INSERT OR REPLACE INTO worlds(domain_id, version_label, hash, created_utc) "
-            "VALUES(?,?,?,?)",
+            "INSERT OR REPLACE INTO worlds(domain_id, version_label, hash, created_utc) VALUES(?,?,?,?)",
             (
                 self._manager.domain,
                 self._manager.world_label,
@@ -137,7 +134,7 @@ class RollbackManager:
             target_world_hash[:12],
         )
 
-    def undo_last(self, n: int = 1) -> List[RevisionEvent]:
+    def undo_last(self, n: int = 1) -> list[RevisionEvent]:
         """
         Undo the last N revision operations.
 
@@ -155,18 +152,14 @@ class RollbackManager:
         """
         events = self._dag.get_history()
         if len(events) < n:
-            raise RollbackError(
-                f"Cannot undo {n} operations: only {len(events)} events in history"
-            )
+            raise RollbackError(f"Cannot undo {n} operations: only {len(events)} events in history")
 
         # Find the world state before the Nth-from-last event
         target_event = events[-(n)]
         target_hash = target_event.from_world_hash
 
         if target_hash is None:
-            raise RollbackError(
-                f"Event {target_event.event_type.value} has no from_world_hash"
-            )
+            raise RollbackError(f"Event {target_event.event_type.value} has no from_world_hash")
 
         undone_events = events[-n:]
         self.rollback_to(target_hash)
@@ -202,12 +195,10 @@ class RollbackManager:
         )
         self._checkpoints.append(checkpoint)
 
-        LOG.info(
-            "Created checkpoint '%s' at world %s", name, checkpoint.world_hash[:12]
-        )
+        LOG.info("Created checkpoint '%s' at world %s", name, checkpoint.world_hash[:12])
         return checkpoint
 
-    def list_checkpoints(self) -> List[Checkpoint]:
+    def list_checkpoints(self) -> list[Checkpoint]:
         """Get all named checkpoints."""
         return list(self._checkpoints)
 
@@ -221,16 +212,14 @@ class RollbackManager:
         Raises:
             RollbackError: If checkpoint not found
         """
-        checkpoint = next(
-            (c for c in self._checkpoints if c.name == name), None
-        )
+        checkpoint = next((c for c in self._checkpoints if c.name == name), None)
         if checkpoint is None:
             raise RollbackError(f"Checkpoint '{name}' not found")
 
         self.rollback_to(checkpoint.world_hash)
         LOG.info("Restored checkpoint '%s'", name)
 
-    def list_world_history(self) -> List[Tuple[str, str, str]]:
+    def list_world_history(self) -> list[tuple[str, str, str]]:
         """
         List all historical world states with timestamps.
 
