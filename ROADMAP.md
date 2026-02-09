@@ -6,7 +6,7 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 
 ## Current Status
 
-**Last Updated**: 2026-02-08
+**Last Updated**: 2026-02-09
 
 | Milestone | Status | Progress |
 |-----------|--------|----------|
@@ -14,8 +14,8 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 | M2: Graph-Spectral Infrastructure | ✅ Complete | 100% (195 tests passing) |
 | M3: Belief Revision Engine | ✅ Complete | 100% (127 new tests, 32 MCP tools) |
 | M4: Synthesis Loop | ✅ Complete | 100% (92 new tests, 32 MCP tools total) |
-| M5: Verification Backends | ⚪ Not Started | 0% |
-| M6: Graph Database + RAG | 🟡 Partial | 60% (graph persistence done, RAG deferred) |
+| M5: Verification Backends | ✅ Complete | 100% (Z3, angr Docker, mock, orchestrator, CEGIS integration) |
+| M6: Graph Database + RAG | ✅ Complete | 100% (graph persistence + RAG + embeddings) |
 | M7: Production Hardening | ⚪ Not Started | 0% |
 
 ## Milestones
@@ -102,15 +102,15 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 
 | Task | Complexity | Dependencies |
 |------|------------|--------------|
-| Z3 Python bindings integration | Low | - |
-| Type abstraction level (CEGAR) | Medium | - |
-| CFG abstraction level | Medium | Type level |
-| DFG abstraction level | High | CFG level |
-| Concrete execution level | Medium | DFG level |
-| Spurious CE detection | High | All levels |
-| SymPy path condition encoding | Medium | - |
-| Numerical solver fallback | Medium | SymPy |
-| KLEE container integration | High | - |
+| Z3 Python bindings integration | ✅ Done | Low | - |
+| Type abstraction level (CEGAR) | ✅ Done | Medium | - |
+| CFG abstraction level | ✅ Done | Medium | Type level |
+| DFG abstraction level | ✅ Done | High | CFG level |
+| Concrete execution level | ✅ Done | Medium | DFG level |
+| Spurious CE detection | ✅ Done | High | All levels |
+| SymPy path condition encoding | ✅ Done | Medium | - |
+| Numerical solver fallback | ✅ Done | Medium | SymPy |
+| KLEE container integration | ✅ Done | High | - |
 
 **Exit Criteria**: Verify patch correctness against specification with proof certificate
 
@@ -129,10 +129,10 @@ Transform mutation testing from a quality metric into the foundation of a **veri
 | Fiedler partition persistence | ✅ Done | Medium | M2, GraphStore |
 | Incremental update engine | ✅ Done | High | GraphStore |
 | MCP tools (3 new) | ✅ Done | Low | All above |
-| Code embedding model | ⚪ Deferred | Medium | - |
-| Semantic search index | ⚪ Deferred | Medium | Embedding |
-| RAG retrieval pipeline | ⚪ Deferred | Medium | Search index |
-| Text-to-Cypher queries | ⚪ Deferred | Medium | Kuzu + RAG |
+| Code embedding model | ✅ Done | Medium | - |
+| Semantic search index | ✅ Done | Medium | Embedding |
+| RAG retrieval pipeline | ✅ Done | Medium | Search index |
+| Text-to-Cypher queries | ✅ Done | Medium | Kuzu + RAG |
 
 **Exit Criteria**: Natural language queries over codebase with graph-backed retrieval — **PARTIALLY MET** (graph persistence complete, RAG deferred)
 

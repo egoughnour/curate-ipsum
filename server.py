@@ -1429,6 +1429,223 @@ def build_server() -> "FastMCP":
                 "supported_types": ["neighbors", "reachability", "node"],
             }
 
+    # =========================================================================
+    # M5: Verification Backend Tools
+    # =========================================================================
+
+    _verification_backends: Dict[str, Any] = {}
+
+    def _get_verification_backend(backend: str = "mock", **kwargs: Any) -> Any:
+        """Get or create a VerificationBackend."""
+        key = f"{backend}_default"
+        if key not in _verification_backends:
+            from verification.backend import build_verification_backend
+            _verification_backends[key] = build_verification_backend(backend, **kwargs)
+        return _verification_backends[key]
+
+    @server.tool(
+        description=(
+            "Run formal verification on a binary or constraint set. "
+            "Supports Z3 (constraint solving), angr (Docker symbolic execution), "
+            "and mock backends. Returns verification status and any counterexample found."
+        )
+    )
+    async def verify_property_tool(
+        backend: str = "mock",
+        targetBinary: str = "",
+        entry: str = "",
+        constraints: Optional[List[str]] = None,
+        findKind: str = "addr_reached",
+        findValue: str = "",
+        avoidKind: Optional[str] = None,
+        avoidValue: Optional[str] = None,
+        timeoutSeconds: int = 30,
+        maxStates: int = 50000,
+    ) -> dict:
+        """Run verification with the specified backend."""
+        from verification.types import VerificationRequest, Budget
+
+        request = VerificationRequest(
+            target_binary=targetBinary,
+            entry=entry,
+            symbols=[],
+            constraints=constraints or [],
+            find_kind=findKind,
+            find_value=findValue,
+            avoid_kind=avoidKind,
+            avoid_value=avoidValue,
+            budget=Budget(timeout_s=timeoutSeconds, max_states=maxStates),
+            metadata={},
+        )
+
+        vbackend = _get_verification_backend(backend)
+        result = await vbackend.verify(request)
+        return result.to_dict()
+
+    @server.tool(
+        description=(
+            "Run the CEGAR verification orchestrator with budget escalation. "
+            "Chains verification attempts with progressively larger budgets "
+            "(10s → 30s → 120s). Returns aggregated result with iteration history."
+        )
+    )
+    async def verify_with_orchestrator_tool(
+        backend: str = "mock",
+        targetBinary: str = "",
+        entry: str = "",
+        constraints: Optional[List[str]] = None,
+        findKind: str = "addr_reached",
+        findValue: str = "",
+        maxIterations: int = 3,
+    ) -> dict:
+        """Run CEGAR orchestrator with budget escalation."""
+        from verification.types import VerificationRequest, Budget
+        from verification.orchestrator import VerificationOrchestrator
+
+        request = VerificationRequest(
+            target_binary=targetBinary,
+            entry=entry,
+            symbols=[],
+            constraints=constraints or [],
+            find_kind=findKind,
+            find_value=findValue,
+            budget=Budget(),
+            metadata={},
+        )
+
+        vbackend = _get_verification_backend(backend)
+        orchestrator = VerificationOrchestrator(
+            backend=vbackend,
+            max_iterations=maxIterations,
+        )
+        result = await orchestrator.run(request)
+        return result.to_dict()
+
+    @server.tool(
+        description=(
+            "List available verification backends and their capabilities. "
+            "Shows which find/avoid predicates and constraint types each backend supports."
+        )
+    )
+    def list_verification_backends_tool() -> dict:
+        """List available verification backends."""
+        backends_info = []
+        for name in ["z3", "angr", "mock"]:
+            try:
+                b = _get_verification_backend(name)
+                info = {"name": name, "available": True, "supports": b.supports()}
+            except Exception as exc:
+                info = {"name": name, "available": False, "error": str(exc)}
+            backends_info.append(info)
+        return {"backends": backends_info}
+
+    # =========================================================================
+    # M6-deferred: RAG / Semantic Search Tools
+    # =========================================================================
+
+    _vector_stores: Dict[str, Any] = {}
+
+    def _get_vector_store(collection: str = "code_nodes", persist_dir: Optional[str] = None) -> Any:
+        """Get or create a VectorStore."""
+        if collection not in _vector_stores:
+            from rag.vector_store import build_vector_store
+            kwargs: Dict[str, Any] = {"collection_name": collection}
+            if persist_dir:
+                kwargs["persist_directory"] = persist_dir
+            _vector_stores[collection] = build_vector_store("chroma", **kwargs)
+        return _vector_stores[collection]
+
+    @server.tool(
+        description=(
+            "Index code nodes into the RAG vector store for semantic search. "
+            "Each node should have an ID, text content, and optional metadata."
+        )
+    )
+    def rag_index_nodes_tool(
+        projectId: str,
+        nodes: List[Dict[str, Any]],
+        collection: str = "code_nodes",
+        persistDirectory: Optional[str] = None,
+    ) -> dict:
+        """Index code nodes for RAG retrieval."""
+        _validate_required("projectId", projectId)
+
+        from rag.vector_store import VectorDocument
+
+        store = _get_vector_store(collection, persistDirectory)
+        docs = []
+        for node in nodes:
+            doc = VectorDocument(
+                id=node.get("id", ""),
+                text=node.get("text", ""),
+                metadata={k: v for k, v in node.get("metadata", {}).items() if v is not None}
+                or {"project_id": projectId},
+            )
+            docs.append(doc)
+
+        store.add(docs)
+        return {"indexed_count": len(docs), "collection": collection, "total_in_store": store.count()}
+
+    @server.tool(
+        description=(
+            "Search the RAG vector store for code relevant to a query. "
+            "Optionally expands results using the project's call graph."
+        )
+    )
+    def rag_search_tool(
+        query: str,
+        projectId: str = "default",
+        collection: str = "code_nodes",
+        topK: int = 10,
+        useGraphExpansion: bool = False,
+        workingDirectory: Optional[str] = None,
+    ) -> dict:
+        """Search for relevant code via RAG pipeline."""
+        _validate_required("query", query)
+
+        from rag.embedding_provider import MockEmbeddingProvider
+        from rag.search import RAGPipeline, RAGConfig
+
+        store = _get_vector_store(collection)
+        try:
+            from rag.embedding_provider import LocalEmbeddingProvider
+            embedder = LocalEmbeddingProvider()
+        except ImportError:
+            embedder = MockEmbeddingProvider()
+
+        graph_store = None
+        if useGraphExpansion and workingDirectory:
+            try:
+                graph_store = _get_graph_store(workingDirectory)
+            except Exception:
+                pass
+
+        config = RAGConfig(vector_top_k=topK, project_id=projectId)
+        pipeline = RAGPipeline(store, embedder, graph_store, config)
+        results = pipeline.search(query)
+        packed = pipeline.pack_context(results)
+
+        return {
+            "result_count": len(results),
+            "results": [
+                {"node_id": r.node_id, "score": round(r.score, 4), "source": r.source,
+                 "text_preview": r.text[:200] if r.text else ""}
+                for r in results[:topK]
+            ],
+            "packed_context_length": len(packed),
+        }
+
+    @server.tool(
+        description="Get statistics about the RAG vector store."
+    )
+    def rag_stats_tool(collection: str = "code_nodes") -> dict:
+        """Get RAG vector store statistics."""
+        try:
+            store = _get_vector_store(collection)
+            return {"collection": collection, "document_count": store.count(), "status": "available"}
+        except Exception as exc:
+            return {"collection": collection, "document_count": 0, "status": f"unavailable: {exc}"}
+
     return server
 
 

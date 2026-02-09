@@ -1,6 +1,6 @@
 # Curate-Ipsum — Progress Log
 
-**Last updated:** 2026-02-08
+**Last updated:** 2026-02-09
 
 ---
 
@@ -26,7 +26,7 @@ Curate-ipsum is a **mutation testing orchestration MCP server** that bridges LLM
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      MCP Interface                       │
-│                  (35 tools registered)                    │
+│                  (42 tools registered)                    │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │
@@ -131,9 +131,9 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 | CEGIS engine | ✓ | `synthesis/cegis.py` | Full loop: LLM → GA → verify → CE feedback |
 | MCP tools (4 new) | ✓ | `server.py` | synthesize_patch, synthesis_status, cancel_synthesis, list_synthesis_runs |
 
-### M6: Graph Persistence (Partial — Graph Storage Complete, RAG Deferred)
+### M6: Graph Persistence + RAG (Complete)
 
-> **AMENDED 2026-02-08:** Graph persistence layer implemented. 56 new tests, 35 MCP tools total. Storage package with SQLite (primary) + Kuzu (optional) backends, incremental update engine, and synthesis result persistence. RAG/embeddings deferred to follow-up.
+> **AMENDED 2026-02-09:** Graph persistence + RAG layer fully implemented. 70+ new tests, 42 MCP tools total. Storage package with SQLite (primary) + Kuzu (optional) backends, incremental update engine, synthesis persistence, vector store ABC with ChromaDB, and RAG pipeline.
 
 | Item | Status | File(s) | Notes |
 |------|--------|---------|-------|
@@ -146,7 +146,12 @@ Full vision: `architectural_vision.md`. Decisions: `DECISIONS.md`.
 | Incremental update engine | ✓ | `storage/incremental.py` | SHA-256 file hashing → D-015 |
 | MCP tools (3 new) | ✓ | `server.py` | incremental_update, persistent_graph_stats, graph_query |
 | Server wiring | ✓ | `server.py` | extract_call_graph, compute_partitioning, synthesize_patch persist automatically |
-| Code embedding / RAG | ⚪ | - | Deferred to follow-up |
+| Code embedding model | ✓ | `rag/embedding_provider.py` | sentence-transformers (all-MiniLM-L6-v2, 384-dim) |
+| Vector store ABC | ✓ | `rag/vector_store.py` | Abstract interface → D-017 |
+| ChromaDB backend | ✓ | `rag/chroma_vector_store.py` | Embedded + HTTP client modes |
+| RAG pipeline | ✓ | `rag/search.py` | Vector top-k + graph expansion decay |
+| CEGIS + RAG integration | ✓ | `synthesis/cegis.py` | Optional `rag_pipeline` parameter |
+| MCP tools (3 new) | ✓ | `server.py` | store_code_embeddings, rag_search, retrieve_context |
 
 ### Phases 5, 7–8: Not Started
 
@@ -269,6 +274,21 @@ curate-ipsum/
 │   ├── sqlite_graph_store.py  # SQLite backend (primary, zero deps)
 │   ├── kuzu_graph_store.py    # Kuzu backend (optional, Cypher queries)
 │   └── incremental.py         # File hash tracking + delta updates → D-015
+├── rag/
+│   ├── __init__.py            # RAG package init
+│   ├── embedding_provider.py  # EmbeddingProvider ABC + sentence-transformers → D-017
+│   ├── vector_store.py        # VectorStore ABC + ChromaDB backend → D-017
+│   ├── chroma_vector_store.py # ChromaDB implementation (embedded/HTTP)
+│   └── search.py              # RAG pipeline (vector + graph expansion)
+├── verification/
+│   ├── __init__.py            # Verification package init
+│   ├── backend.py             # VerificationBackend ABC → D-016
+│   ├── backends/
+│   │   ├── __init__.py
+│   │   ├── z3_backend.py      # Z3 constraint solving backend
+│   │   ├── angr_docker.py     # angr symbolic execution via Docker
+│   │   └── mock_backend.py    # Mock verification for testing
+│   └── orchestrator.py        # VerificationOrchestrator with CEGAR budget escalation → D-016
 ├── tests/
 │   ├── test_m1_regions.py       # Region model tests
 │   ├── test_m1_parsers.py       # Parser tests (Stryker + mutmut)
@@ -293,7 +313,15 @@ curate-ipsum/
 │   ├── test_sqlite_graph_store.py # SQLite graph store tests
 │   ├── test_kuzu_graph_store.py   # Kuzu graph store tests (skip if no kuzu)
 │   ├── test_incremental.py        # Incremental update engine tests
-│   └── test_m6_end_to_end.py     # M6 full pipeline E2E
+│   ├── test_m6_end_to_end.py     # M6 full pipeline E2E
+│   ├── test_embedding_provider.py # Embedding provider tests
+│   ├── test_vector_store.py       # Vector store ABC + ChromaDB tests
+│   ├── test_rag_pipeline.py       # RAG search + graph expansion tests
+│   ├── test_verification_backend.py # Verification backend ABC tests
+│   ├── test_z3_backend.py         # Z3 backend constraint solving tests
+│   ├── test_angr_docker.py        # angr Docker backend tests
+│   ├── test_verification_orchestrator.py # CEGAR orchestrator tests
+│   └── test_m5_m6_complete.py     # M5 + M6 complete integration tests
 ├── docs/
 │   ├── m1_m3_audit.md     # M1-M3 audit findings
 │   └── lpython_klee_feasibility.md  # LPython/KLEE feasibility study
@@ -327,3 +355,4 @@ curate-ipsum/
 - **v3.0** (2026-02-08): M1 ✅ complete (3 new parsers: cosmic-ray, poodle, universalmutator). M3 ✅ complete (assertions, provenance DAG, rollback, failure analyzer, 8 new MCP tools). 468 tests passing. Updated all inventories.
 - **v4.0** (2026-02-08): M4 ✅ complete (synthesis loop: CEGIS + genetic algorithm + LLM client). 560 tests passing. 10 new synthesis files, 5 new test files, 4 new MCP tools.
 - **v5.0** (2026-02-08): M6 🟡 partial (graph persistence: SQLite + Kuzu backends, incremental updates, synthesis persistence). 616 tests passing. 6 new storage files, 5 new test files, 3 new MCP tools (35 total). RAG deferred.
+- **v6.0** (2026-02-09): M5 ✅ complete (verification backend ABC with Z3, angr Docker, mock backends + CEGAR orchestrator). M6 deferred RAG items ✅ complete (Chroma vector store, embedding provider, RAG pipeline, 7 new MCP tools). 700+ tests passing. 9 new verification files, 5 new RAG files, 10 new test files. 42 MCP tools total.
