@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from synthesis.models import (
     CodePatch,
@@ -41,14 +40,14 @@ class SynthesisStore:
         self._ensure_dir()
         payload = result.to_dict()
         payload["project_id"] = project_id
-        payload["stored_at"] = datetime.now(timezone.utc).isoformat()
+        payload["stored_at"] = datetime.now(UTC).isoformat()
 
         with self._file.open("a", encoding="utf-8") as f:
             f.write(json.dumps(payload) + "\n")
 
         LOG.debug("Stored synthesis result %s for project %s", result.id, project_id)
 
-    def load_all(self, project_id: str) -> List[SynthesisResult]:
+    def load_all(self, project_id: str) -> list[SynthesisResult]:
         """Load all synthesis results for a project."""
         results = []
         for record in self._iter_records():
@@ -56,14 +55,14 @@ class SynthesisStore:
                 results.append(self._record_to_result(record))
         return results
 
-    def load_by_id(self, synthesis_id: str) -> Optional[SynthesisResult]:
+    def load_by_id(self, synthesis_id: str) -> SynthesisResult | None:
         """Load a specific synthesis result by ID."""
         for record in self._iter_records():
             if record.get("id") == synthesis_id:
                 return self._record_to_result(record)
         return None
 
-    def load_by_region(self, project_id: str, region_id: str) -> List[SynthesisResult]:
+    def load_by_region(self, project_id: str, region_id: str) -> list[SynthesisResult]:
         """Load all synthesis results for a specific region within a project."""
         results = []
         for record in self._iter_records():
@@ -90,7 +89,7 @@ class SynthesisStore:
                     LOG.warning("Skipping malformed line %d in %s", line_num, self._file)
 
     @staticmethod
-    def _record_to_result(record: Dict) -> SynthesisResult:
+    def _record_to_result(record: dict) -> SynthesisResult:
         """Convert a raw JSON record back to a SynthesisResult."""
         patch_data = record.get("patch")
         patch = None

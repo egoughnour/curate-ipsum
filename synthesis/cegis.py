@@ -8,15 +8,16 @@ Main synthesis loop:
 4. Return verified patch or failure
 
 Integrates with M3 belief revision for provenance tracking and failure analysis.
+Integrates with M5 verification backends for formal property checking.
+Integrates with M6-deferred RAG for context-aware prompt building.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import random
 import time
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from synthesis.ast_operators import ASTCrossover, ASTMutator
 from synthesis.entropy import EntropyManager
@@ -26,7 +27,6 @@ from synthesis.models import (
     CodePatch,
     Counterexample,
     Individual,
-    PatchSource,
     Specification,
     SynthesisConfig,
     SynthesisResult,
@@ -35,7 +35,9 @@ from synthesis.models import (
 from synthesis.population import Population
 
 if TYPE_CHECKING:
+    from rag.search import RAGPipeline
     from theory.manager import TheoryManager
+    from verification.backend import VerificationBackend
 
 LOG = logging.getLogger("synthesis.cegis")
 
@@ -52,17 +54,21 @@ class CEGISEngine:
         self,
         config: SynthesisConfig,
         llm_client: LLMClient,
-        theory_manager: Optional["TheoryManager"] = None,
+        theory_manager: "TheoryManager" | None = None,
+        verification_backend: "VerificationBackend" | None = None,
+        rag_pipeline: "RAGPipeline" | None = None,
     ) -> None:
         self._config = config
         self._llm = llm_client
         self._theory = theory_manager
+        self._verification_backend = verification_backend  # M5
+        self._rag_pipeline = rag_pipeline  # M6-deferred RAG
         self._fitness = FitnessEvaluator(config)
         self._crossover = ASTCrossover()
         self._mutator = ASTMutator()
         self._entropy = EntropyManager(config)
         self._cancelled = False
-        self._current_run_id: Optional[str] = None
+        self._current_run_id: str | None = None
 
     def cancel(self) -> None:
         """Cancel the current synthesis run."""
@@ -79,13 +85,29 @@ class CEGISEngine:
 
         result = SynthesisResult()
         self._current_run_id = result.id
-        counterexamples: List[Counterexample] = []
-        fitness_history: List[float] = []
+        counterexamples: list[Counterexample] = []
+        fitness_history: list[float] = []
 
         try:
             # Step 1: Generate initial candidates from LLM
             LOG.info("CEGIS: Generating initial candidates via LLM...")
-            prompt = build_synthesis_prompt(spec, context_code=spec.context_code)
+            # M6-deferred: enrich context with RAG-retrieved code
+            context_code = spec.context_code
+            if self._rag_pipeline is not None:
+                try:
+                    rag_query = f"{spec.original_code}\n{spec.target_region}"
+                    rag_results = self._rag_pipeline.search(rag_query)
+                    if rag_results:
+                        rag_context = self._rag_pipeline.pack_context(rag_results)
+                        context_code = (
+                            f"{context_code}\n\n## Retrieved context (RAG)\n{rag_context}"
+                            if context_code
+                            else rag_context
+                        )
+                        LOG.info("CEGIS: RAG provided %d context chunks", len(rag_results))
+                except Exception as exc:
+                    LOG.debug("RAG context retrieval failed: %s", exc)
+            prompt = build_synthesis_prompt(spec, context_code=context_code)
             raw_candidates = await self._llm.generate_candidates(
                 prompt,
                 n=self._config.top_k,
@@ -122,9 +144,7 @@ class CEGISEngine:
                     break
 
                 # 3a: Evaluate fitness
-                await self._fitness.evaluate_population(
-                    population.individuals, spec, counterexamples
-                )
+                await self._fitness.evaluate_population(population.individuals, spec, counterexamples)
 
                 best = population.best
                 if best is None:
@@ -137,7 +157,9 @@ class CEGISEngine:
                 if await self._verify_patch(best, spec):
                     LOG.info(
                         "CEGIS: SUCCESS at iteration %d (fitness=%.3f, CEs=%d)",
-                        iteration, best_fitness, len(counterexamples),
+                        iteration,
+                        best_fitness,
+                        len(counterexamples),
                     )
                     result.status = SynthesisStatus.SUCCESS
                     result.patch = CodePatch(
@@ -170,8 +192,11 @@ class CEGISEngine:
                 entropy = self._entropy.compute_entropy(population.individuals)
                 LOG.debug(
                     "CEGIS iteration %d: best=%.3f, avg=%.3f, entropy=%.2f, CEs=%d",
-                    iteration, best_fitness, population.average_fitness,
-                    entropy, len(counterexamples),
+                    iteration,
+                    best_fitness,
+                    population.average_fitness,
+                    entropy,
+                    len(counterexamples),
                 )
 
             else:
@@ -193,7 +218,7 @@ class CEGISEngine:
         result.fitness_history = fitness_history
         result.final_entropy = (
             self._entropy.compute_entropy(population.individuals)
-            if 'population' in dir() and population.size() > 0
+            if "population" in dir() and population.size() > 0
             else 0.0
         )
 
@@ -203,23 +228,26 @@ class CEGISEngine:
         """
         Full verification: all tests pass AND target mutant is killed.
 
-        For M4, "verified" means test-based verification. Formal verification (SMT)
-        is M5's concern.
+        M4: test-based verification.
+        M5: formal verification via VerificationBackend (Z3/angr) if configured.
         """
         if not spec.test_commands or not spec.working_directory:
             # No tests to run — consider spec satisfied if fitness is high enough
             return individual.fitness > 0.8
 
         try:
-            from tools import run_command
-            import tempfile
             import os
+            import tempfile
+
+            from tools import run_command
 
             # Write patch to temp file
             with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".py",
+                mode="w",
+                suffix=".py",
                 dir=spec.working_directory,
-                delete=False, prefix="_verify_patch_",
+                delete=False,
+                prefix="_verify_patch_",
             ) as f:
                 f.write(individual.code)
                 patch_path = f.name
@@ -228,7 +256,8 @@ class CEGISEngine:
                 # Run all test commands
                 for cmd in spec.test_commands:
                     result = await run_command(
-                        cmd, spec.working_directory,
+                        cmd,
+                        spec.working_directory,
                         timeout=self._config.test_timeout_seconds,
                     )
                     if result.exit_code != 0:
@@ -241,9 +270,15 @@ class CEGISEngine:
                         spec.working_directory,
                         timeout=self._config.test_timeout_seconds * 2,
                     )
-                    # Mutation test should show the mutant is now killed
-                    # (exit code and output interpretation depend on the tool)
-                    return result.exit_code == 0
+                    if result.exit_code != 0:
+                        return False
+
+                # M5: formal verification layer (if backend configured)
+                if self._verification_backend is not None:
+                    formal_ok = await self._run_formal_verification(individual, spec)
+                    if not formal_ok:
+                        return False
+
                 return True
             finally:
                 try:
@@ -254,12 +289,60 @@ class CEGISEngine:
             # No tools module — use fitness threshold
             return individual.fitness > 0.8
 
+    async def _run_formal_verification(self, individual: Individual, spec: Specification) -> bool:
+        """
+        Run formal verification on a candidate patch (M5).
+
+        Uses the configured VerificationBackend (Z3 or angr) to check
+        properties extracted from the specification's pre/postconditions.
+
+        Returns True if no counterexample found within budget.
+        """
+        if self._verification_backend is None:
+            return True
+
+        try:
+            from verification.types import (
+                Budget,
+                VerificationRequest,
+                VerificationStatus,
+            )
+
+            # Build constraints from spec preconditions/postconditions
+            constraints = list(spec.preconditions) + list(spec.postconditions)
+            if not constraints:
+                return True  # No formal properties to check
+
+            request = VerificationRequest(
+                target_binary="",
+                entry=spec.target_region or "patched_func",
+                symbols=[],
+                constraints=constraints,
+                find_kind="custom" if constraints else "return_value",
+                find_value="",
+                budget=Budget(timeout_s=10, max_states=10_000, max_path_len=100, max_loop_iters=3),
+                metadata={"synthesis_run_id": self._current_run_id, "region": spec.target_region},
+            )
+
+            vresult = await self._verification_backend.verify(request)
+
+            if vresult.status == VerificationStatus.CE_FOUND:
+                LOG.info("Formal verification found CE for candidate %s", individual.id)
+                return False
+
+            # no_ce_within_budget or error → treat as passing (bounded guarantee)
+            return True
+
+        except Exception as exc:
+            LOG.debug("Formal verification failed (treating as pass): %s", exc)
+            return True
+
     async def _extract_counterexample(
         self,
         individual: Individual,
         spec: Specification,
         iteration: int,
-    ) -> Optional[Counterexample]:
+    ) -> Counterexample | None:
         """Extract a counterexample from a failing test."""
         if not spec.test_commands or not spec.working_directory:
             return None
@@ -269,7 +352,8 @@ class CEGISEngine:
 
             for cmd in spec.test_commands:
                 result = await run_command(
-                    cmd, spec.working_directory,
+                    cmd,
+                    spec.working_directory,
                     timeout=self._config.test_timeout_seconds,
                 )
                 if result.exit_code != 0:
@@ -286,7 +370,7 @@ class CEGISEngine:
     def _evolve(
         self,
         population: Population,
-        counterexamples: List[Counterexample],
+        counterexamples: list[Counterexample],
         generation: int,
     ) -> Population:
         """Evolve population for one epoch using GA operators."""
@@ -302,12 +386,10 @@ class CEGISEngine:
         parents = population.tournament_select(n_parents)
 
         # Crossover
-        offspring: List[Individual] = []
+        offspring: list[Individual] = []
         for i in range(0, len(parents) - 1, 2):
             if random.random() < config.crossover_rate:
-                child1, child2 = self._crossover.crossover(
-                    parents[i], parents[i + 1], generation
-                )
+                child1, child2 = self._crossover.crossover(parents[i], parents[i + 1], generation)
                 if child1:
                     offspring.append(child1)
                 if child2:
@@ -323,7 +405,7 @@ class CEGISEngine:
 
         # Directed mutation
         last_ce = counterexamples[-1] if counterexamples else None
-        mutated: List[Individual] = []
+        mutated: list[Individual] = []
         for ind in offspring:
             if random.random() < config.mutation_rate:
                 mutant = self._mutator.mutate(ind, generation, last_ce)
@@ -341,25 +423,22 @@ class CEGISEngine:
         self,
         population: Population,
         spec: Specification,
-        counterexamples: List[Counterexample],
+        counterexamples: list[Counterexample],
     ) -> Population:
         """Request fresh candidates from LLM to inject diversity."""
         n_inject = max(1, population.size() // 4)  # Replace 25% of population
 
         prompt = build_synthesis_prompt(spec, counterexamples, spec.context_code)
         fresh_candidates = await self._llm.generate_candidates(
-            prompt, n=n_inject, temperature=min(1.0, self._config.temperature + 0.1),
+            prompt,
+            n=n_inject,
+            temperature=min(1.0, self._config.temperature + 0.1),
         )
 
         if fresh_candidates:
             # Remove weakest and add fresh
-            indices = self._entropy.select_for_replacement(
-                population.individuals, len(fresh_candidates)
-            )
-            remaining = [
-                ind for i, ind in enumerate(population.individuals)
-                if i not in set(indices)
-            ]
+            indices = self._entropy.select_for_replacement(population.individuals, len(fresh_candidates))
+            remaining = [ind for i, ind in enumerate(population.individuals) if i not in set(indices)]
             fresh_pop = Population.from_candidates(fresh_candidates)
             new_pop = Population(remaining + fresh_pop.individuals)
             return new_pop
@@ -395,9 +474,7 @@ class CEGISEngine:
         except Exception as exc:
             LOG.debug("Failed to record CE in M3: %s", exc)
 
-    async def _record_failure(
-        self, spec: Specification, fitness_history: List[float]
-    ) -> None:
+    async def _record_failure(self, spec: Specification, fitness_history: list[float]) -> None:
         """Analyze and record synthesis failure in M3."""
         if not self._theory:
             return

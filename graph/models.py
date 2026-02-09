@@ -7,13 +7,12 @@ Python's AST or LPython's ASR.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from enum import Enum
-from pathlib import Path
-from typing import Dict, FrozenSet, Iterator, List, Optional, Set, Tuple
+from enum import StrEnum
 
 
-class NodeKind(str, Enum):
+class NodeKind(StrEnum):
     """Kind of node in the call graph."""
 
     MODULE = "module"
@@ -24,7 +23,7 @@ class NodeKind(str, Enum):
     COMPREHENSION = "comprehension"
 
 
-class EdgeKind(str, Enum):
+class EdgeKind(StrEnum):
     """Kind of edge in the call graph."""
 
     CALLS = "calls"  # Direct function call
@@ -57,9 +56,9 @@ class FunctionSignature:
     """Function signature information."""
 
     name: str
-    params: Tuple[str, ...] = ()
-    return_type: Optional[str] = None
-    decorators: Tuple[str, ...] = ()
+    params: tuple[str, ...] = ()
+    return_type: str | None = None
+    decorators: tuple[str, ...] = ()
     is_async: bool = False
     is_generator: bool = False
 
@@ -76,10 +75,10 @@ class GraphNode:
     id: str  # Fully qualified name: module.class.function
     kind: NodeKind
     name: str  # Short name
-    location: Optional[SourceLocation] = None
-    signature: Optional[FunctionSignature] = None
-    docstring: Optional[str] = None
-    metadata: Dict[str, any] = field(default_factory=dict)
+    location: SourceLocation | None = None
+    signature: FunctionSignature | None = None
+    docstring: str | None = None
+    metadata: dict[str, any] = field(default_factory=dict)
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -97,7 +96,7 @@ class GraphEdge:
     source_id: str
     target_id: str
     kind: EdgeKind
-    location: Optional[SourceLocation] = None  # Where the call/reference occurs
+    location: SourceLocation | None = None  # Where the call/reference occurs
     is_conditional: bool = False  # Inside if/try/loop
     is_dynamic: bool = False  # Dynamic call (getattr, etc.)
     confidence: float = 1.0  # 1.0 = certain, <1.0 = inferred
@@ -115,13 +114,13 @@ class CallGraph:
     Designed to be populated from either Python AST or LPython ASR.
     """
 
-    nodes: Dict[str, GraphNode] = field(default_factory=dict)
-    edges: Set[GraphEdge] = field(default_factory=set)
+    nodes: dict[str, GraphNode] = field(default_factory=dict)
+    edges: set[GraphEdge] = field(default_factory=set)
 
     # Index structures for efficient queries
-    _outgoing: Dict[str, Set[str]] = field(default_factory=dict)
-    _incoming: Dict[str, Set[str]] = field(default_factory=dict)
-    _by_file: Dict[str, Set[str]] = field(default_factory=dict)
+    _outgoing: dict[str, set[str]] = field(default_factory=dict)
+    _incoming: dict[str, set[str]] = field(default_factory=dict)
+    _by_file: dict[str, set[str]] = field(default_factory=dict)
 
     def add_node(self, node: GraphNode) -> None:
         """Add a node to the graph."""
@@ -150,33 +149,33 @@ class CallGraph:
             self._incoming[edge.target_id] = set()
         self._incoming[edge.target_id].add(edge.source_id)
 
-    def get_node(self, node_id: str) -> Optional[GraphNode]:
+    def get_node(self, node_id: str) -> GraphNode | None:
         """Get a node by ID."""
         return self.nodes.get(node_id)
 
-    def get_callees(self, node_id: str) -> Set[str]:
+    def get_callees(self, node_id: str) -> set[str]:
         """Get IDs of functions called by node_id."""
         return self._outgoing.get(node_id, set())
 
-    def get_callers(self, node_id: str) -> Set[str]:
+    def get_callers(self, node_id: str) -> set[str]:
         """Get IDs of functions that call node_id."""
         return self._incoming.get(node_id, set())
 
-    def get_edges_from(self, node_id: str, kind: Optional[EdgeKind] = None) -> Iterator[GraphEdge]:
+    def get_edges_from(self, node_id: str, kind: EdgeKind | None = None) -> Iterator[GraphEdge]:
         """Get all edges originating from a node."""
         for edge in self.edges:
             if edge.source_id == node_id:
                 if kind is None or edge.kind == kind:
                     yield edge
 
-    def get_edges_to(self, node_id: str, kind: Optional[EdgeKind] = None) -> Iterator[GraphEdge]:
+    def get_edges_to(self, node_id: str, kind: EdgeKind | None = None) -> Iterator[GraphEdge]:
         """Get all edges pointing to a node."""
         for edge in self.edges:
             if edge.target_id == node_id:
                 if kind is None or edge.kind == kind:
                     yield edge
 
-    def get_nodes_in_file(self, file_path: str) -> Set[str]:
+    def get_nodes_in_file(self, file_path: str) -> set[str]:
         """Get all node IDs in a specific file."""
         return self._by_file.get(file_path, set())
 
@@ -202,7 +201,7 @@ class CallGraph:
     # Graph algorithms (M2 foundation)
     # ─────────────────────────────────────────────────────────────────
 
-    def reachable_from(self, node_id: str, max_depth: Optional[int] = None) -> Set[str]:
+    def reachable_from(self, node_id: str, max_depth: int | None = None) -> set[str]:
         """
         Get all nodes reachable from node_id via calls.
 
@@ -213,7 +212,7 @@ class CallGraph:
         Returns:
             Set of reachable node IDs (excluding start node)
         """
-        visited: Set[str] = set()
+        visited: set[str] = set()
         frontier = [(node_id, 0)]
 
         while frontier:
@@ -230,7 +229,7 @@ class CallGraph:
 
         return visited
 
-    def reaches(self, node_id: str, max_depth: Optional[int] = None) -> Set[str]:
+    def reaches(self, node_id: str, max_depth: int | None = None) -> set[str]:
         """
         Get all nodes that can reach node_id via calls.
 
@@ -241,7 +240,7 @@ class CallGraph:
         Returns:
             Set of node IDs that can reach target (excluding target)
         """
-        visited: Set[str] = set()
+        visited: set[str] = set()
         frontier = [(node_id, 0)]
 
         while frontier:
@@ -258,7 +257,7 @@ class CallGraph:
 
         return visited
 
-    def strongly_connected_components(self) -> List[FrozenSet[str]]:
+    def strongly_connected_components(self) -> list[frozenset[str]]:
         """
         Find strongly connected components using Tarjan's algorithm.
 
@@ -266,11 +265,11 @@ class CallGraph:
             List of SCCs, each as a frozenset of node IDs
         """
         index_counter = [0]
-        stack: List[str] = []
-        lowlinks: Dict[str, int] = {}
-        index: Dict[str, int] = {}
-        on_stack: Set[str] = set()
-        sccs: List[FrozenSet[str]] = []
+        stack: list[str] = []
+        lowlinks: dict[str, int] = {}
+        index: dict[str, int] = {}
+        on_stack: set[str] = set()
+        sccs: list[frozenset[str]] = []
 
         def strongconnect(node: str) -> None:
             index[node] = index_counter[0]
@@ -287,7 +286,7 @@ class CallGraph:
                     lowlinks[node] = min(lowlinks[node], index[callee])
 
             if lowlinks[node] == index[node]:
-                scc: Set[str] = set()
+                scc: set[str] = set()
                 while True:
                     w = stack.pop()
                     on_stack.remove(w)
@@ -302,7 +301,7 @@ class CallGraph:
 
         return sccs
 
-    def topological_sort(self) -> List[str]:
+    def topological_sort(self) -> list[str]:
         """
         Topological sort of nodes (only valid for DAG).
 
@@ -312,14 +311,14 @@ class CallGraph:
         Raises:
             ValueError: If graph contains cycles
         """
-        in_degree: Dict[str, int] = {n: 0 for n in self.nodes}
+        in_degree: dict[str, int] = dict.fromkeys(self.nodes, 0)
         for edge in self.edges:
             if edge.kind == EdgeKind.CALLS:
                 if edge.target_id in in_degree:
                     in_degree[edge.target_id] += 1
 
         queue = [n for n, d in in_degree.items() if d == 0]
-        result: List[str] = []
+        result: list[str] = []
 
         while queue:
             node = queue.pop(0)
@@ -346,7 +345,7 @@ class CallGraph:
             New CallGraph where each node is an SCC
         """
         sccs = self.strongly_connected_components()
-        node_to_scc: Dict[str, int] = {}
+        node_to_scc: dict[str, int] = {}
 
         for i, scc in enumerate(sccs):
             for node in scc:
@@ -358,15 +357,17 @@ class CallGraph:
         for i, scc in enumerate(sccs):
             scc_id = f"scc_{i}"
             members = sorted(scc)
-            condensed.add_node(GraphNode(
-                id=scc_id,
-                kind=NodeKind.MODULE,  # SCC as pseudo-module
-                name=f"SCC({', '.join(members[:3])}{'...' if len(members) > 3 else ''})",
-                metadata={"members": list(scc), "size": len(scc)},
-            ))
+            condensed.add_node(
+                GraphNode(
+                    id=scc_id,
+                    kind=NodeKind.MODULE,  # SCC as pseudo-module
+                    name=f"SCC({', '.join(members[:3])}{'...' if len(members) > 3 else ''})",
+                    metadata={"members": list(scc), "size": len(scc)},
+                )
+            )
 
         # Create edges between SCCs
-        seen_edges: Set[Tuple[int, int]] = set()
+        seen_edges: set[tuple[int, int]] = set()
         for edge in self.edges:
             if edge.kind == EdgeKind.CALLS:
                 src_scc = node_to_scc.get(edge.source_id)
@@ -374,11 +375,13 @@ class CallGraph:
                 if src_scc is not None and tgt_scc is not None and src_scc != tgt_scc:
                     if (src_scc, tgt_scc) not in seen_edges:
                         seen_edges.add((src_scc, tgt_scc))
-                        condensed.add_edge(GraphEdge(
-                            source_id=f"scc_{src_scc}",
-                            target_id=f"scc_{tgt_scc}",
-                            kind=EdgeKind.CALLS,
-                        ))
+                        condensed.add_edge(
+                            GraphEdge(
+                                source_id=f"scc_{src_scc}",
+                                target_id=f"scc_{tgt_scc}",
+                                kind=EdgeKind.CALLS,
+                            )
+                        )
 
         return condensed
 
@@ -386,7 +389,7 @@ class CallGraph:
     # Serialization
     # ─────────────────────────────────────────────────────────────────
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dictionary."""
         return {
             "nodes": [
@@ -398,13 +401,17 @@ class CallGraph:
                         "file": n.location.file,
                         "line_start": n.location.line_start,
                         "line_end": n.location.line_end,
-                    } if n.location else None,
+                    }
+                    if n.location
+                    else None,
                     "signature": {
                         "name": n.signature.name,
                         "params": list(n.signature.params),
                         "return_type": n.signature.return_type,
                         "is_async": n.signature.is_async,
-                    } if n.signature else None,
+                    }
+                    if n.signature
+                    else None,
                 }
                 for n in self.nodes.values()
             ],
@@ -420,7 +427,7 @@ class CallGraph:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "CallGraph":
+    def from_dict(cls, data: dict) -> "CallGraph":
         """Deserialize from dictionary."""
         graph = cls()
 
@@ -444,21 +451,25 @@ class CallGraph:
                     is_async=sig.get("is_async", False),
                 )
 
-            graph.add_node(GraphNode(
-                id=n["id"],
-                kind=NodeKind(n["kind"]),
-                name=n["name"],
-                location=location,
-                signature=signature,
-            ))
+            graph.add_node(
+                GraphNode(
+                    id=n["id"],
+                    kind=NodeKind(n["kind"]),
+                    name=n["name"],
+                    location=location,
+                    signature=signature,
+                )
+            )
 
         for e in data.get("edges", []):
-            graph.add_edge(GraphEdge(
-                source_id=e["source"],
-                target_id=e["target"],
-                kind=EdgeKind(e["kind"]),
-                confidence=e.get("confidence", 1.0),
-            ))
+            graph.add_edge(
+                GraphEdge(
+                    source_id=e["source"],
+                    target_id=e["target"],
+                    kind=EdgeKind(e["kind"]),
+                    confidence=e.get("confidence", 1.0),
+                )
+            )
 
         return graph
 
@@ -466,8 +477,8 @@ class CallGraph:
         """Export to Graphviz DOT format."""
         lines = [
             f'digraph "{title}" {{',
-            '  rankdir=TB;',
-            '  node [shape=box, style=filled, fillcolor=lightblue];',
+            "  rankdir=TB;",
+            "  node [shape=box, style=filled, fillcolor=lightblue];",
         ]
 
         # Nodes

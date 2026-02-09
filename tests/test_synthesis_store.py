@@ -1,18 +1,14 @@
 """Tests for storage.synthesis_store — JSONL persistence for synthesis results."""
 
-import json
-import tempfile
-from pathlib import Path
-
 import pytest
 
+from storage.synthesis_store import SynthesisStore
 from synthesis.models import (
     CodePatch,
     PatchSource,
     SynthesisResult,
     SynthesisStatus,
 )
-from storage.synthesis_store import SynthesisStore
 
 
 @pytest.fixture

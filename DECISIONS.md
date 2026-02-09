@@ -2,7 +2,7 @@
 
 Every significant architectural and implementation decision, with reasoning and context. Written for cold-start — assumes the reader has zero prior context.
 
-**Last updated:** 2026-02-08
+**Last updated:** 2026-02-09
 
 ---
 
@@ -311,6 +311,48 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 
 ---
 
+## D-016: Verification Backend ABC with Z3 + angr Docker Backends
+
+**Date:** 2026-02-09
+**Status:** Active
+**Affects:** `verification/backend.py`, `verification/backends/z3_backend.py`, `verification/backends/angr_docker.py`, `verification/orchestrator.py`
+
+**Context:** M5 requires formal verification backends to prove patch correctness. The CEGIS engine (M4) currently uses test-based verification only. D-011 explicitly notes that formal verification will replace/augment heuristic failure classification.
+
+**Decision:** Implement an abstract `VerificationBackend` ABC (mirrors D-012/D-014 pattern) with three backends: Z3 (constraint solving, "cheap" tier), angr Docker (symbolic execution, "expensive" tier), and Mock (testing). A `VerificationOrchestrator` implements CEGAR with budget escalation (10s → 30s → 120s). Wire into `synthesis/cegis.py` as an optional verification layer in `_verify_patch`.
+
+**Reasoning:**
+- Z3 is fast for constraint satisfaction but cannot handle addr_reached (needs actual binary execution).
+- angr via Docker isolates the heavy symbolic execution environment and matches the angr_adapter_baseline reference implementation.
+- CEGAR budget escalation prevents wasting time on cheap verification that won't converge.
+- Optional integration: when no verification backend is configured, behavior is unchanged (pure test-based).
+- Factory function pattern consistent with build_graph_store (D-014) and LLMClient (D-012).
+
+**Trade-off:** Docker dependency for angr means CI needs Docker. Mock backend enables testing without Docker or Z3.
+
+---
+
+## D-017: Chroma Vector Store + Graph-Expanded RAG Pipeline
+
+**Date:** 2026-02-09
+**Status:** Active
+**Affects:** `rag/vector_store.py`, `rag/embedding_provider.py`, `rag/search.py`, `synthesis/cegis.py`
+
+**Context:** M6 deferred RAG/semantic search. The CEGIS engine needs code context to generate better LLM candidates. Previously, context was limited to `spec.context_code` (manually provided). RAG enables automatic retrieval of relevant code from the project's call graph.
+
+**Decision:** Implement VectorStore ABC with ChromaDB backend (embedded PersistentClient for zero-dep operation, HttpClient for Docker). EmbeddingProvider ABC with sentence-transformers (all-MiniLM-L6-v2, 384-dim). RAGPipeline combines vector top-k with graph expansion via existing GraphStore.get_neighbors(). Wire into CEGIS as optional `rag_pipeline` parameter that enriches `build_synthesis_prompt` context.
+
+**Reasoning:**
+- ChromaDB chosen for near-zero external dependency in embedded mode (vs FAISS needing native builds, Qdrant needing server).
+- Graph expansion leverages existing GraphStore infrastructure (D-014) for caller/callee retrieval.
+- Decay factors (callee=0.8, caller=0.7) ensure direct neighbors rank higher than transitive.
+- Optional integration: CEGIS works identically without RAG; RAG enriches context when available.
+- all-MiniLM-L6-v2 balances speed and quality for code embedding (384-dim, fast inference).
+
+**Trade-off:** ChromaDB adds ~50MB dependency. sentence-transformers adds ~500MB with model. Both are optional deps under [rag] extra.
+
+---
+
 ## Decision Index
 
 | ID | Short Name | Date | Status |
@@ -330,6 +372,8 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 | D-013 | Fitness function formula for GA | 2026-02-08 | Active |
 | D-014 | Abstract GraphStore with SQLite/Kuzu backends | 2026-02-08 | Active |
 | D-015 | Incremental graph updates via file hashing | 2026-02-08 | Active |
+| D-016 | Verification backend ABC with Z3 + angr Docker | 2026-02-09 | Active |
+| D-017 | Chroma vector store + graph-expanded RAG | 2026-02-09 | Active |
 
 ---
 
@@ -340,3 +384,4 @@ Returning `(total, killed, survived, no_coverage, score, by_file)`. The `parsers
 - **v1.2** (2026-02-08): Added D-010 (provenance DAG) and D-011 (heuristic failure classification) for M3 completion.
 - **v1.3** (2026-02-08): Added D-012 (hybrid LLM client) and D-013 (fitness function formula) for M4 completion.
 - **v1.4** (2026-02-08): Added D-014 (abstract GraphStore) and D-015 (incremental updates) for M6 graph persistence.
+- **v1.5** (2026-02-09): Added D-016 (verification backend ABC) and D-017 (Chroma RAG pipeline) for M5 and M6-deferred completion.

@@ -1,0 +1,57 @@
+# Smithery.ai configuration
+# https://smithery.ai/docs/build/project-config/smithery-yaml
+
+name: curate-ipsum
+version: "0.2.0"
+description: >
+  Graph-spectral framework for verified code synthesis through belief revision,
+  mutation testing orchestration, and CEGIS/CEGAR verification loops.
+
+runtime: container
+dockerfile: docker/Dockerfile.mcp-server
+
+startCommand:
+  type: stdio
+  command: uv
+  args:
+    - run
+    - curate-ipsum
+
+configSchema:
+  type: object
+  properties:
+    graph_backend:
+      type: string
+      title: Graph Store Backend
+      description: >
+        Persistent graph store implementation.
+        'sqlite' is zero-config, 'kuzu' needs the kuzu extra installed.
+      enum:
+        - sqlite
+        - kuzu
+      default: sqlite
+    data_dir:
+      type: string
+      title: Data Directory
+      description: Directory for persistent data (runs, theories, synthesis results)
+      default: .mutation_tool_data
+    chroma_host:
+      type: string
+      title: ChromaDB Host
+      description: >
+        Host for ChromaDB server. Leave empty for ephemeral in-process mode.
+        Set to a Docker host (e.g. localhost:8000) for persistent vector storage.
+    embedding_model:
+      type: string
+      title: Embedding Model
+      description: sentence-transformers model for code embeddings
+      default: all-MiniLM-L6-v2
+    log_level:
+      type: string
+      title: Log Level
+      enum:
+        - DEBUG
+        - INFO
+        - WARNING
+        - ERROR
+      default: INFO

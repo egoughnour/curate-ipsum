@@ -24,7 +24,6 @@ import logging
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from models import FileMutationStats
 from regions.models import Region
@@ -54,7 +53,7 @@ class MutmutMutant:
     index: int  # Mutant index within line (multiple mutants per line possible)
 
 
-def find_mutmut_cache(working_directory: str) -> Optional[Path]:
+def find_mutmut_cache(working_directory: str) -> Path | None:
     """
     Locate the mutmut cache file.
 
@@ -80,7 +79,7 @@ def find_mutmut_cache(working_directory: str) -> Optional[Path]:
     return None
 
 
-def _parse_mutmut_v2_schema(conn: sqlite3.Connection) -> List[MutmutMutant]:
+def _parse_mutmut_v2_schema(conn: sqlite3.Connection) -> list[MutmutMutant]:
     """
     Parse mutmut 2.x cache schema.
 
@@ -118,7 +117,7 @@ def _parse_mutmut_v2_schema(conn: sqlite3.Connection) -> List[MutmutMutant]:
     return mutants
 
 
-def _parse_mutmut_v1_schema(conn: sqlite3.Connection) -> List[MutmutMutant]:
+def _parse_mutmut_v1_schema(conn: sqlite3.Connection) -> list[MutmutMutant]:
     """
     Parse older mutmut schema (fallback).
 
@@ -160,7 +159,7 @@ def _parse_mutmut_v1_schema(conn: sqlite3.Connection) -> List[MutmutMutant]:
     return mutants
 
 
-def parse_mutmut_cache(cache_path: Path) -> List[MutmutMutant]:
+def parse_mutmut_cache(cache_path: Path) -> list[MutmutMutant]:
     """
     Parse mutmut SQLite cache and extract all mutants.
 
@@ -209,8 +208,8 @@ def parse_mutmut_cache(cache_path: Path) -> List[MutmutMutant]:
 
 
 def aggregate_mutmut_stats(
-    mutants: List[MutmutMutant],
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    mutants: list[MutmutMutant],
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Aggregate mutant list into summary statistics.
 
@@ -226,11 +225,11 @@ def aggregate_mutmut_stats(
         return (0, 0, 0, 0, 0.0, [])
 
     # Group by file
-    by_file_map: Dict[str, List[MutmutMutant]] = {}
+    by_file_map: dict[str, list[MutmutMutant]] = {}
     for m in mutants:
         by_file_map.setdefault(m.file_path, []).append(m)
 
-    file_stats: List[FileMutationStats] = []
+    file_stats: list[FileMutationStats] = []
     total_killed = 0
     total_survived = 0
     total_no_coverage = 0
@@ -238,22 +237,10 @@ def aggregate_mutmut_stats(
     for file_path in sorted(by_file_map.keys()):
         file_mutants = by_file_map[file_path]
 
-        killed = sum(
-            1 for m in file_mutants if m.status == MutmutStatus.OK_KILLED
-        )
-        survived = sum(
-            1
-            for m in file_mutants
-            if m.status in (MutmutStatus.BAD_SURVIVED, MutmutStatus.OK_SUSPICIOUS)
-        )
-        timeout = sum(
-            1 for m in file_mutants if m.status == MutmutStatus.BAD_TIMEOUT
-        )
-        untested = sum(
-            1
-            for m in file_mutants
-            if m.status in (MutmutStatus.UNTESTED, MutmutStatus.SKIPPED)
-        )
+        killed = sum(1 for m in file_mutants if m.status == MutmutStatus.OK_KILLED)
+        survived = sum(1 for m in file_mutants if m.status in (MutmutStatus.BAD_SURVIVED, MutmutStatus.OK_SUSPICIOUS))
+        timeout = sum(1 for m in file_mutants if m.status == MutmutStatus.BAD_TIMEOUT)
+        untested = sum(1 for m in file_mutants if m.status in (MutmutStatus.UNTESTED, MutmutStatus.SKIPPED))
 
         total = len(file_mutants)
 
@@ -302,8 +289,8 @@ def aggregate_mutmut_stats(
 
 def parse_mutmut_output(
     working_directory: str,
-    cache_path: Optional[str] = None,
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    cache_path: str | None = None,
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Parse mutmut results from cache.
 
@@ -326,10 +313,7 @@ def parse_mutmut_output(
         cache = find_mutmut_cache(working_directory)
 
     if cache is None or not cache.exists():
-        raise FileNotFoundError(
-            f"Mutmut cache not found. Run 'mutmut run' first. "
-            f"Searched in: {working_directory}"
-        )
+        raise FileNotFoundError(f"Mutmut cache not found. Run 'mutmut run' first. Searched in: {working_directory}")
 
     mutants = parse_mutmut_cache(cache)
 
@@ -342,8 +326,8 @@ def parse_mutmut_output(
 def get_mutmut_region_mutants(
     working_directory: str,
     region: Region,
-    cache_path: Optional[str] = None,
-) -> List[MutmutMutant]:
+    cache_path: str | None = None,
+) -> list[MutmutMutant]:
     """
     Get mutants within a specific region.
 
@@ -390,8 +374,8 @@ def get_mutmut_region_mutants(
 def get_region_mutation_stats(
     working_directory: str,
     region: Region,
-    cache_path: Optional[str] = None,
-) -> Optional[FileMutationStats]:
+    cache_path: str | None = None,
+) -> FileMutationStats | None:
     """
     Get mutation statistics for a specific region.
 
@@ -409,15 +393,9 @@ def get_region_mutation_stats(
         return None
 
     killed = sum(1 for m in mutants if m.status == MutmutStatus.OK_KILLED)
-    survived = sum(
-        1
-        for m in mutants
-        if m.status in (MutmutStatus.BAD_SURVIVED, MutmutStatus.OK_SUSPICIOUS)
-    )
+    survived = sum(1 for m in mutants if m.status in (MutmutStatus.BAD_SURVIVED, MutmutStatus.OK_SUSPICIOUS))
     no_coverage = sum(
-        1
-        for m in mutants
-        if m.status in (MutmutStatus.BAD_TIMEOUT, MutmutStatus.UNTESTED, MutmutStatus.SKIPPED)
+        1 for m in mutants if m.status in (MutmutStatus.BAD_TIMEOUT, MutmutStatus.UNTESTED, MutmutStatus.SKIPPED)
     )
 
     denominator = killed + survived

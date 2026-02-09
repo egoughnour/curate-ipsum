@@ -15,18 +15,18 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from graph.models import (
     CallGraph,
     EdgeKind,
+    FunctionSignature,
     GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
-    FunctionSignature,
 )
 from storage.graph_store import GraphStore
 
@@ -160,30 +160,34 @@ class SQLiteGraphStore(GraphStore):
         for node in graph.nodes.values():
             sig_json = None
             if node.signature:
-                sig_json = json.dumps({
-                    "name": node.signature.name,
-                    "params": list(node.signature.params),
-                    "return_type": node.signature.return_type,
-                    "decorators": list(node.signature.decorators),
-                    "is_async": node.signature.is_async,
-                    "is_generator": node.signature.is_generator,
-                })
+                sig_json = json.dumps(
+                    {
+                        "name": node.signature.name,
+                        "params": list(node.signature.params),
+                        "return_type": node.signature.return_type,
+                        "decorators": list(node.signature.decorators),
+                        "is_async": node.signature.is_async,
+                        "is_generator": node.signature.is_generator,
+                    }
+                )
             meta_json = json.dumps(node.metadata) if node.metadata else None
 
-            node_rows.append((
-                node.id,
-                project_id,
-                node.kind.value,
-                node.name,
-                node.location.file if node.location else None,
-                node.location.line_start if node.location else None,
-                node.location.line_end if node.location else None,
-                node.location.col_start if node.location else 0,
-                node.location.col_end if node.location else 0,
-                sig_json,
-                node.docstring,
-                meta_json,
-            ))
+            node_rows.append(
+                (
+                    node.id,
+                    project_id,
+                    node.kind.value,
+                    node.name,
+                    node.location.file if node.location else None,
+                    node.location.line_start if node.location else None,
+                    node.location.line_end if node.location else None,
+                    node.location.col_start if node.location else 0,
+                    node.location.col_end if node.location else 0,
+                    sig_json,
+                    node.docstring,
+                    meta_json,
+                )
+            )
 
         cur.executemany(
             "INSERT OR REPLACE INTO code_nodes "
@@ -198,21 +202,25 @@ class SQLiteGraphStore(GraphStore):
         for edge in graph.edges:
             loc_json = None
             if edge.location:
-                loc_json = json.dumps({
-                    "file": edge.location.file,
-                    "line_start": edge.location.line_start,
-                    "line_end": edge.location.line_end,
-                })
-            edge_rows.append((
-                edge.source_id,
-                edge.target_id,
-                project_id,
-                edge.kind.value,
-                edge.confidence,
-                int(edge.is_conditional),
-                int(edge.is_dynamic),
-                loc_json,
-            ))
+                loc_json = json.dumps(
+                    {
+                        "file": edge.location.file,
+                        "line_start": edge.location.line_start,
+                        "line_end": edge.location.line_end,
+                    }
+                )
+            edge_rows.append(
+                (
+                    edge.source_id,
+                    edge.target_id,
+                    project_id,
+                    edge.kind.value,
+                    edge.confidence,
+                    int(edge.is_conditional),
+                    int(edge.is_dynamic),
+                    loc_json,
+                )
+            )
 
         cur.executemany(
             "INSERT OR REPLACE INTO code_edges "
@@ -225,10 +233,12 @@ class SQLiteGraphStore(GraphStore):
         self._conn.commit()
         LOG.info(
             "Stored graph for project %s: %d nodes, %d edges",
-            project_id, len(node_rows), len(edge_rows),
+            project_id,
+            len(node_rows),
+            len(edge_rows),
         )
 
-    def load_graph(self, project_id: str) -> Optional[CallGraph]:
+    def load_graph(self, project_id: str) -> CallGraph | None:
         """Load a previously stored call graph."""
         cur = self._conn.cursor()
 
@@ -250,8 +260,7 @@ class SQLiteGraphStore(GraphStore):
             (project_id,),
         )
         for row in cur.fetchall():
-            (nid, kind, name, file_path, line_start, line_end,
-             col_start, col_end, sig_json, docstring, meta_json) = row
+            (nid, kind, name, file_path, line_start, line_end, col_start, col_end, sig_json, docstring, meta_json) = row
 
             location = None
             if file_path and line_start is not None:
@@ -277,15 +286,17 @@ class SQLiteGraphStore(GraphStore):
 
             metadata = json.loads(meta_json) if meta_json else {}
 
-            graph.add_node(GraphNode(
-                id=nid,
-                kind=NodeKind(kind),
-                name=name,
-                location=location,
-                signature=signature,
-                docstring=docstring,
-                metadata=metadata,
-            ))
+            graph.add_node(
+                GraphNode(
+                    id=nid,
+                    kind=NodeKind(kind),
+                    name=name,
+                    location=location,
+                    signature=signature,
+                    docstring=docstring,
+                    metadata=metadata,
+                )
+            )
 
         # Load edges
         cur.execute(
@@ -306,25 +317,29 @@ class SQLiteGraphStore(GraphStore):
                     line_end=loc["line_end"],
                 )
 
-            graph.add_edge(GraphEdge(
-                source_id=source_id,
-                target_id=target_id,
-                kind=EdgeKind(kind),
-                location=location,
-                is_conditional=bool(is_cond),
-                is_dynamic=bool(is_dyn),
-                confidence=confidence,
-            ))
+            graph.add_edge(
+                GraphEdge(
+                    source_id=source_id,
+                    target_id=target_id,
+                    kind=EdgeKind(kind),
+                    location=location,
+                    is_conditional=bool(is_cond),
+                    is_dynamic=bool(is_dyn),
+                    confidence=confidence,
+                )
+            )
 
         LOG.info(
             "Loaded graph for project %s: %d nodes, %d edges",
-            project_id, len(graph.nodes), len(graph.edges),
+            project_id,
+            len(graph.nodes),
+            len(graph.edges),
         )
         return graph
 
     # ── Single Node / Edge ────────────────────────────────────────────
 
-    def store_node(self, node_data: Dict[str, Any], project_id: str) -> None:
+    def store_node(self, node_data: dict[str, Any], project_id: str) -> None:
         """Store or update a single node."""
         cur = self._conn.cursor()
         cur.execute(
@@ -349,7 +364,7 @@ class SQLiteGraphStore(GraphStore):
         )
         self._conn.commit()
 
-    def store_edge(self, edge_data: Dict[str, Any], project_id: str) -> None:
+    def store_edge(self, edge_data: dict[str, Any], project_id: str) -> None:
         """Store or update a single edge."""
         cur = self._conn.cursor()
         cur.execute(
@@ -370,7 +385,7 @@ class SQLiteGraphStore(GraphStore):
         )
         self._conn.commit()
 
-    def get_node(self, node_id: str, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_node(self, node_id: str, project_id: str) -> dict[str, Any] | None:
         """Get a single node's data by ID."""
         cur = self._conn.cursor()
         cur.execute(
@@ -403,23 +418,21 @@ class SQLiteGraphStore(GraphStore):
         node_id: str,
         project_id: str,
         direction: str = "outgoing",
-        edge_kind: Optional[str] = None,
-    ) -> List[str]:
+        edge_kind: str | None = None,
+    ) -> list[str]:
         """Get neighboring node IDs."""
         cur = self._conn.cursor()
-        results: List[str] = []
+        results: list[str] = []
 
         if direction in ("outgoing", "both"):
             if edge_kind:
                 cur.execute(
-                    "SELECT target_id FROM code_edges "
-                    "WHERE source_id = ? AND project_id = ? AND kind = ?",
+                    "SELECT target_id FROM code_edges WHERE source_id = ? AND project_id = ? AND kind = ?",
                     (node_id, project_id, edge_kind),
                 )
             else:
                 cur.execute(
-                    "SELECT target_id FROM code_edges "
-                    "WHERE source_id = ? AND project_id = ?",
+                    "SELECT target_id FROM code_edges WHERE source_id = ? AND project_id = ?",
                     (node_id, project_id),
                 )
             results.extend(row[0] for row in cur.fetchall())
@@ -427,14 +440,12 @@ class SQLiteGraphStore(GraphStore):
         if direction in ("incoming", "both"):
             if edge_kind:
                 cur.execute(
-                    "SELECT source_id FROM code_edges "
-                    "WHERE target_id = ? AND project_id = ? AND kind = ?",
+                    "SELECT source_id FROM code_edges WHERE target_id = ? AND project_id = ? AND kind = ?",
                     (node_id, project_id, edge_kind),
                 )
             else:
                 cur.execute(
-                    "SELECT source_id FROM code_edges "
-                    "WHERE target_id = ? AND project_id = ?",
+                    "SELECT source_id FROM code_edges WHERE target_id = ? AND project_id = ?",
                     (node_id, project_id),
                 )
             results.extend(row[0] for row in cur.fetchall())
@@ -443,23 +454,19 @@ class SQLiteGraphStore(GraphStore):
 
     # ── Reachability Index ────────────────────────────────────────────
 
-    def query_reachable(
-        self, source_id: str, target_id: str, project_id: str
-    ) -> bool:
+    def query_reachable(self, source_id: str, target_id: str, project_id: str) -> bool:
         """Check if target is reachable from source using Kameda labels."""
         cur = self._conn.cursor()
 
         # First try Kameda O(1) lookup
         cur.execute(
-            "SELECT left_rank, right_rank FROM kameda_labels "
-            "WHERE node_id = ? AND project_id = ?",
+            "SELECT left_rank, right_rank FROM kameda_labels WHERE node_id = ? AND project_id = ?",
             (source_id, project_id),
         )
         src_row = cur.fetchone()
 
         cur.execute(
-            "SELECT left_rank, right_rank FROM kameda_labels "
-            "WHERE node_id = ? AND project_id = ?",
+            "SELECT left_rank, right_rank FROM kameda_labels WHERE node_id = ? AND project_id = ?",
             (target_id, project_id),
         )
         tgt_row = cur.fetchone()
@@ -472,15 +479,14 @@ class SQLiteGraphStore(GraphStore):
 
         # Fallback: check non-planar reachability table
         cur.execute(
-            "SELECT 1 FROM nonplanar_reachability "
-            "WHERE source_id = ? AND target_id = ? AND project_id = ?",
+            "SELECT 1 FROM nonplanar_reachability WHERE source_id = ? AND target_id = ? AND project_id = ?",
             (source_id, target_id, project_id),
         )
         return cur.fetchone() is not None
 
     def store_reachability_index(
         self,
-        kameda_data: Dict[str, Any],
+        kameda_data: dict[str, Any],
         project_id: str,
     ) -> None:
         """Persist Kameda reachability index."""
@@ -498,22 +504,24 @@ class SQLiteGraphStore(GraphStore):
         label_rows = []
         for node_id in left_rank:
             if node_id in right_rank:
-                label_rows.append((
-                    node_id, project_id,
-                    left_rank[node_id], right_rank[node_id],
-                ))
+                label_rows.append(
+                    (
+                        node_id,
+                        project_id,
+                        left_rank[node_id],
+                        right_rank[node_id],
+                    )
+                )
 
         cur.executemany(
-            "INSERT INTO kameda_labels (node_id, project_id, left_rank, right_rank) "
-            "VALUES (?, ?, ?, ?)",
+            "INSERT INTO kameda_labels (node_id, project_id, left_rank, right_rank) VALUES (?, ?, ?, ?)",
             label_rows,
         )
 
         # Store metadata
         all_node_ids = kameda_data.get("all_node_ids", [])
         cur.execute(
-            "INSERT INTO kameda_meta (project_id, source_id, sink_id, all_node_ids_json) "
-            "VALUES (?, ?, ?, ?)",
+            "INSERT INTO kameda_meta (project_id, source_id, sink_id, all_node_ids_json) VALUES (?, ?, ?, ?)",
             (
                 project_id,
                 kameda_data.get("source_id", ""),
@@ -531,27 +539,25 @@ class SQLiteGraphStore(GraphStore):
 
         if np_rows:
             cur.executemany(
-                "INSERT OR IGNORE INTO nonplanar_reachability "
-                "(source_id, target_id, project_id) VALUES (?, ?, ?)",
+                "INSERT OR IGNORE INTO nonplanar_reachability (source_id, target_id, project_id) VALUES (?, ?, ?)",
                 np_rows,
             )
 
         self._conn.commit()
         LOG.info(
             "Stored Kameda index for project %s: %d labels, %d non-planar pairs",
-            project_id, len(label_rows), len(np_rows),
+            project_id,
+            len(label_rows),
+            len(np_rows),
         )
 
-    def load_reachability_index(
-        self, project_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def load_reachability_index(self, project_id: str) -> dict[str, Any] | None:
         """Load stored Kameda reachability index."""
         cur = self._conn.cursor()
 
         # Check metadata exists
         cur.execute(
-            "SELECT source_id, sink_id, all_node_ids_json "
-            "FROM kameda_meta WHERE project_id = ?",
+            "SELECT source_id, sink_id, all_node_ids_json FROM kameda_meta WHERE project_id = ?",
             (project_id,),
         )
         meta_row = cur.fetchone()
@@ -562,8 +568,7 @@ class SQLiteGraphStore(GraphStore):
 
         # Load labels
         cur.execute(
-            "SELECT node_id, left_rank, right_rank "
-            "FROM kameda_labels WHERE project_id = ?",
+            "SELECT node_id, left_rank, right_rank FROM kameda_labels WHERE project_id = ?",
             (project_id,),
         )
         left_rank = {}
@@ -574,11 +579,10 @@ class SQLiteGraphStore(GraphStore):
 
         # Load non-planar reachability
         cur.execute(
-            "SELECT source_id, target_id "
-            "FROM nonplanar_reachability WHERE project_id = ?",
+            "SELECT source_id, target_id FROM nonplanar_reachability WHERE project_id = ?",
             (project_id,),
         )
-        np_reach: Dict[str, Set[str]] = {}
+        np_reach: dict[str, set[str]] = {}
         for src, tgt in cur.fetchall():
             np_reach.setdefault(src, set()).add(tgt)
 
@@ -595,7 +599,7 @@ class SQLiteGraphStore(GraphStore):
 
     def store_partitions(
         self,
-        partition_data: Dict[str, Any],
+        partition_data: dict[str, Any],
         project_id: str,
     ) -> None:
         """Persist Fiedler partition tree."""
@@ -606,8 +610,8 @@ class SQLiteGraphStore(GraphStore):
         cur.execute("DELETE FROM partition_members WHERE project_id = ?", (project_id,))
 
         # Recursively store partition tree
-        part_rows: List[Tuple] = []
-        member_rows: List[Tuple] = []
+        part_rows: list[tuple] = []
+        member_rows: list[tuple] = []
         self._flatten_partition(partition_data, project_id, part_rows, member_rows)
 
         cur.executemany(
@@ -617,37 +621,40 @@ class SQLiteGraphStore(GraphStore):
             part_rows,
         )
         cur.executemany(
-            "INSERT OR REPLACE INTO partition_members "
-            "(node_id, partition_id, project_id) VALUES (?, ?, ?)",
+            "INSERT OR REPLACE INTO partition_members (node_id, partition_id, project_id) VALUES (?, ?, ?)",
             member_rows,
         )
 
         self._conn.commit()
         LOG.info(
             "Stored partitions for project %s: %d partitions, %d memberships",
-            project_id, len(part_rows), len(member_rows),
+            project_id,
+            len(part_rows),
+            len(member_rows),
         )
 
     def _flatten_partition(
         self,
-        pdata: Dict[str, Any],
+        pdata: dict[str, Any],
         project_id: str,
-        part_rows: List[Tuple],
-        member_rows: List[Tuple],
+        part_rows: list[tuple],
+        member_rows: list[tuple],
     ) -> None:
         """Recursively flatten partition tree into rows."""
         node_ids = pdata.get("node_ids", [])
         children = pdata.get("children")
         is_leaf = 1 if children is None else 0
 
-        part_rows.append((
-            pdata["id"],
-            project_id,
-            pdata.get("depth", 0),
-            pdata.get("fiedler_value"),
-            len(node_ids),
-            is_leaf,
-        ))
+        part_rows.append(
+            (
+                pdata["id"],
+                project_id,
+                pdata.get("depth", 0),
+                pdata.get("fiedler_value"),
+                len(node_ids),
+                is_leaf,
+            )
+        )
 
         # Store direct member nodes (only for leaf partitions to avoid duplication)
         if is_leaf:
@@ -659,7 +666,7 @@ class SQLiteGraphStore(GraphStore):
             for child in children:
                 self._flatten_partition(child, project_id, part_rows, member_rows)
 
-    def load_partitions(self, project_id: str) -> Optional[Dict[str, Any]]:
+    def load_partitions(self, project_id: str) -> dict[str, Any] | None:
         """Load stored partition tree."""
         cur = self._conn.cursor()
 
@@ -674,17 +681,16 @@ class SQLiteGraphStore(GraphStore):
 
         # Load all memberships
         cur.execute(
-            "SELECT node_id, partition_id "
-            "FROM partition_members WHERE project_id = ?",
+            "SELECT node_id, partition_id FROM partition_members WHERE project_id = ?",
             (project_id,),
         )
-        memberships: Dict[str, List[str]] = {}
+        memberships: dict[str, list[str]] = {}
         for nid, pid in cur.fetchall():
             memberships.setdefault(pid, []).append(nid)
 
         # Reconstruct tree from flat rows
-        partitions: Dict[str, Dict[str, Any]] = {}
-        for pid, depth, fiedler, node_count, is_leaf in rows:
+        partitions: dict[str, dict[str, Any]] = {}
+        for pid, depth, fiedler, _node_count, is_leaf in rows:
             partitions[pid] = {
                 "id": pid,
                 "depth": depth,
@@ -717,7 +723,7 @@ class SQLiteGraphStore(GraphStore):
         return root
 
     @staticmethod
-    def _propagate_node_ids(partitions: Dict[str, Dict[str, Any]]) -> None:
+    def _propagate_node_ids(partitions: dict[str, dict[str, Any]]) -> None:
         """Propagate node_ids from leaf partitions up to parents."""
         # Process deepest first
         by_depth = sorted(partitions.values(), key=lambda p: p["depth"], reverse=True)
@@ -730,7 +736,7 @@ class SQLiteGraphStore(GraphStore):
 
     # ── File Hashes ───────────────────────────────────────────────────
 
-    def get_file_hashes(self, project_id: str) -> Dict[str, str]:
+    def get_file_hashes(self, project_id: str) -> dict[str, str]:
         """Get stored file hashes for incremental update detection."""
         cur = self._conn.cursor()
         cur.execute(
@@ -739,18 +745,13 @@ class SQLiteGraphStore(GraphStore):
         )
         return {row[0]: row[1] for row in cur.fetchall()}
 
-    def set_file_hashes(
-        self, project_id: str, hashes: Dict[str, str]
-    ) -> None:
+    def set_file_hashes(self, project_id: str, hashes: dict[str, str]) -> None:
         """Store file hashes for incremental update detection."""
         cur = self._conn.cursor()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Upsert each hash
-        rows = [
-            (fp, project_id, h, now)
-            for fp, h in hashes.items()
-        ]
+        rows = [(fp, project_id, h, now) for fp, h in hashes.items()]
         cur.executemany(
             "INSERT OR REPLACE INTO file_hashes "
             "(file_path, project_id, content_hash, last_updated) "
@@ -776,7 +777,6 @@ class SQLiteGraphStore(GraphStore):
 
         # Delete edges involving these nodes
         placeholders = ",".join("?" * len(node_ids))
-        params = node_ids + [project_id]
         cur.execute(
             f"DELETE FROM code_edges WHERE project_id = ? AND "
             f"(source_id IN ({placeholders}) OR target_id IN ({placeholders}))",
@@ -807,7 +807,7 @@ class SQLiteGraphStore(GraphStore):
 
     # ── Stats ─────────────────────────────────────────────────────────
 
-    def get_stats(self, project_id: str) -> Dict[str, Any]:
+    def get_stats(self, project_id: str) -> dict[str, Any]:
         """Get storage statistics."""
         cur = self._conn.cursor()
 

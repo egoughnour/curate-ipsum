@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import abc
 import logging
-from typing import Any, Dict, List, Optional
 
 from synthesis.models import Counterexample, Specification
 
@@ -28,7 +27,7 @@ class LLMClient(abc.ABC):
         prompt: str,
         n: int = 5,
         temperature: float = 0.8,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate n code candidate strings from the LLM.
 
@@ -49,7 +48,7 @@ class MockLLMClient(LLMClient):
     Returns canned responses or generates simple variants of a template.
     """
 
-    def __init__(self, responses: Optional[List[str]] = None) -> None:
+    def __init__(self, responses: list[str] | None = None) -> None:
         self._responses = responses or []
         self._call_count = 0
 
@@ -58,7 +57,7 @@ class MockLLMClient(LLMClient):
         prompt: str,
         n: int = 5,
         temperature: float = 0.8,
-    ) -> List[str]:
+    ) -> list[str]:
         self._call_count += 1
         if self._responses:
             # Return up to n responses, cycling if needed
@@ -67,10 +66,7 @@ class MockLLMClient(LLMClient):
                 result.append(self._responses[i % len(self._responses)])
             return result
         # Default: return simple placeholder functions
-        return [
-            f"def patched_func(x):\n    return x + {i}\n"
-            for i in range(n)
-        ]
+        return [f"def patched_func(x):\n    return x + {i}\n" for i in range(n)]
 
     @property
     def call_count(self) -> int:
@@ -79,7 +75,7 @@ class MockLLMClient(LLMClient):
 
 def build_synthesis_prompt(
     spec: Specification,
-    counterexamples: Optional[List[Counterexample]] = None,
+    counterexamples: list[Counterexample] | None = None,
     context_code: str = "",
 ) -> str:
     """
@@ -92,7 +88,7 @@ def build_synthesis_prompt(
     - Counterexample history (what previous attempts failed on)
     - Preconditions and postconditions from M3 assertions
     """
-    parts: List[str] = []
+    parts: list[str] = []
 
     parts.append("Generate a Python function that satisfies the following requirements.\n")
 
@@ -115,7 +111,7 @@ def build_synthesis_prompt(
         parts.append("")
 
     if spec.surviving_mutant_ids:
-        parts.append(f"## Target: Kill surviving mutants")
+        parts.append("## Target: Kill surviving mutants")
         parts.append(f"Mutant IDs: {', '.join(spec.surviving_mutant_ids)}")
         parts.append("The patch must cause these mutants to be detected (killed) by the test suite.\n")
 
@@ -128,8 +124,7 @@ def build_synthesis_prompt(
     if counterexamples:
         parts.append("## Previous attempts failed on these counterexamples")
         for ce in counterexamples[-5:]:  # Show last 5 CEs to avoid prompt bloat
-            parts.append(f"- Input: {ce.input_values}, Expected: {ce.expected_output}, "
-                         f"Got: {ce.actual_output}")
+            parts.append(f"- Input: {ce.input_values}, Expected: {ce.expected_output}, Got: {ce.actual_output}")
             if ce.error_message:
                 parts.append(f"  Error: {ce.error_message}")
         parts.append("")

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
 
 from synthesis.llm_client import LLMClient
 
@@ -38,10 +37,7 @@ class LocalLLMClient(LLMClient):
         timeout: float = 120.0,
     ) -> None:
         if httpx is None:
-            raise ImportError(
-                "httpx is required for local LLM. "
-                "Install with: pip install 'curate-ipsum[synthesis]'"
-            )
+            raise ImportError("httpx is required for local LLM. Install with: pip install 'curate-ipsum[synthesis]'")
 
         self._base_url = base_url
         self._model = model
@@ -49,7 +45,7 @@ class LocalLLMClient(LLMClient):
             base_url=base_url,
             timeout=timeout,
         )
-        self._available: Optional[bool] = None
+        self._available: bool | None = None
 
     async def is_available(self) -> bool:
         """Check if Ollama is running and the model is available."""
@@ -61,14 +57,13 @@ class LocalLLMClient(LLMClient):
                 models = resp.json().get("models", [])
                 model_names = [m.get("name", "") for m in models]
                 # Check if our model (or a prefix match) is available
-                self._available = any(
-                    self._model in name for name in model_names
-                )
+                self._available = any(self._model in name for name in model_names)
                 if not self._available:
                     LOG.warning(
-                        "Ollama running but model '%s' not found. "
-                        "Available: %s. Pull with: ollama pull %s",
-                        self._model, model_names, self._model,
+                        "Ollama running but model '%s' not found. Available: %s. Pull with: ollama pull %s",
+                        self._model,
+                        model_names,
+                        self._model,
                     )
                 return self._available
         except Exception as exc:
@@ -81,15 +76,15 @@ class LocalLLMClient(LLMClient):
         prompt: str,
         n: int = 5,
         temperature: float = 0.8,
-    ) -> List[str]:
+    ) -> list[str]:
         if not await self.is_available():
             LOG.error(
-                "Ollama not available. Start with 'ollama serve' and ensure "
-                "'%s' is pulled.", self._model,
+                "Ollama not available. Start with 'ollama serve' and ensure '%s' is pulled.",
+                self._model,
             )
             return []
 
-        candidates: List[str] = []
+        candidates: list[str] = []
 
         for i in range(n):
             try:

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Environment
+.env
+.venv/
+venv/
+*.venv/
+
+# Data / artifacts
+*.db
+*.sqlite
+.curate_ipsum/
+artifacts/
+chroma_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+htmlcov/
+.coverage
+coverage.xml
+
+# Git
+.git/
+.gitignore
+
+# Docs / non-runtime (keep README.md for PyPI long_description)
+!README.md
+LICENSE
+quick-verification/
+docs/
+
+# MCPB / registry metadata (not needed in Docker image)
+manifest.json
+smithery.yaml
+icons/
+*.mcpb

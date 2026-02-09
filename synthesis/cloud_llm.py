@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import time
-from typing import Any, Dict, List, Optional
 
 from synthesis.llm_client import LLMClient
 
@@ -36,24 +35,19 @@ class CloudLLMClient(LLMClient):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         provider: str = "anthropic",  # "anthropic" or "openai"
         model: str = "claude-sonnet-4-5-20250929",
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         max_retries: int = 3,
         requests_per_second: float = 5.0,
     ) -> None:
         if httpx is None:
-            raise ImportError(
-                "httpx is required for cloud LLM. "
-                "Install with: pip install 'curate-ipsum[synthesis]'"
-            )
+            raise ImportError("httpx is required for cloud LLM. Install with: pip install 'curate-ipsum[synthesis]'")
 
         self._api_key = api_key or os.environ.get("CURATE_IPSUM_LLM_API_KEY", "")
         if not self._api_key:
-            raise ValueError(
-                "API key required. Set CURATE_IPSUM_LLM_API_KEY or pass api_key=."
-            )
+            raise ValueError("API key required. Set CURATE_IPSUM_LLM_API_KEY or pass api_key=.")
 
         self._provider = provider
         self._model = model
@@ -79,9 +73,9 @@ class CloudLLMClient(LLMClient):
         prompt: str,
         n: int = 5,
         temperature: float = 0.8,
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate n candidates by making n API calls (one per candidate)."""
-        candidates: List[str] = []
+        candidates: list[str] = []
 
         for _ in range(n):
             # Rate limiting
@@ -89,6 +83,7 @@ class CloudLLMClient(LLMClient):
             elapsed = now - self._last_request_time
             if elapsed < self._min_interval:
                 import asyncio
+
                 await asyncio.sleep(self._min_interval - elapsed)
 
             response_text = await self._call_api(prompt, temperature)
@@ -101,7 +96,9 @@ class CloudLLMClient(LLMClient):
 
         LOG.info(
             "Cloud LLM generated %d/%d candidates (est. cost: $%.4f)",
-            len(candidates), n, self._total_cost_estimate,
+            len(candidates),
+            n,
+            self._total_cost_estimate,
         )
         return candidates
 
@@ -114,12 +111,16 @@ class CloudLLMClient(LLMClient):
                 else:
                     return await self._call_openai(prompt, temperature)
             except Exception as exc:
-                wait = 2 ** attempt
+                wait = 2**attempt
                 LOG.warning(
                     "API call failed (attempt %d/%d): %s. Retrying in %ds.",
-                    attempt + 1, self._max_retries, exc, wait,
+                    attempt + 1,
+                    self._max_retries,
+                    exc,
+                    wait,
                 )
                 import asyncio
+
                 await asyncio.sleep(wait)
         return ""
 

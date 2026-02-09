@@ -14,12 +14,10 @@ Decision: D-013 — fitness function formula.
 from __future__ import annotations
 
 import ast
-import asyncio
 import logging
 import os
 import tempfile
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from synthesis.models import Counterexample, Individual, Specification, SynthesisConfig
 
@@ -36,7 +34,7 @@ class FitnessEvaluator:
         self,
         individual: Individual,
         spec: Specification,
-        counterexamples: List[Counterexample],
+        counterexamples: list[Counterexample],
     ) -> float:
         """
         Compute fitness score for an individual.
@@ -61,9 +59,9 @@ class FitnessEvaluator:
 
     async def evaluate_population(
         self,
-        individuals: List[Individual],
+        individuals: list[Individual],
         spec: Specification,
-        counterexamples: List[Counterexample],
+        counterexamples: list[Counterexample],
     ) -> None:
         """Evaluate fitness for all individuals in a population."""
         for ind in individuals:
@@ -72,7 +70,7 @@ class FitnessEvaluator:
     def _counterexample_avoidance(
         self,
         individual: Individual,
-        counterexamples: List[Counterexample],
+        counterexamples: list[Counterexample],
     ) -> float:
         """Fraction of counterexamples that this individual does NOT trigger."""
         if not counterexamples:
@@ -99,7 +97,7 @@ class FitnessEvaluator:
         try:
             # Compile the individual's code
             code_obj = compile(individual.code, "<synthesis>", "exec")
-            namespace: Dict[str, Any] = {}
+            namespace: dict[str, Any] = {}
             exec(code_obj, namespace)  # noqa: S102
 
             # Find the first callable in the namespace

@@ -1,6 +1,7 @@
 """Tests for synthesis data models."""
 
 import pytest
+
 from synthesis.models import (
     CodePatch,
     Counterexample,
@@ -74,7 +75,9 @@ class TestSynthesisConfig:
 
     def test_boundary_values_valid(self):
         # All boundaries should be valid
-        config = SynthesisConfig(mutation_rate=0.0, crossover_rate=1.0, elite_ratio=0.0, population_size=2, max_iterations=1, top_k=1)
+        config = SynthesisConfig(
+            mutation_rate=0.0, crossover_rate=1.0, elite_ratio=0.0, population_size=2, max_iterations=1, top_k=1
+        )
         assert config.mutation_rate == 0.0
         assert config.crossover_rate == 1.0
 

@@ -6,11 +6,7 @@ Tests cover:
 - DependencyExtractor: import extraction, relative imports, directory traversal
 """
 
-import tempfile
 from pathlib import Path
-from typing import Set
-
-import pytest
 
 from graph.dependency_extractor import (
     DependencyExtractor,
@@ -19,7 +15,6 @@ from graph.dependency_extractor import (
 )
 from graph.hierarchy import HierarchyBuilder, HierarchyNode
 from graph.models import CallGraph, EdgeKind, GraphEdge, GraphNode, NodeKind
-
 
 # ─────────────────────────────────────────────────────────────────
 # HierarchyBuilder Tests
@@ -255,7 +250,7 @@ class TestHierarchyBuilderSummary:
             graph.add_node(GraphNode(id=f"n{i}", kind=NodeKind.FUNCTION, name=f"n{i}"))
         # Chain: 0 -> 1 -> 2 -> 3 -> 4
         for i in range(4):
-            graph.add_edge(GraphEdge(source_id=f"n{i}", target_id=f"n{i+1}", kind=EdgeKind.CALLS))
+            graph.add_edge(GraphEdge(source_id=f"n{i}", target_id=f"n{i + 1}", kind=EdgeKind.CALLS))
 
         builder = HierarchyBuilder(max_levels=5)
         root = builder.build(graph)
@@ -620,7 +615,7 @@ class TestDependencyExtractorDirectory:
 
         # Should have 2 module nodes
         assert len(graph.nodes) == 2
-        module_names = {n for n in graph.nodes.keys()}
+        module_names = set(graph.nodes.keys())
         assert "code" in module_names
         assert "test" in module_names
 
@@ -639,7 +634,7 @@ class TestDependencyExtractorDirectory:
         graph = extractor.extract_directory(tmp_path)
 
         # Should have src.main but not .venv.pkg
-        module_names = {n for n in graph.nodes.keys()}
+        module_names = set(graph.nodes.keys())
         assert any("main" in name for name in module_names)
         assert not any("pkg" in name for name in module_names)
 
@@ -791,17 +786,21 @@ class TestIntegrationHierarchyWithExtractedDeps:
         # (simplification for testing)
         func_graph = CallGraph()
         for node in dep_graph.nodes.values():
-            func_graph.add_node(GraphNode(
-                id=node.id,
-                kind=NodeKind.FUNCTION,  # Treat modules as functions for hierarchy
-                name=node.name,
-            ))
+            func_graph.add_node(
+                GraphNode(
+                    id=node.id,
+                    kind=NodeKind.FUNCTION,  # Treat modules as functions for hierarchy
+                    name=node.name,
+                )
+            )
         for edge in dep_graph.edges:
-            func_graph.add_edge(GraphEdge(
-                source_id=edge.source_id,
-                target_id=edge.target_id,
-                kind=EdgeKind.CALLS,  # Treat imports as calls
-            ))
+            func_graph.add_edge(
+                GraphEdge(
+                    source_id=edge.source_id,
+                    target_id=edge.target_id,
+                    kind=EdgeKind.CALLS,  # Treat imports as calls
+                )
+            )
 
         # Build hierarchy
         builder = HierarchyBuilder()
@@ -825,17 +824,21 @@ class TestIntegrationHierarchyWithExtractedDeps:
         # Convert to function-level graph
         func_graph = CallGraph()
         for node in dep_graph.nodes.values():
-            func_graph.add_node(GraphNode(
-                id=node.id,
-                kind=NodeKind.FUNCTION,
-                name=node.name,
-            ))
+            func_graph.add_node(
+                GraphNode(
+                    id=node.id,
+                    kind=NodeKind.FUNCTION,
+                    name=node.name,
+                )
+            )
         for edge in dep_graph.edges:
-            func_graph.add_edge(GraphEdge(
-                source_id=edge.source_id,
-                target_id=edge.target_id,
-                kind=EdgeKind.CALLS,
-            ))
+            func_graph.add_edge(
+                GraphEdge(
+                    source_id=edge.source_id,
+                    target_id=edge.target_id,
+                    kind=EdgeKind.CALLS,
+                )
+            )
 
         # Build hierarchy — should detect SCC with both modules
         builder = HierarchyBuilder(min_scc_size=2)
@@ -844,8 +847,5 @@ class TestIntegrationHierarchyWithExtractedDeps:
         # Should have SCCs
         assert root.scc_members is not None
         # Find the SCC containing both 'a' and 'b'
-        scc_with_cycle = next(
-            (scc for scc in root.scc_members if "a" in scc and "b" in scc),
-            None
-        )
+        scc_with_cycle = next((scc for scc in root.scc_members if "a" in scc and "b" in scc), None)
         assert scc_with_cycle is not None

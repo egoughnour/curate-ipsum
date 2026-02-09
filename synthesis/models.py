@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from enum import StrEnum
+from typing import Any
 from uuid import uuid4
 
 
-class SynthesisStatus(str, Enum):
+class SynthesisStatus(StrEnum):
     """Outcome of a synthesis run."""
 
     SUCCESS = "success"
@@ -23,7 +23,7 @@ class SynthesisStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class PatchSource(str, Enum):
+class PatchSource(StrEnum):
     """How a code patch was produced."""
 
     LLM = "llm"
@@ -32,7 +32,7 @@ class PatchSource(str, Enum):
     SEED = "seed"
 
 
-class LLMBackend(str, Enum):
+class LLMBackend(StrEnum):
     """Which LLM backend to use."""
 
     CLOUD = "cloud"
@@ -89,10 +89,10 @@ class Individual:
     id: str = field(default_factory=lambda: str(uuid4())[:8])
     code: str = ""
     fitness: float = 0.0
-    lineage: List[str] = field(default_factory=list)  # Parent IDs
+    lineage: list[str] = field(default_factory=list)  # Parent IDs
     generation: int = 0
     source: PatchSource = PatchSource.SEED
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_valid(self) -> bool:
         """Check if the code is syntactically valid Python."""
@@ -112,9 +112,9 @@ class CodePatch:
     diff: str = ""
     region_id: str = ""
     original_code: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "code": self.code,
             "source": self.source.value,
@@ -130,16 +130,16 @@ class Specification:
 
     target_region: str = ""  # Region ID
     original_code: str = ""  # Code being replaced
-    surviving_mutant_ids: List[str] = field(default_factory=list)
-    test_commands: List[str] = field(default_factory=list)
+    surviving_mutant_ids: list[str] = field(default_factory=list)
+    test_commands: list[str] = field(default_factory=list)
     mutation_command: str = ""
     working_directory: str = ""
     # Assertions from M3 belief revision
-    assertion_ids: List[str] = field(default_factory=list)
-    preconditions: List[str] = field(default_factory=list)
-    postconditions: List[str] = field(default_factory=list)
+    assertion_ids: list[str] = field(default_factory=list)
+    preconditions: list[str] = field(default_factory=list)
+    postconditions: list[str] = field(default_factory=list)
     context_code: str = ""  # Surrounding code for LLM prompt context
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -147,15 +147,15 @@ class Counterexample:
     """A counterexample that a candidate patch fails on."""
 
     id: str = field(default_factory=lambda: str(uuid4())[:8])
-    input_values: Dict[str, Any] = field(default_factory=dict)
+    input_values: dict[str, Any] = field(default_factory=dict)
     expected_output: Any = None
     actual_output: Any = None
     mutant_id: str = ""
     error_message: str = ""
     test_command: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "input_values": self.input_values,
@@ -173,17 +173,17 @@ class SynthesisResult:
 
     id: str = field(default_factory=lambda: str(uuid4())[:8])
     status: SynthesisStatus = SynthesisStatus.FAILED
-    patch: Optional[CodePatch] = None
+    patch: CodePatch | None = None
     iterations: int = 0
     counterexamples_resolved: int = 0
     duration_ms: int = 0
-    fitness_history: List[float] = field(default_factory=list)
+    fitness_history: list[float] = field(default_factory=list)
     final_entropy: float = 0.0
     total_candidates_evaluated: int = 0
     error_message: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "status": self.status.value,

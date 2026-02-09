@@ -17,7 +17,6 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
 
 from storage.graph_store import GraphStore
 
@@ -28,9 +27,9 @@ LOG = logging.getLogger("storage.incremental")
 class ChangeSet:
     """Files that changed since last extraction."""
 
-    added: List[str] = field(default_factory=list)
-    modified: List[str] = field(default_factory=list)
-    removed: List[str] = field(default_factory=list)
+    added: list[str] = field(default_factory=list)
+    modified: list[str] = field(default_factory=list)
+    removed: list[str] = field(default_factory=list)
 
     @property
     def has_changes(self) -> bool:
@@ -40,7 +39,7 @@ class ChangeSet:
     def total_changed(self) -> int:
         return len(self.added) + len(self.modified) + len(self.removed)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "added": self.added,
             "modified": self.modified,
@@ -58,10 +57,10 @@ class UpdateResult:
     modified_files: int = 0
     total_files_scanned: int = 0
     duration_ms: int = 0
-    change_set: Optional[ChangeSet] = None
+    change_set: ChangeSet | None = None
     full_rebuild: bool = False
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "added_nodes": self.added_nodes,
             "removed_nodes": self.removed_nodes,
@@ -92,7 +91,7 @@ class IncrementalEngine:
     def compute_file_hashes(
         directory: Path,
         pattern: str = "**/*.py",
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Compute SHA-256 hashes for all files matching pattern.
 
@@ -103,7 +102,7 @@ class IncrementalEngine:
         Returns:
             Dict mapping relative file paths to their SHA-256 hex digests
         """
-        hashes: Dict[str, str] = {}
+        hashes: dict[str, str] = {}
         dir_path = Path(directory)
 
         for file_path in dir_path.glob(pattern):
@@ -121,7 +120,7 @@ class IncrementalEngine:
     def detect_changes(
         self,
         project_id: str,
-        current_hashes: Dict[str, str],
+        current_hashes: dict[str, str],
     ) -> ChangeSet:
         """
         Compare current file hashes with stored hashes to find changes.
@@ -140,16 +139,16 @@ class IncrementalEngine:
 
         added = sorted(current_files - stored_files)
         removed = sorted(stored_files - current_files)
-        modified = sorted(
-            f for f in current_files & stored_files
-            if current_hashes[f] != stored_hashes[f]
-        )
+        modified = sorted(f for f in current_files & stored_files if current_hashes[f] != stored_hashes[f])
 
         change_set = ChangeSet(added=added, modified=modified, removed=removed)
 
         LOG.info(
             "Change detection for %s: %d added, %d modified, %d removed",
-            project_id, len(added), len(modified), len(removed),
+            project_id,
+            len(added),
+            len(modified),
+            len(removed),
         )
 
         return change_set
@@ -222,16 +221,17 @@ class IncrementalEngine:
 
         # Step 6: Update stored file hashes
         # Remove hashes for deleted files
-        updated_hashes = {
-            fp: h for fp, h in current_hashes.items()
-        }
+        updated_hashes = dict(current_hashes.items())
         self._store.set_file_hashes(project_id, updated_hashes)
 
         result.duration_ms = int((time.monotonic() - start) * 1000)
         LOG.info(
             "Incremental update for %s: +%d nodes, -%d nodes, %d files, %dms",
-            project_id, result.added_nodes, result.removed_nodes,
-            result.modified_files, result.duration_ms,
+            project_id,
+            result.added_nodes,
+            result.removed_nodes,
+            result.modified_files,
+            result.duration_ms,
         )
 
         return result
@@ -275,7 +275,10 @@ class IncrementalEngine:
 
         LOG.info(
             "Full rebuild for %s: %d nodes, %d files, %dms",
-            project_id, result.added_nodes, result.modified_files, result.duration_ms,
+            project_id,
+            result.added_nodes,
+            result.modified_files,
+            result.duration_ms,
         )
 
         return result

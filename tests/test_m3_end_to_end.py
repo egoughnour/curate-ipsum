@@ -19,7 +19,6 @@ brs = pytest.importorskip("brs")
 
 from brs import Evidence
 
-from theory.assertions import AssertionKind
 from theory.failure_analyzer import FailureMode
 from theory.manager import TheoryManager
 from theory.provenance import RevisionType
@@ -76,7 +75,7 @@ class TestM3FullWorkflow:
             confidence=0.9,
             region_id="file:src/sort.py::func:sort",
         )
-        node2_id = node2["id"]
+        _node2_id = node2["id"]
 
         node3 = manager.add_assertion(
             assertion_type="type",
@@ -119,17 +118,12 @@ class TestM3FullWorkflow:
         # (node3 is a TYPE assertion in the same region)
 
         # --- Step 5: List assertions ---
-        assertions = manager.list_assertions(
-            region_id="file:src/sort.py::func:sort"
-        )
+        assertions = manager.list_assertions(region_id="file:src/sort.py::func:sort")
         assert len(assertions) == 3
 
         # --- Step 6: Create checkpoint before contraction ---
         rb = manager.get_rollback_manager()
-        cp = rb.create_checkpoint(
-            "before_contraction",
-            reason="Save state before contracting type assertion"
-        )
+        cp = rb.create_checkpoint("before_contraction", reason="Save state before contracting type assertion")
         assert cp.world_hash
 
         # --- Step 7: Contract a type assertion ---
@@ -137,18 +131,13 @@ class TestM3FullWorkflow:
         assert node3_id in result.nodes_removed
 
         # Verify assertion is gone
-        remaining = manager.list_assertions(
-            region_id="file:src/sort.py::func:sort"
-        )
+        remaining = manager.list_assertions(region_id="file:src/sort.py::func:sort")
         remaining_ids = [a["id"] for a in remaining]
         assert node3_id not in remaining_ids
 
         # Check provenance recorded the contraction
         dag_events = manager.provenance_dag.get_history()
-        contract_events = [
-            e for e in dag_events
-            if e.event_type == RevisionType.CONTRACT
-        ]
+        contract_events = [e for e in dag_events if e.event_type == RevisionType.CONTRACT]
         assert len(contract_events) >= 1
         assert node3_id in contract_events[-1].nodes_removed
 
@@ -160,9 +149,7 @@ class TestM3FullWorkflow:
         rb.restore_checkpoint("before_contraction")
 
         # Verify we're back to 3 assertions
-        restored = manager.list_assertions(
-            region_id="file:src/sort.py::func:sort"
-        )
+        restored = manager.list_assertions(region_id="file:src/sort.py::func:sort")
         # Note: after rollback, the world state should include node3 again
         restored_ids = [a["id"] for a in restored]
         assert node3_id in restored_ids
@@ -367,6 +354,6 @@ class TestRollbackIntegration:
         history = rb.list_world_history()
         assert len(history) >= 1
 
-        for world_hash, timestamp, reason in history:
+        for world_hash, timestamp, _reason in history:
             assert world_hash
             assert timestamp

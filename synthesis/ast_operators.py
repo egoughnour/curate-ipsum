@@ -13,7 +13,7 @@ import ast
 import copy
 import logging
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from synthesis.models import Counterexample, Individual, PatchSource
 
@@ -28,7 +28,7 @@ class ASTCrossover:
         parent1: Individual,
         parent2: Individual,
         generation: int = 0,
-    ) -> Tuple[Optional[Individual], Optional[Individual]]:
+    ) -> tuple[Individual | None, Individual | None]:
         """
         Swap compatible subtrees between two parents.
 
@@ -55,7 +55,9 @@ class ASTCrossover:
 
         # Perform the swap on copies
         try:
-            self._swap_nodes(child_tree1, child_tree2, node1, node2, parent_node1, parent_node2, field1, field2, idx1, idx2)
+            self._swap_nodes(
+                child_tree1, child_tree2, node1, node2, parent_node1, parent_node2, field1, field2, idx1, idx2
+            )
         except Exception:
             return None, None
 
@@ -65,9 +67,7 @@ class ASTCrossover:
 
         return child1, child2
 
-    def _find_compatible_subtrees(
-        self, tree1: ast.AST, tree2: ast.AST
-    ) -> List[Tuple[Any, ...]]:
+    def _find_compatible_subtrees(self, tree1: ast.AST, tree2: ast.AST) -> list[tuple[Any, ...]]:
         """Find pairs of subtrees with the same node type at comparable depth."""
         nodes1 = self._collect_swappable_nodes(tree1)
         nodes2 = self._collect_swappable_nodes(tree2)
@@ -75,12 +75,12 @@ class ASTCrossover:
         pairs = []
         for info1 in nodes1:
             for info2 in nodes2:
-                if type(info1[0]) == type(info2[0]):
+                if type(info1[0]) is type(info2[0]):
                     pairs.append((info1, info2))
 
         return pairs
 
-    def _collect_swappable_nodes(self, tree: ast.AST) -> List[Tuple[Any, ...]]:
+    def _collect_swappable_nodes(self, tree: ast.AST) -> list[tuple[Any, ...]]:
         """Collect nodes that can be swapped (statements and expressions)."""
         swappable = []
 
@@ -95,9 +95,7 @@ class ASTCrossover:
 
         return swappable
 
-    def _swap_nodes(
-        self, tree1, tree2, node1, node2, parent1, parent2, field1, field2, idx1, idx2
-    ) -> None:
+    def _swap_nodes(self, tree1, tree2, node1, node2, parent1, parent2, field1, field2, idx1, idx2) -> None:
         """Swap two nodes between trees (operates on deep copies)."""
         # Find corresponding nodes in the copies by position
         copy_nodes1 = self._collect_swappable_nodes(tree1)
@@ -124,9 +122,9 @@ class ASTCrossover:
     @staticmethod
     def _tree_to_individual(
         tree: ast.AST,
-        lineage: List[str],
+        lineage: list[str],
         generation: int,
-    ) -> Optional[Individual]:
+    ) -> Individual | None:
         """Convert AST back to Individual, returning None if invalid."""
         try:
             ast.fix_missing_locations(tree)
@@ -160,8 +158,8 @@ class ASTMutator:
         self,
         individual: Individual,
         generation: int = 0,
-        counterexample: Optional[Counterexample] = None,
-    ) -> Optional[Individual]:
+        counterexample: Counterexample | None = None,
+    ) -> Individual | None:
         """
         Apply a single mutation operator.
 
@@ -222,8 +220,7 @@ class ASTMutator:
     def _apply_constant_tweak(self, tree: ast.AST) -> None:
         """Modify a random numeric constant."""
         constants = [
-            node for node in ast.walk(tree)
-            if isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
+            node for node in ast.walk(tree) if isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
         ]
         if constants:
             target = random.choice(constants)
@@ -235,13 +232,18 @@ class ASTMutator:
     def _apply_operator_swap(self, tree: ast.AST) -> None:
         """Swap a comparison or binary operator."""
         COMP_SWAPS = {
-            ast.Lt: ast.LtE, ast.LtE: ast.Lt,
-            ast.Gt: ast.GtE, ast.GtE: ast.Gt,
-            ast.Eq: ast.NotEq, ast.NotEq: ast.Eq,
+            ast.Lt: ast.LtE,
+            ast.LtE: ast.Lt,
+            ast.Gt: ast.GtE,
+            ast.GtE: ast.Gt,
+            ast.Eq: ast.NotEq,
+            ast.NotEq: ast.Eq,
         }
         BIN_SWAPS = {
-            ast.Add: ast.Sub, ast.Sub: ast.Add,
-            ast.Mult: ast.FloorDiv, ast.FloorDiv: ast.Mult,
+            ast.Add: ast.Sub,
+            ast.Sub: ast.Add,
+            ast.Mult: ast.FloorDiv,
+            ast.FloorDiv: ast.Mult,
         }
 
         # Try comparison operators first

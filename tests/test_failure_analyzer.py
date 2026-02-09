@@ -46,58 +46,68 @@ class TestFailureAnalysis:
 
 
 class TestClassifyError:
-    @pytest.mark.parametrize("error_msg,expected_mode", [
-        ("TypeError: unsupported operand type(s)", FailureMode.TYPE_MISMATCH),
-        ("type error in function call", FailureMode.TYPE_MISMATCH),
-        ("expected type int but got str", FailureMode.TYPE_MISMATCH),
-        ("cannot convert string to float", FailureMode.TYPE_MISMATCH),
-        ("incompatible type for argument", FailureMode.TYPE_MISMATCH),
-        ("invalid type for parameter", FailureMode.TYPE_MISMATCH),
-    ])
+    @pytest.mark.parametrize(
+        "error_msg,expected_mode",
+        [
+            ("TypeError: unsupported operand type(s)", FailureMode.TYPE_MISMATCH),
+            ("type error in function call", FailureMode.TYPE_MISMATCH),
+            ("expected type int but got str", FailureMode.TYPE_MISMATCH),
+            ("cannot convert string to float", FailureMode.TYPE_MISMATCH),
+            ("incompatible type for argument", FailureMode.TYPE_MISMATCH),
+            ("invalid type for parameter", FailureMode.TYPE_MISMATCH),
+        ],
+    )
     def test_type_error_patterns(self, error_msg, expected_mode):
         assert FailureModeAnalyzer.classify_error(error_msg) == expected_mode
 
-    @pytest.mark.parametrize("error_msg,expected_mode", [
-        ("precondition not met", FailureMode.PRECONDITION_VIOLATION),
-        ("requires x > 0 not met", FailureMode.PRECONDITION_VIOLATION),
-        ("invalid argument: must be positive", FailureMode.PRECONDITION_VIOLATION),
-        ("ValueError: negative value not allowed", FailureMode.PRECONDITION_VIOLATION),
-        ("index out of range", FailureMode.PRECONDITION_VIOLATION),
-    ])
+    @pytest.mark.parametrize(
+        "error_msg,expected_mode",
+        [
+            ("precondition not met", FailureMode.PRECONDITION_VIOLATION),
+            ("requires x > 0 not met", FailureMode.PRECONDITION_VIOLATION),
+            ("invalid argument: must be positive", FailureMode.PRECONDITION_VIOLATION),
+            ("ValueError: negative value not allowed", FailureMode.PRECONDITION_VIOLATION),
+            ("index out of range", FailureMode.PRECONDITION_VIOLATION),
+        ],
+    )
     def test_precondition_patterns(self, error_msg, expected_mode):
         assert FailureModeAnalyzer.classify_error(error_msg) == expected_mode
 
-    @pytest.mark.parametrize("error_msg,expected_mode", [
-        ("postcondition violated", FailureMode.POSTCONDITION_VIOLATION),
-        ("ensures result > 0 not met", FailureMode.POSTCONDITION_VIOLATION),
-        ("expected 42 but got 0", FailureMode.POSTCONDITION_VIOLATION),
-        ("return value incorrect for input", FailureMode.POSTCONDITION_VIOLATION),
-    ])
+    @pytest.mark.parametrize(
+        "error_msg,expected_mode",
+        [
+            ("postcondition violated", FailureMode.POSTCONDITION_VIOLATION),
+            ("ensures result > 0 not met", FailureMode.POSTCONDITION_VIOLATION),
+            ("expected 42 but got 0", FailureMode.POSTCONDITION_VIOLATION),
+            ("return value incorrect for input", FailureMode.POSTCONDITION_VIOLATION),
+        ],
+    )
     def test_postcondition_patterns(self, error_msg, expected_mode):
         assert FailureModeAnalyzer.classify_error(error_msg) == expected_mode
 
-    @pytest.mark.parametrize("error_msg,expected_mode", [
-        ("invariant broken at iteration 5", FailureMode.INVARIANT_VIOLATION),
-        ("IndexError: list index out of bounds", FailureMode.INVARIANT_VIOLATION),
-        ("infinite loop detected", FailureMode.INVARIANT_VIOLATION),
-        ("recursion depth exceeded", FailureMode.INVARIANT_VIOLATION),
-        ("stack overflow in recursive call", FailureMode.INVARIANT_VIOLATION),
-    ])
+    @pytest.mark.parametrize(
+        "error_msg,expected_mode",
+        [
+            ("invariant broken at iteration 5", FailureMode.INVARIANT_VIOLATION),
+            ("IndexError: list index out of bounds", FailureMode.INVARIANT_VIOLATION),
+            ("infinite loop detected", FailureMode.INVARIANT_VIOLATION),
+            ("recursion depth exceeded", FailureMode.INVARIANT_VIOLATION),
+            ("stack overflow in recursive call", FailureMode.INVARIANT_VIOLATION),
+        ],
+    )
     def test_invariant_patterns(self, error_msg, expected_mode):
         assert FailureModeAnalyzer.classify_error(error_msg) == expected_mode
 
     def test_assertion_error_maps_to_postcondition(self):
-        assert FailureModeAnalyzer.classify_error(
-            "AssertionError: expected True"
-        ) == FailureMode.POSTCONDITION_VIOLATION
+        assert (
+            FailureModeAnalyzer.classify_error("AssertionError: expected True") == FailureMode.POSTCONDITION_VIOLATION
+        )
 
     def test_empty_message_returns_unknown(self):
         assert FailureModeAnalyzer.classify_error("") == FailureMode.UNKNOWN
 
     def test_unrecognized_message_returns_unknown(self):
-        assert FailureModeAnalyzer.classify_error(
-            "something completely unrelated happened"
-        ) == FailureMode.UNKNOWN
+        assert FailureModeAnalyzer.classify_error("something completely unrelated happened") == FailureMode.UNKNOWN
 
     def test_priority_type_over_precondition(self):
         """Type errors should be detected before precondition violations."""
@@ -125,9 +135,7 @@ class TestDetectOverfitting:
         assert FailureModeAnalyzer.detect_overfitting(0.8, 0.4) is True
 
     def test_custom_threshold(self):
-        assert FailureModeAnalyzer.detect_overfitting(
-            0.8, 0.6, overfitting_threshold=0.1
-        ) is True
+        assert FailureModeAnalyzer.detect_overfitting(0.8, 0.6, overfitting_threshold=0.1) is True
 
 
 class TestDetectUnderfitting:
@@ -228,8 +236,11 @@ class TestAnalyze:
 class TestSuggestContractions:
     def _make_assertion(self, id, kind, confidence=0.5, region_id="file:test.py"):
         return Assertion(
-            id=id, kind=kind, content=f"test {id}",
-            confidence=confidence, region_id=region_id,
+            id=id,
+            kind=kind,
+            content=f"test {id}",
+            confidence=confidence,
+            region_id=region_id,
         )
 
     def test_type_mismatch_suggests_type_assertions(self):
@@ -238,9 +249,7 @@ class TestSuggestContractions:
             self._make_assertion("a2", AssertionKind.BEHAVIOR, 0.8),
             self._make_assertion("a3", AssertionKind.TYPE, 0.4),
         ]
-        ids = FailureModeAnalyzer._suggest_contractions(
-            FailureMode.TYPE_MISMATCH, assertions, "file:test.py"
-        )
+        ids = FailureModeAnalyzer._suggest_contractions(FailureMode.TYPE_MISMATCH, assertions, "file:test.py")
         assert "a1" in ids
         assert "a3" in ids
         assert "a2" not in ids
@@ -253,9 +262,7 @@ class TestSuggestContractions:
             self._make_assertion("a2", AssertionKind.CONTRACT, 0.5),
             self._make_assertion("a3", AssertionKind.TYPE, 0.3),
         ]
-        ids = FailureModeAnalyzer._suggest_contractions(
-            FailureMode.POSTCONDITION_VIOLATION, assertions, "file:test.py"
-        )
+        ids = FailureModeAnalyzer._suggest_contractions(FailureMode.POSTCONDITION_VIOLATION, assertions, "file:test.py")
         assert "a1" in ids
         assert "a2" in ids  # CONTRACT also included
         assert "a3" not in ids
@@ -266,9 +273,7 @@ class TestSuggestContractions:
             self._make_assertion("a2", AssertionKind.BEHAVIOR, 0.7),
             self._make_assertion("a3", AssertionKind.INVARIANT, 0.5),
         ]
-        ids = FailureModeAnalyzer._suggest_contractions(
-            FailureMode.UNDERFITTING, assertions, "file:test.py"
-        )
+        ids = FailureModeAnalyzer._suggest_contractions(FailureMode.UNDERFITTING, assertions, "file:test.py")
         assert len(ids) == 3  # All assertions
 
     def test_region_filtering(self):
@@ -276,9 +281,7 @@ class TestSuggestContractions:
             self._make_assertion("a1", AssertionKind.TYPE, 0.5, "file:test.py"),
             self._make_assertion("a2", AssertionKind.TYPE, 0.5, "file:other.py"),
         ]
-        ids = FailureModeAnalyzer._suggest_contractions(
-            FailureMode.TYPE_MISMATCH, assertions, "file:test.py"
-        )
+        ids = FailureModeAnalyzer._suggest_contractions(FailureMode.TYPE_MISMATCH, assertions, "file:test.py")
         assert "a1" in ids
         assert "a2" not in ids
 
@@ -287,23 +290,17 @@ class TestSuggestContractions:
             self._make_assertion("a1", AssertionKind.TYPE, 0.5, "file:test.py"),
             self._make_assertion("a2", AssertionKind.TYPE, 0.5, "file:other.py"),
         ]
-        ids = FailureModeAnalyzer._suggest_contractions(
-            FailureMode.TYPE_MISMATCH, assertions, None
-        )
+        ids = FailureModeAnalyzer._suggest_contractions(FailureMode.TYPE_MISMATCH, assertions, None)
         assert "a1" in ids
         assert "a2" in ids
 
     def test_empty_assertions(self):
-        ids = FailureModeAnalyzer._suggest_contractions(
-            FailureMode.TYPE_MISMATCH, [], "file:test.py"
-        )
+        ids = FailureModeAnalyzer._suggest_contractions(FailureMode.TYPE_MISMATCH, [], "file:test.py")
         assert ids == []
 
     def test_unknown_mode_no_suggestions(self):
         assertions = [
             self._make_assertion("a1", AssertionKind.TYPE, 0.5),
         ]
-        ids = FailureModeAnalyzer._suggest_contractions(
-            FailureMode.UNKNOWN, assertions, "file:test.py"
-        )
+        ids = FailureModeAnalyzer._suggest_contractions(FailureMode.UNKNOWN, assertions, "file:test.py")
         assert ids == []

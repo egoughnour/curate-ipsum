@@ -18,7 +18,6 @@ from __future__ import annotations
 import ast
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 
 from .extractor import CallGraphExtractor, ParseError
 from .models import (
@@ -34,7 +33,7 @@ from .models import (
 
 def _get_end_lineno(node: ast.AST, default: int = 1) -> int:
     """Safely get end_lineno from AST node."""
-    return getattr(node, 'end_lineno', None) or getattr(node, 'lineno', default) or default
+    return getattr(node, "end_lineno", None) or getattr(node, "lineno", default) or default
 
 
 class ScopeTracker:
@@ -45,13 +44,13 @@ class ScopeTracker:
     """
 
     def __init__(self, module_name: str):
-        self._stack: List[Tuple[str, NodeKind]] = [(module_name, NodeKind.MODULE)]
+        self._stack: list[tuple[str, NodeKind]] = [(module_name, NodeKind.MODULE)]
 
     def push(self, name: str, kind: NodeKind) -> None:
         """Enter a new scope."""
         self._stack.append((name, kind))
 
-    def pop(self) -> Tuple[str, NodeKind]:
+    def pop(self) -> tuple[str, NodeKind]:
         """Exit current scope."""
         return self._stack.pop()
 
@@ -95,7 +94,7 @@ class DefinitionVisitor(ast.NodeVisitor):
         self.include_comprehensions = include_comprehensions
 
         self.graph = CallGraph()
-        self.symbol_table: Dict[str, str] = {}  # local name -> FQN
+        self.symbol_table: dict[str, str] = {}  # local name -> FQN
         self._lambda_counter = 0
         self._comp_counter = 0
 
@@ -135,27 +134,31 @@ class DefinitionVisitor(ast.NodeVisitor):
         self.graph.add_node(class_node)
 
         # Add "defines" edge from parent scope
-        self.graph.add_edge(GraphEdge(
-            source_id=self.scope.current_fqn,
-            target_id=fqn,
-            kind=EdgeKind.DEFINES,
-            location=SourceLocation(
-                file=self.file_path,
-                line_start=node.lineno,
-                line_end=node.lineno,
-            ),
-        ))
+        self.graph.add_edge(
+            GraphEdge(
+                source_id=self.scope.current_fqn,
+                target_id=fqn,
+                kind=EdgeKind.DEFINES,
+                location=SourceLocation(
+                    file=self.file_path,
+                    line_start=node.lineno,
+                    line_end=node.lineno,
+                ),
+            )
+        )
 
         # Add inheritance edges
         for base in node.bases:
             base_name = self._get_name(base)
             if base_name:
-                self.graph.add_edge(GraphEdge(
-                    source_id=fqn,
-                    target_id=base_name,  # May be unresolved
-                    kind=EdgeKind.INHERITS,
-                    confidence=0.8 if "." not in base_name else 0.5,
-                ))
+                self.graph.add_edge(
+                    GraphEdge(
+                        source_id=fqn,
+                        target_id=base_name,  # May be unresolved
+                        kind=EdgeKind.INHERITS,
+                        confidence=0.8 if "." not in base_name else 0.5,
+                    )
+                )
 
         # Visit class body
         self.scope.push(node.name, NodeKind.CLASS)
@@ -220,16 +223,18 @@ class DefinitionVisitor(ast.NodeVisitor):
         self.graph.add_node(func_node)
 
         # Add "defines" edge from parent scope
-        self.graph.add_edge(GraphEdge(
-            source_id=self.scope.current_fqn,
-            target_id=fqn,
-            kind=EdgeKind.DEFINES,
-            location=SourceLocation(
-                file=self.file_path,
-                line_start=node.lineno,
-                line_end=node.lineno,
-            ),
-        ))
+        self.graph.add_edge(
+            GraphEdge(
+                source_id=self.scope.current_fqn,
+                target_id=fqn,
+                kind=EdgeKind.DEFINES,
+                location=SourceLocation(
+                    file=self.file_path,
+                    line_start=node.lineno,
+                    line_end=node.lineno,
+                ),
+            )
+        )
 
         # Store in symbol table for call resolution
         self.symbol_table[node.name] = fqn
@@ -265,11 +270,13 @@ class DefinitionVisitor(ast.NodeVisitor):
         self.graph.add_node(lambda_node)
 
         # Add "defines" edge
-        self.graph.add_edge(GraphEdge(
-            source_id=self.scope.current_fqn,
-            target_id=fqn,
-            kind=EdgeKind.DEFINES,
-        ))
+        self.graph.add_edge(
+            GraphEdge(
+                source_id=self.scope.current_fqn,
+                target_id=fqn,
+                kind=EdgeKind.DEFINES,
+            )
+        )
 
         self.generic_visit(node)
 
@@ -306,17 +313,19 @@ class DefinitionVisitor(ast.NodeVisitor):
         )
         self.graph.add_node(comp_node)
 
-        self.graph.add_edge(GraphEdge(
-            source_id=self.scope.current_fqn,
-            target_id=fqn,
-            kind=EdgeKind.DEFINES,
-        ))
+        self.graph.add_edge(
+            GraphEdge(
+                source_id=self.scope.current_fqn,
+                target_id=fqn,
+                kind=EdgeKind.DEFINES,
+            )
+        )
 
         self.generic_visit(node)
 
-    def _extract_params(self, args: ast.arguments) -> Tuple[str, ...]:
+    def _extract_params(self, args: ast.arguments) -> tuple[str, ...]:
         """Extract parameter names from function arguments."""
-        params: List[str] = []
+        params: list[str] = []
 
         # Positional-only (Python 3.8+)
         for arg in args.posonlyargs:
@@ -340,7 +349,7 @@ class DefinitionVisitor(ast.NodeVisitor):
 
         return tuple(params)
 
-    def _get_name(self, node: ast.AST) -> Optional[str]:
+    def _get_name(self, node: ast.AST) -> str | None:
         """Extract name from various AST node types."""
         if isinstance(node, ast.Name):
             return node.id
@@ -382,7 +391,7 @@ class CallVisitor(ast.NodeVisitor):
         file_path: str,
         module_name: str,
         graph: CallGraph,
-        symbol_table: Dict[str, str],
+        symbol_table: dict[str, str],
         include_dynamic_calls: bool = True,
     ):
         self.file_path = file_path
@@ -392,7 +401,7 @@ class CallVisitor(ast.NodeVisitor):
         self.include_dynamic_calls = include_dynamic_calls
 
         # Track assignments for better resolution
-        self.local_assignments: Dict[str, str] = {}
+        self.local_assignments: dict[str, str] = {}
 
     def visit_Module(self, node: ast.Module) -> None:
         self.generic_visit(node)
@@ -442,25 +451,27 @@ class CallVisitor(ast.NodeVisitor):
             # Determine if call is conditional
             is_conditional = self._is_in_conditional(node)
 
-            self.graph.add_edge(GraphEdge(
-                source_id=caller_fqn,
-                target_id=target,
-                kind=EdgeKind.CALLS,
-                location=SourceLocation(
-                    file=self.file_path,
-                    line_start=node.lineno,
-                    line_end=_get_end_lineno(node, node.lineno),
-                    col_start=node.col_offset,
-                ),
-                is_conditional=is_conditional,
-                is_dynamic=is_dynamic,
-                confidence=confidence,
-            ))
+            self.graph.add_edge(
+                GraphEdge(
+                    source_id=caller_fqn,
+                    target_id=target,
+                    kind=EdgeKind.CALLS,
+                    location=SourceLocation(
+                        file=self.file_path,
+                        line_start=node.lineno,
+                        line_end=_get_end_lineno(node, node.lineno),
+                        col_start=node.col_offset,
+                    ),
+                    is_conditional=is_conditional,
+                    is_dynamic=is_dynamic,
+                    confidence=confidence,
+                )
+            )
 
         # Continue visiting for nested calls
         self.generic_visit(node)
 
-    def _resolve_call_target(self, func: ast.AST) -> Tuple[Optional[str], float, bool]:
+    def _resolve_call_target(self, func: ast.AST) -> tuple[str | None, float, bool]:
         """
         Resolve call target to FQN.
 
@@ -477,6 +488,7 @@ class CallVisitor(ast.NodeVisitor):
 
             # Check if it's a builtin
             import builtins
+
             if hasattr(builtins, name):
                 return f"builtins.{name}", 1.0, False
 
@@ -514,7 +526,7 @@ class CallVisitor(ast.NodeVisitor):
 
         return None, 0.0, True
 
-    def _get_value_name(self, node: ast.AST) -> Optional[str]:
+    def _get_value_name(self, node: ast.AST) -> str | None:
         """Get the base name from an expression."""
         if isinstance(node, ast.Name):
             return node.id
@@ -542,7 +554,7 @@ class CallVisitor(ast.NodeVisitor):
             type_hint = self._get_annotation_str(node.annotation)
             self.local_assignments[node.target.id] = type_hint
 
-    def _infer_type(self, node: ast.AST) -> Optional[str]:
+    def _infer_type(self, node: ast.AST) -> str | None:
         """Infer type from expression."""
         if isinstance(node, ast.Call):
             # Constructor call: Foo()

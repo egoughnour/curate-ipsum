@@ -11,17 +11,18 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from graph.models import (
     CallGraph,
     EdgeKind,
+    FunctionSignature,
     GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
-    FunctionSignature,
 )
 from storage.graph_store import GraphStore
 
@@ -155,10 +156,7 @@ class KuzuGraphStore(GraphStore):
 
     def __init__(self, db_path: Path) -> None:
         if kuzu is None:
-            raise ImportError(
-                "kuzu required for KuzuGraphStore. "
-                "Install with: pip install 'curate-ipsum[graphdb]'"
-            )
+            raise ImportError("kuzu required for KuzuGraphStore. Install with: pip install 'curate-ipsum[graphdb]'")
         self._db_path = db_path
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self._db = kuzu.Database(str(db_path))
@@ -193,14 +191,16 @@ class KuzuGraphStore(GraphStore):
         for node in graph.nodes.values():
             sig_json = None
             if node.signature:
-                sig_json = json.dumps({
-                    "name": node.signature.name,
-                    "params": list(node.signature.params),
-                    "return_type": node.signature.return_type,
-                    "decorators": list(node.signature.decorators),
-                    "is_async": node.signature.is_async,
-                    "is_generator": node.signature.is_generator,
-                })
+                sig_json = json.dumps(
+                    {
+                        "name": node.signature.name,
+                        "params": list(node.signature.params),
+                        "return_type": node.signature.return_type,
+                        "decorators": list(node.signature.decorators),
+                        "is_async": node.signature.is_async,
+                        "is_generator": node.signature.is_generator,
+                    }
+                )
             meta_json = json.dumps(node.metadata) if node.metadata else None
 
             self._conn.execute(
@@ -228,11 +228,13 @@ class KuzuGraphStore(GraphStore):
             rel_name = _EDGE_KIND_TO_REL.get(edge.kind, "CALLS")
             loc_json = ""
             if edge.location:
-                loc_json = json.dumps({
-                    "file": edge.location.file,
-                    "line_start": edge.location.line_start,
-                    "line_end": edge.location.line_end,
-                })
+                loc_json = json.dumps(
+                    {
+                        "file": edge.location.file,
+                        "line_start": edge.location.line_start,
+                        "line_end": edge.location.line_end,
+                    }
+                )
 
             try:
                 if rel_name == "CALLS":
@@ -281,10 +283,12 @@ class KuzuGraphStore(GraphStore):
 
         LOG.info(
             "Stored graph for project %s: %d nodes, %d edges",
-            project_id, len(graph.nodes), len(graph.edges),
+            project_id,
+            len(graph.nodes),
+            len(graph.edges),
         )
 
-    def load_graph(self, project_id: str) -> Optional[CallGraph]:
+    def load_graph(self, project_id: str) -> CallGraph | None:
         """Load a previously stored call graph."""
         # Check if data exists
         result = self._conn.execute(
@@ -340,15 +344,17 @@ class KuzuGraphStore(GraphStore):
                 except json.JSONDecodeError:
                     pass
 
-            graph.add_node(GraphNode(
-                id=nid,
-                kind=NodeKind(kind),
-                name=name,
-                location=location,
-                signature=signature,
-                docstring=docstring,
-                metadata=metadata,
-            ))
+            graph.add_node(
+                GraphNode(
+                    id=nid,
+                    kind=NodeKind(kind),
+                    name=name,
+                    location=location,
+                    signature=signature,
+                    docstring=docstring,
+                    metadata=metadata,
+                )
+            )
 
         # Load edges for each relationship type
         for edge_kind, rel_name in _EDGE_KIND_TO_REL.items():
@@ -373,15 +379,17 @@ class KuzuGraphStore(GraphStore):
                                 )
                             except (json.JSONDecodeError, KeyError):
                                 pass
-                        graph.add_edge(GraphEdge(
-                            source_id=src,
-                            target_id=tgt,
-                            kind=edge_kind,
-                            confidence=conf or 1.0,
-                            is_conditional=bool(cond),
-                            is_dynamic=bool(dyn),
-                            location=location,
-                        ))
+                        graph.add_edge(
+                            GraphEdge(
+                                source_id=src,
+                                target_id=tgt,
+                                kind=edge_kind,
+                                confidence=conf or 1.0,
+                                is_conditional=bool(cond),
+                                is_dynamic=bool(dyn),
+                                location=location,
+                            )
+                        )
                 elif rel_name == "REFERENCES_EDGE":
                     result = self._conn.execute(
                         f"MATCH (a:CodeNode)-[r:{rel_name} {{project_id: $pid}}]->(b:CodeNode) "
@@ -391,38 +399,43 @@ class KuzuGraphStore(GraphStore):
                     while result.has_next():
                         row = result.get_next()
                         src, tgt, conf = row
-                        graph.add_edge(GraphEdge(
-                            source_id=src,
-                            target_id=tgt,
-                            kind=edge_kind,
-                            confidence=conf or 1.0,
-                        ))
+                        graph.add_edge(
+                            GraphEdge(
+                                source_id=src,
+                                target_id=tgt,
+                                kind=edge_kind,
+                                confidence=conf or 1.0,
+                            )
+                        )
                 else:
                     result = self._conn.execute(
-                        f"MATCH (a:CodeNode)-[r:{rel_name} {{project_id: $pid}}]->(b:CodeNode) "
-                        f"RETURN a.id, b.id",
+                        f"MATCH (a:CodeNode)-[r:{rel_name} {{project_id: $pid}}]->(b:CodeNode) RETURN a.id, b.id",
                         {"pid": project_id},
                     )
                     while result.has_next():
                         row = result.get_next()
                         src, tgt = row
-                        graph.add_edge(GraphEdge(
-                            source_id=src,
-                            target_id=tgt,
-                            kind=edge_kind,
-                        ))
+                        graph.add_edge(
+                            GraphEdge(
+                                source_id=src,
+                                target_id=tgt,
+                                kind=edge_kind,
+                            )
+                        )
             except Exception as exc:
                 LOG.debug("Failed to load %s edges: %s", rel_name, exc)
 
         LOG.info(
             "Loaded graph for project %s: %d nodes, %d edges",
-            project_id, len(graph.nodes), len(graph.edges),
+            project_id,
+            len(graph.nodes),
+            len(graph.edges),
         )
         return graph
 
     # ── Single Node / Edge ────────────────────────────────────────────
 
-    def store_node(self, node_data: Dict[str, Any], project_id: str) -> None:
+    def store_node(self, node_data: dict[str, Any], project_id: str) -> None:
         """Store or update a single node."""
         # Delete if exists, then create
         try:
@@ -453,7 +466,7 @@ class KuzuGraphStore(GraphStore):
             },
         )
 
-    def store_edge(self, edge_data: Dict[str, Any], project_id: str) -> None:
+    def store_edge(self, edge_data: dict[str, Any], project_id: str) -> None:
         """Store or update a single edge."""
         kind_str = edge_data.get("kind", "calls")
         try:
@@ -475,7 +488,7 @@ class KuzuGraphStore(GraphStore):
         except Exception as exc:
             LOG.debug("Failed to store edge: %s", exc)
 
-    def get_node(self, node_id: str, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_node(self, node_id: str, project_id: str) -> dict[str, Any] | None:
         """Get a single node's data by ID."""
         result = self._conn.execute(
             "MATCH (n:CodeNode {id: $id, project_id: $pid}) "
@@ -506,10 +519,10 @@ class KuzuGraphStore(GraphStore):
         node_id: str,
         project_id: str,
         direction: str = "outgoing",
-        edge_kind: Optional[str] = None,
-    ) -> List[str]:
+        edge_kind: str | None = None,
+    ) -> list[str]:
         """Get neighboring node IDs."""
-        results: List[str] = []
+        results: list[str] = []
 
         if edge_kind:
             try:
@@ -525,8 +538,7 @@ class KuzuGraphStore(GraphStore):
             try:
                 if direction in ("outgoing", "both"):
                     r = self._conn.execute(
-                        f"MATCH (a:CodeNode {{id: $id}})-[:{rel} {{project_id: $pid}}]->(b:CodeNode) "
-                        f"RETURN b.id",
+                        f"MATCH (a:CodeNode {{id: $id}})-[:{rel} {{project_id: $pid}}]->(b:CodeNode) RETURN b.id",
                         {"id": node_id, "pid": project_id},
                     )
                     while r.has_next():
@@ -534,8 +546,7 @@ class KuzuGraphStore(GraphStore):
 
                 if direction in ("incoming", "both"):
                     r = self._conn.execute(
-                        f"MATCH (a:CodeNode)-[:{rel} {{project_id: $pid}}]->(b:CodeNode {{id: $id}}) "
-                        f"RETURN a.id",
+                        f"MATCH (a:CodeNode)-[:{rel} {{project_id: $pid}}]->(b:CodeNode {{id: $id}}) RETURN a.id",
                         {"id": node_id, "pid": project_id},
                     )
                     while r.has_next():
@@ -547,9 +558,7 @@ class KuzuGraphStore(GraphStore):
 
     # ── Reachability Index ────────────────────────────────────────────
 
-    def query_reachable(
-        self, source_id: str, target_id: str, project_id: str
-    ) -> bool:
+    def query_reachable(self, source_id: str, target_id: str, project_id: str) -> bool:
         """Check if target is reachable from source using Kameda labels."""
         # First try Kameda labels
         src_label = self._get_kameda_label(source_id, project_id)
@@ -573,7 +582,7 @@ class KuzuGraphStore(GraphStore):
 
         return False
 
-    def _get_kameda_label(self, node_id: str, project_id: str) -> Optional[tuple]:
+    def _get_kameda_label(self, node_id: str, project_id: str) -> tuple | None:
         """Get (left_rank, right_rank) for a node."""
         # Kameda labels stored with composite key: project_id::node_id
         label_id = f"{project_id}::{node_id}"
@@ -591,7 +600,7 @@ class KuzuGraphStore(GraphStore):
 
     def store_reachability_index(
         self,
-        kameda_data: Dict[str, Any],
+        kameda_data: dict[str, Any],
         project_id: str,
     ) -> None:
         """Persist Kameda reachability index."""
@@ -616,9 +625,7 @@ class KuzuGraphStore(GraphStore):
             if node_id in right_rank:
                 label_id = f"{project_id}::{node_id}"
                 self._conn.execute(
-                    "CREATE (k:KamedaLabel {"
-                    "id: $id, project_id: $pid, left_rank: $lr, right_rank: $rr"
-                    "})",
+                    "CREATE (k:KamedaLabel {id: $id, project_id: $pid, left_rank: $lr, right_rank: $rr})",
                     {
                         "id": label_id,
                         "pid": project_id,
@@ -630,10 +637,7 @@ class KuzuGraphStore(GraphStore):
         # Store metadata
         all_ids = kameda_data.get("all_node_ids", [])
         self._conn.execute(
-            "CREATE (m:KamedaMeta {"
-            "id: $pid, source_id: $src, sink_id: $sink, "
-            "all_node_ids_json: $ids"
-            "})",
+            "CREATE (m:KamedaMeta {id: $pid, source_id: $src, sink_id: $sink, all_node_ids_json: $ids})",
             {
                 "pid": project_id,
                 "src": kameda_data.get("source_id", ""),
@@ -657,18 +661,16 @@ class KuzuGraphStore(GraphStore):
 
         LOG.info(
             "Stored Kameda index for project %s: %d labels",
-            project_id, len(left_rank),
+            project_id,
+            len(left_rank),
         )
 
-    def load_reachability_index(
-        self, project_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def load_reachability_index(self, project_id: str) -> dict[str, Any] | None:
         """Load stored Kameda reachability index."""
         # Check metadata exists
         try:
             result = self._conn.execute(
-                "MATCH (m:KamedaMeta {id: $pid}) "
-                "RETURN m.source_id, m.sink_id, m.all_node_ids_json",
+                "MATCH (m:KamedaMeta {id: $pid}) RETURN m.source_id, m.sink_id, m.all_node_ids_json",
                 {"pid": project_id},
             )
             if not result.has_next():
@@ -683,8 +685,7 @@ class KuzuGraphStore(GraphStore):
         right_rank = {}
         try:
             result = self._conn.execute(
-                "MATCH (k:KamedaLabel {project_id: $pid}) "
-                "RETURN k.id, k.left_rank, k.right_rank",
+                "MATCH (k:KamedaLabel {project_id: $pid}) RETURN k.id, k.left_rank, k.right_rank",
                 {"pid": project_id},
             )
             while result.has_next():
@@ -698,11 +699,10 @@ class KuzuGraphStore(GraphStore):
             pass
 
         # Load non-planar reachability
-        np_reach: Dict[str, Set[str]] = {}
+        np_reach: dict[str, set[str]] = {}
         try:
             result = self._conn.execute(
-                "MATCH (a:CodeNode)-[:NONPLANAR_REACH {project_id: $pid}]->(b:CodeNode) "
-                "RETURN a.id, b.id",
+                "MATCH (a:CodeNode)-[:NONPLANAR_REACH {project_id: $pid}]->(b:CodeNode) RETURN a.id, b.id",
                 {"pid": project_id},
             )
             while result.has_next():
@@ -724,7 +724,7 @@ class KuzuGraphStore(GraphStore):
 
     def store_partitions(
         self,
-        partition_data: Dict[str, Any],
+        partition_data: dict[str, Any],
         project_id: str,
     ) -> None:
         """Persist Fiedler partition tree."""
@@ -741,9 +741,7 @@ class KuzuGraphStore(GraphStore):
         self._store_partition_recursive(partition_data, project_id)
         LOG.info("Stored partitions for project %s", project_id)
 
-    def _store_partition_recursive(
-        self, pdata: Dict[str, Any], project_id: str
-    ) -> None:
+    def _store_partition_recursive(self, pdata: dict[str, Any], project_id: str) -> None:
         """Recursively store partition nodes."""
         children = pdata.get("children")
         is_leaf = children is None
@@ -781,7 +779,7 @@ class KuzuGraphStore(GraphStore):
             for child in children:
                 self._store_partition_recursive(child, project_id)
 
-    def load_partitions(self, project_id: str) -> Optional[Dict[str, Any]]:
+    def load_partitions(self, project_id: str) -> dict[str, Any] | None:
         """Load stored partition tree."""
         try:
             result = self._conn.execute(
@@ -793,7 +791,7 @@ class KuzuGraphStore(GraphStore):
         except Exception:
             return None
 
-        partitions: Dict[str, Dict[str, Any]] = {}
+        partitions: dict[str, dict[str, Any]] = {}
         while result.has_next():
             row = result.get_next()
             full_id, depth, fiedler, node_count, is_leaf = row
@@ -850,13 +848,12 @@ class KuzuGraphStore(GraphStore):
 
     # ── File Hashes ───────────────────────────────────────────────────
 
-    def get_file_hashes(self, project_id: str) -> Dict[str, str]:
+    def get_file_hashes(self, project_id: str) -> dict[str, str]:
         """Get stored file hashes for incremental update detection."""
-        result_dict: Dict[str, str] = {}
+        result_dict: dict[str, str] = {}
         try:
             result = self._conn.execute(
-                "MATCH (f:FileHash {project_id: $pid}) "
-                "RETURN f.id, f.content_hash",
+                "MATCH (f:FileHash {project_id: $pid}) RETURN f.id, f.content_hash",
                 {"pid": project_id},
             )
             while result.has_next():
@@ -868,13 +865,11 @@ class KuzuGraphStore(GraphStore):
             pass
         return result_dict
 
-    def set_file_hashes(
-        self, project_id: str, hashes: Dict[str, str]
-    ) -> None:
+    def set_file_hashes(self, project_id: str, hashes: dict[str, str]) -> None:
         """Store file hashes for incremental update detection."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         for fp, h in hashes.items():
             fh_id = f"{project_id}::{fp}"
@@ -888,9 +883,7 @@ class KuzuGraphStore(GraphStore):
                 pass
             # Create new
             self._conn.execute(
-                "CREATE (f:FileHash {"
-                "id: $id, project_id: $pid, content_hash: $h, last_updated: $ts"
-                "})",
+                "CREATE (f:FileHash {id: $id, project_id: $pid, content_hash: $h, last_updated: $ts})",
                 {"id": fh_id, "pid": project_id, "h": h, "ts": now},
             )
 
@@ -932,9 +925,9 @@ class KuzuGraphStore(GraphStore):
 
     # ── Stats ─────────────────────────────────────────────────────────
 
-    def get_stats(self, project_id: str) -> Dict[str, Any]:
+    def get_stats(self, project_id: str) -> dict[str, Any]:
         """Get storage statistics."""
-        stats: Dict[str, Any] = {"backend": "kuzu"}
+        stats: dict[str, Any] = {"backend": "kuzu"}
 
         try:
             r = self._conn.execute(

@@ -13,32 +13,31 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import pytest
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from parsers import (
+    UnsupportedFrameworkError,
+    parse_mutation_output,
+)
 from parsers.detection import (
     MutationFramework,
-    detect_language,
     detect_available_frameworks,
+    detect_language,
     recommend_framework,
 )
-from parsers.stryker_parser import (
-    parse_stryker_output,
-    find_stryker_report,
-)
 from parsers.mutmut_parser import (
-    parse_mutmut_output,
     find_mutmut_cache,
-    MutmutStatus,
+    parse_mutmut_output,
 )
-from parsers import (
-    parse_mutation_output,
-    UnsupportedFrameworkError,
+from parsers.stryker_parser import (
+    find_stryker_report,
+    parse_stryker_output,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -94,17 +93,17 @@ def stryker_report(tmp_path: Path) -> Path:
                     {"id": "2", "status": "Killed", "location": {"start": {"line": 2}}},
                     {"id": "3", "status": "Survived", "location": {"start": {"line": 3}}},
                     {"id": "4", "status": "NoCoverage", "location": {"start": {"line": 4}}},
-                ]
+                ],
             },
             "src/utils.js": {
                 "language": "javascript",
                 "mutants": [
                     {"id": "5", "status": "Killed", "location": {"start": {"line": 1}}},
                     {"id": "6", "status": "Killed", "location": {"start": {"line": 2}}},
-                ]
-            }
+                ],
+            },
         },
-        "mutationScore": 66.67
+        "mutationScore": 66.67,
     }
 
     report_path = reports_dir / "mutation.json"
@@ -317,9 +316,7 @@ class TestStrykerParser:
 
     def test_parse_stryker_output(self, stryker_report: Path):
         """Parses Stryker report correctly."""
-        total, killed, survived, no_cov, score, by_file = parse_stryker_output(
-            None, str(stryker_report)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_stryker_output(None, str(stryker_report))
 
         assert total == 6
         assert killed == 4
@@ -368,9 +365,7 @@ class TestMutmutParser:
 
     def test_parse_mutmut_output(self, mutmut_cache: Path):
         """Parses mutmut cache correctly."""
-        total, killed, survived, no_cov, score, by_file = parse_mutmut_output(
-            str(mutmut_cache)
-        )
+        total, killed, survived, no_cov, score, by_file = parse_mutmut_output(str(mutmut_cache))
 
         assert total == 5
         assert killed == 3
@@ -406,18 +401,14 @@ class TestUnifiedParser:
 
     def test_explicit_stryker(self, stryker_report: Path):
         """Parses Stryker when explicitly specified."""
-        total, killed, survived, _, score, _ = parse_mutation_output(
-            str(stryker_report), tool="stryker"
-        )
+        total, killed, survived, _, score, _ = parse_mutation_output(str(stryker_report), tool="stryker")
 
         assert total == 6
         assert killed == 4
 
     def test_explicit_mutmut(self, mutmut_cache: Path):
         """Parses mutmut when explicitly specified."""
-        total, killed, survived, _, score, _ = parse_mutation_output(
-            str(mutmut_cache), tool="mutmut"
-        )
+        total, killed, survived, _, score, _ = parse_mutation_output(str(mutmut_cache), tool="mutmut")
 
         assert total == 5
         assert killed == 3

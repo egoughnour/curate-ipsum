@@ -1,2 +1,41 @@
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.venv/
+venv/
+
+# Data / local state
+*.db
 .mutation_tool_data/
+.curate_ipsum/
+artifacts/
+chroma_data/
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Docs build output
+docs/_build/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Project-specific ignores
+quick-verification/verification-and-semantic-search-rag.mhtml
+quick-verification/docs/
+quick-verification/angr_adapter_baseline/
+

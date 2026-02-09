@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from theory.assertions import (
     Assertion,
@@ -25,7 +25,7 @@ from theory.provenance import ProvenanceDAG, ProvenanceStore, RevisionEvent, Rev
 from theory.rollback import RollbackManager
 
 if TYPE_CHECKING:
-    from brs import CASStore, ContractionResult, Node, WorldBundle
+    from brs import CASStore, ContractionResult
 
 LOG = logging.getLogger("theory.manager")
 
@@ -73,10 +73,10 @@ class TheoryManager:
         self._project_path = project_path
         self._domain = domain
         self._world_label = world_label
-        self._store: Optional["CASStore"] = None
+        self._store: "CASStore" | None = None
         self._store_path = project_path / ".curate_ipsum" / "beliefs.db"
-        self._provenance_dag: Optional[ProvenanceDAG] = None
-        self._rollback_manager: Optional[RollbackManager] = None
+        self._provenance_dag: ProvenanceDAG | None = None
+        self._rollback_manager: RollbackManager | None = None
 
     @property
     def store(self) -> "CASStore":
@@ -86,8 +86,7 @@ class TheoryManager:
                 from brs import CASStore
             except ImportError as e:
                 raise ImportError(
-                    "py-brs is required for belief revision. "
-                    "Install with: pip install py-brs>=2.0.0"
+                    "py-brs is required for belief revision. Install with: pip install py-brs>=2.0.0"
                 ) from e
 
             # Ensure directory exists
@@ -111,9 +110,7 @@ class TheoryManager:
         """Lazy-load the provenance DAG from CASStore."""
         if self._provenance_dag is None:
             try:
-                self._provenance_dag = ProvenanceStore.load(
-                    self.store, self._domain
-                )
+                self._provenance_dag = ProvenanceStore.load(self.store, self._domain)
             except Exception:
                 self._provenance_dag = ProvenanceDAG()
         return self._provenance_dag
@@ -125,7 +122,7 @@ class TheoryManager:
         except Exception as exc:
             LOG.warning("Failed to save provenance DAG: %s", exc)
 
-    def _get_current_world_hash(self) -> Optional[str]:
+    def _get_current_world_hash(self) -> str | None:
         """Get the hash of the current world state."""
         try:
             row = self.store._conn.execute(
@@ -152,8 +149,9 @@ class TheoryManager:
 
     def _create_initial_world(self) -> str:
         """Create the initial empty world."""
-        from brs import WorldBundle, content_hash, canonical_json
         import datetime
+
+        from brs import canonical_json, content_hash
 
         world = {
             "domain_id": self._domain,
@@ -172,12 +170,11 @@ class TheoryManager:
 
         # Store via internal API
         self.store._conn.execute(
-            "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)",
-            (h, "WorldBundle", js)
+            "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)", (h, "WorldBundle", js)
         )
         self.store._conn.execute(
             "INSERT OR REPLACE INTO worlds(domain_id, version_label, hash, created_utc) VALUES(?,?,?,?)",
-            (self._domain, self._world_label, h, world["created_utc"])
+            (self._domain, self._world_label, h, world["created_utc"]),
         )
         self.store._conn.commit()
 
@@ -190,9 +187,9 @@ class TheoryManager:
         content: str,
         evidence_id: str,
         confidence: float = 0.5,
-        region_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        region_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Add a new assertion (belief) to the theory with evidence grounding.
 
@@ -210,8 +207,9 @@ class TheoryManager:
         Raises:
             ValueError: If assertion_type is invalid or confidence out of range
         """
-        from brs import content_hash, canonical_json
         import datetime
+
+        from brs import canonical_json, content_hash
 
         valid_types = {"type", "behavior", "invariant", "contract", "postcondition", "precondition"}
         if assertion_type not in valid_types:
@@ -253,15 +251,13 @@ class TheoryManager:
         # Store node
         node_hash = content_hash(node)
         self.store._conn.execute(
-            "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)",
-            (node_hash, "Node", canonical_json(node))
+            "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)", (node_hash, "Node", canonical_json(node))
         )
 
         # Store edge
         edge_hash = content_hash(edge)
         self.store._conn.execute(
-            "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)",
-            (edge_hash, "Edge", canonical_json(edge))
+            "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)", (edge_hash, "Edge", canonical_json(edge))
         )
 
         # Update world to include new node and edge
@@ -280,11 +276,11 @@ class TheoryManager:
         new_hash = content_hash(new_world)
         self.store._conn.execute(
             "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)",
-            (new_hash, "WorldBundle", canonical_json(new_world))
+            (new_hash, "WorldBundle", canonical_json(new_world)),
         )
         self.store._conn.execute(
             "INSERT OR REPLACE INTO worlds(domain_id, version_label, hash, created_utc) VALUES(?,?,?,?)",
-            (self._domain, self._world_label, new_hash, new_world["created_utc"])
+            (self._domain, self._world_label, new_hash, new_world["created_utc"]),
         )
         self.store._conn.commit()
 
@@ -330,8 +326,9 @@ class TheoryManager:
             KeyError: If node not found
             ValueError: If trying to contract a root node
         """
-        from brs import contract
         import datetime
+
+        from brs import contract
 
         self._ensure_world_exists()
         from_hash = self._get_current_world_hash()
@@ -380,7 +377,7 @@ class TheoryManager:
         evidence_id: str,
         confidence: float = 0.5,
         contraction_strategy: str = "entrenchment",
-    ) -> Tuple[str, Optional["ContractionResult"]]:
+    ) -> tuple[str, "ContractionResult" | None]:
         """
         Revise theory by incorporating a new assertion.
 
@@ -400,8 +397,9 @@ class TheoryManager:
         Returns:
             Tuple of (new_world_hash, contraction_result_if_any)
         """
-        from brs import revise, content_hash
         import datetime
+
+        from brs import content_hash, revise
 
         self._ensure_world_exists()
         from_hash = self._get_current_world_hash()
@@ -480,9 +478,9 @@ class TheoryManager:
 
     def list_assertions(
         self,
-        assertion_type: Optional[str] = None,
-        region_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        assertion_type: str | None = None,
+        region_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         List all assertions in the current world.
 
@@ -505,15 +503,13 @@ class TheoryManager:
             # Query for node — use simple substring match (canonical_json may
             # omit spaces after colons)
             row = self.store._conn.execute(
-                "SELECT json FROM objects WHERE kind='Node' AND json LIKE ?",
-                (f'%"id":"{node_id}"%',)
+                "SELECT json FROM objects WHERE kind='Node' AND json LIKE ?", (f'%"id":"{node_id}"%',)
             ).fetchone()
 
             # Fallback: try with space after colon (non-canonical JSON)
             if row is None:
                 row = self.store._conn.execute(
-                    "SELECT json FROM objects WHERE kind='Node' AND json LIKE ?",
-                    (f'%"id": "{node_id}"%',)
+                    "SELECT json FROM objects WHERE kind='Node' AND json LIKE ?", (f'%"id": "{node_id}"%',)
                 ).fetchone()
 
             if row:
@@ -530,7 +526,7 @@ class TheoryManager:
 
         return assertions
 
-    def get_theory_snapshot(self) -> Dict[str, Any]:
+    def get_theory_snapshot(self) -> dict[str, Any]:
         """
         Get the current theory state as a snapshot.
 
@@ -550,8 +546,9 @@ class TheoryManager:
         Returns:
             Evidence ID
         """
-        from brs import content_hash, canonical_json
         import datetime
+
+        from brs import canonical_json, content_hash
 
         evidence_dict = {
             "id": evidence.id,
@@ -566,7 +563,7 @@ class TheoryManager:
         h = content_hash(evidence_dict)
         self.store._conn.execute(
             "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)",
-            (h, "Evidence", canonical_json(evidence_dict))
+            (h, "Evidence", canonical_json(evidence_dict)),
         )
 
         # Update world to include evidence
@@ -585,11 +582,11 @@ class TheoryManager:
         new_hash = content_hash(new_world)
         self.store._conn.execute(
             "INSERT OR IGNORE INTO objects(hash, kind, json) VALUES(?,?,?)",
-            (new_hash, "WorldBundle", canonical_json(new_world))
+            (new_hash, "WorldBundle", canonical_json(new_world)),
         )
         self.store._conn.execute(
             "INSERT OR REPLACE INTO worlds(domain_id, version_label, hash, created_utc) VALUES(?,?,?,?)",
-            (self._domain, self._world_label, new_hash, new_world["created_utc"])
+            (self._domain, self._world_label, new_hash, new_world["created_utc"]),
         )
         self.store._conn.commit()
 
@@ -612,7 +609,7 @@ class TheoryManager:
     # M3: Provenance query methods (delegate to ProvenanceDAG)
     # =========================================================================
 
-    def why_believe(self, assertion_id: str) -> List[str]:
+    def why_believe(self, assertion_id: str) -> list[str]:
         """
         Trace which evidence grounds an assertion.
 
@@ -624,7 +621,7 @@ class TheoryManager:
         """
         return self.provenance_dag.why_believe(assertion_id)
 
-    def when_added(self, assertion_id: str) -> Optional[RevisionEvent]:
+    def when_added(self, assertion_id: str) -> RevisionEvent | None:
         """
         Find when an assertion was first added.
 
@@ -650,7 +647,7 @@ class TheoryManager:
         """
         return self.provenance_dag.belief_stability(assertion_id)
 
-    def get_provenance_summary(self) -> Dict[str, Any]:
+    def get_provenance_summary(self) -> dict[str, Any]:
         """
         Get a summary of the provenance DAG.
 
@@ -660,7 +657,7 @@ class TheoryManager:
         dag = self.provenance_dag
         events = dag.get_history()
 
-        type_counts: Dict[str, int] = {}
+        type_counts: dict[str, int] = {}
         for e in events:
             t = e.event_type.value
             type_counts[t] = type_counts.get(t, 0) + 1
@@ -681,10 +678,10 @@ class TheoryManager:
     def analyze_failure(
         self,
         error_message: str = "",
-        test_pass_rate: Optional[float] = None,
-        mutation_score: Optional[float] = None,
-        failing_tests: Optional[List[str]] = None,
-        region_id: Optional[str] = None,
+        test_pass_rate: float | None = None,
+        mutation_score: float | None = None,
+        failing_tests: list[str] | None = None,
+        region_id: str | None = None,
     ) -> FailureAnalysis:
         """
         Analyze why a synthesis attempt failed.
@@ -732,8 +729,8 @@ class TheoryManager:
         assertion_type: str,
         content: str,
         confidence: float = 0.5,
-        region_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        region_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Find existing assertions that would contradict a new assertion.
 
@@ -765,9 +762,7 @@ class TheoryManager:
         except Exception:
             pass
 
-        contradictions = ContradictionDetector.find_contradictions(
-            new_assertion, existing
-        )
+        contradictions = ContradictionDetector.find_contradictions(new_assertion, existing)
 
         # Return as dicts for MCP compatibility
         return [assertion_to_node_dict(c) for c in contradictions]

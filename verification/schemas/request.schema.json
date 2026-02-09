@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VerificationRequest",
+  "type": "object",
+  "required": [
+    "target",
+    "symbols",
+    "constraints",
+    "find",
+    "budget",
+    "metadata"
+  ],
+  "properties": {
+    "target": {
+      "type": "object",
+      "required": [
+        "binary_name",
+        "entry"
+      ],
+      "properties": {
+        "binary_name": {
+          "type": "string",
+          "description": "Basename of harness binary; Docker runner will look for /bin_in/<binary_name>."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Function symbol name or hex address string (e.g. 'target_fn' or '0x401000')."
+        },
+        "calling_convention": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "symbols": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "bits",
+          "kind"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "bits": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "int",
+              "bool",
+              "bytes"
+            ]
+          },
+          "length": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Mini constraint DSL. Examples: 'a>=0', 'a<=100', 'a==b', 'flag==1'."
+      }
+    },
+    "find": {
+      "type": "object",
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "addr_reached",
+            "addr_avoided",
+            "return_value",
+            "custom"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "number",
+            "object"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "avoid": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "addr_avoided",
+            "addr_reached"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "number",
+            "object"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "timeout_s",
+        "max_states",
+        "max_path_len",
+        "max_loop_iters"
+      ],
+      "properties": {
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_states": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_path_len": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_loop_iters": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Opaque metadata (node_id, partition_id, etc). Not interpreted by runner."
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

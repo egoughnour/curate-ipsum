@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from graph.models import CallGraph
 
@@ -38,19 +38,19 @@ class GraphStore(ABC):
         """Persist an entire call graph (nodes + edges)."""
 
     @abstractmethod
-    def load_graph(self, project_id: str) -> Optional[CallGraph]:
+    def load_graph(self, project_id: str) -> CallGraph | None:
         """Load a previously stored call graph."""
 
     @abstractmethod
-    def store_node(self, node_data: Dict[str, Any], project_id: str) -> None:
+    def store_node(self, node_data: dict[str, Any], project_id: str) -> None:
         """Store or update a single node."""
 
     @abstractmethod
-    def store_edge(self, edge_data: Dict[str, Any], project_id: str) -> None:
+    def store_edge(self, edge_data: dict[str, Any], project_id: str) -> None:
         """Store or update a single edge."""
 
     @abstractmethod
-    def get_node(self, node_id: str, project_id: str) -> Optional[Dict[str, Any]]:
+    def get_node(self, node_id: str, project_id: str) -> dict[str, Any] | None:
         """Get a single node's data by ID."""
 
     @abstractmethod
@@ -59,8 +59,8 @@ class GraphStore(ABC):
         node_id: str,
         project_id: str,
         direction: str = "outgoing",
-        edge_kind: Optional[str] = None,
-    ) -> List[str]:
+        edge_kind: str | None = None,
+    ) -> list[str]:
         """
         Get neighboring node IDs.
 
@@ -72,9 +72,7 @@ class GraphStore(ABC):
         """
 
     @abstractmethod
-    def query_reachable(
-        self, source_id: str, target_id: str, project_id: str
-    ) -> bool:
+    def query_reachable(self, source_id: str, target_id: str, project_id: str) -> bool:
         """
         Check if target is reachable from source using stored Kameda labels.
 
@@ -84,7 +82,7 @@ class GraphStore(ABC):
     @abstractmethod
     def store_reachability_index(
         self,
-        kameda_data: Dict[str, Any],
+        kameda_data: dict[str, Any],
         project_id: str,
     ) -> None:
         """
@@ -95,15 +93,13 @@ class GraphStore(ABC):
         """
 
     @abstractmethod
-    def load_reachability_index(
-        self, project_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def load_reachability_index(self, project_id: str) -> dict[str, Any] | None:
         """Load stored Kameda reachability index."""
 
     @abstractmethod
     def store_partitions(
         self,
-        partition_data: Dict[str, Any],
+        partition_data: dict[str, Any],
         project_id: str,
     ) -> None:
         """
@@ -114,17 +110,15 @@ class GraphStore(ABC):
         """
 
     @abstractmethod
-    def load_partitions(self, project_id: str) -> Optional[Dict[str, Any]]:
+    def load_partitions(self, project_id: str) -> dict[str, Any] | None:
         """Load stored partition tree."""
 
     @abstractmethod
-    def get_file_hashes(self, project_id: str) -> Dict[str, str]:
+    def get_file_hashes(self, project_id: str) -> dict[str, str]:
         """Get stored file hashes for incremental update detection."""
 
     @abstractmethod
-    def set_file_hashes(
-        self, project_id: str, hashes: Dict[str, str]
-    ) -> None:
+    def set_file_hashes(self, project_id: str, hashes: dict[str, str]) -> None:
         """Store file hashes for incremental update detection."""
 
     @abstractmethod
@@ -136,7 +130,7 @@ class GraphStore(ABC):
         """
 
     @abstractmethod
-    def get_stats(self, project_id: str) -> Dict[str, Any]:
+    def get_stats(self, project_id: str) -> dict[str, Any]:
         """Get storage statistics (node count, edge count, etc.)."""
 
     @abstractmethod
@@ -176,7 +170,4 @@ def build_graph_store(backend: str, project_path: Path) -> GraphStore:
         return KuzuGraphStore(db_path)
 
     else:
-        raise ValueError(
-            f"Unknown graph store backend: {backend!r}. "
-            f"Supported: 'sqlite', 'kuzu'"
-        )
+        raise ValueError(f"Unknown graph store backend: {backend!r}. Supported: 'sqlite', 'kuzu'")

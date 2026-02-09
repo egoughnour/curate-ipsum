@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VerificationResult",
+  "type": "object",
+  "required": [
+    "status",
+    "counterexample",
+    "stats"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "ce_found",
+        "no_ce_within_budget",
+        "error"
+      ]
+    },
+    "counterexample": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "model": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "trace": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "path_constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "model",
+        "trace",
+        "path_constraints",
+        "notes"
+      ],
+      "additionalProperties": false
+    },
+    "stats": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "logs": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

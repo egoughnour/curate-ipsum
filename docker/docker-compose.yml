@@ -1,0 +1,53 @@
+# curate-ipsum — Verification & RAG service stack
+#
+# Usage:
+#   docker compose up -d                         # chroma (always on)
+#   docker compose --profile verify up -d        # + angr runner
+#   docker compose --profile all up -d           # everything
+#
+# Connects to the curate-ipsum MCP server on the host via:
+#   - Chroma: localhost:8000 (vector DB for RAG)
+#   - angr:   one-shot container per verification request
+#
+# Decision: D-016 (verification), D-017 (RAG)
+
+services:
+  # ── Vector DB (RAG backbone) ──────────────────────────────────────────────
+  chroma:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── angr symbolic execution runner ────────────────────────────────────────
+  # One-shot container: mount request.json + binary, get response.json back.
+  # Invoked by verification.backends.angr_docker.AngrDockerBackend.
+  angr-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.angr-runner
+    profiles:
+      - verify
+      - all
+    volumes:
+      - ../artifacts/verify:/work
+    security_opt:
+      - no-new-privileges
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+
+volumes:
+  chroma_data:

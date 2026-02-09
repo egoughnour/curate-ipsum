@@ -1,6 +1,7 @@
 """Tests for LLM client abstraction and prompt construction."""
 
 import pytest
+
 from synthesis.llm_client import MockLLMClient, build_synthesis_prompt
 from synthesis.models import Counterexample, Specification
 
@@ -104,6 +105,7 @@ class TestBuildSynthesisPrompt:
 class TestCloudLLMExtractCode:
     def test_extract_from_fenced_block(self):
         from synthesis.cloud_llm import CloudLLMClient
+
         text = "Here's the code:\n```python\ndef foo():\n    return 42\n```\n"
         result = CloudLLMClient._extract_code(text)
         assert "def foo():" in result
@@ -111,12 +113,14 @@ class TestCloudLLMExtractCode:
 
     def test_extract_from_plain_text(self):
         from synthesis.cloud_llm import CloudLLMClient
+
         text = "def foo():\n    return 42\n"
         result = CloudLLMClient._extract_code(text)
         assert "def foo():" in result
 
     def test_extract_from_generic_fence(self):
         from synthesis.cloud_llm import CloudLLMClient
+
         text = "```\ndef bar(): pass\n```"
         result = CloudLLMClient._extract_code(text)
         assert "def bar(): pass" in result
@@ -126,10 +130,12 @@ class TestCloudLLMValidation:
     def test_requires_api_key(self):
         """CloudLLMClient should raise ValueError without API key."""
         import os
+
         old = os.environ.pop("CURATE_IPSUM_LLM_API_KEY", None)
         try:
             pytest.importorskip("httpx")
             from synthesis.cloud_llm import CloudLLMClient
+
             with pytest.raises(ValueError, match="API key"):
                 CloudLLMClient(api_key="")
         finally:
@@ -140,12 +146,14 @@ class TestCloudLLMValidation:
 class TestLocalLLMExtractCode:
     def test_extract_from_fenced_block(self):
         from synthesis.local_llm import LocalLLMClient
+
         text = "```python\ndef baz(): return 1\n```"
         result = LocalLLMClient._extract_code(text)
         assert "def baz(): return 1" in result
 
     def test_extract_from_plain_text(self):
         from synthesis.local_llm import LocalLLMClient
+
         text = "def baz(): return 1"
         result = LocalLLMClient._extract_code(text)
         assert "def baz(): return 1" in result

@@ -15,10 +15,8 @@ with small synthetic graphs for deterministic edge-case coverage.
 from __future__ import annotations
 
 import json
-import tempfile
 import textwrap
 from pathlib import Path
-from typing import Dict
 
 import pytest
 
@@ -27,18 +25,12 @@ scipy = pytest.importorskip("scipy")
 nx = pytest.importorskip("networkx")
 
 from graph import (
-    ASTExtractor,
     CallGraph,
     EdgeKind,
     GraphEdge,
     GraphNode,
-    GraphPartitioner,
     NodeKind,
 )
-from graph.hierarchy import HierarchyBuilder
-from graph.kameda import KamedaIndex
-from graph.planarity import check_planarity
-
 
 # ─────────────────────────────────────────────────────────────────
 # Fixtures
@@ -49,7 +41,8 @@ from graph.planarity import check_planarity
 def sample_project(tmp_path: Path) -> Path:
     """Create a small synthetic Python project for end-to-end testing."""
     # main.py calls utils.py functions, which call helpers.py
-    (tmp_path / "main.py").write_text(textwrap.dedent("""\
+    (tmp_path / "main.py").write_text(
+        textwrap.dedent("""\
         from utils import process, validate
         from helpers import log
 
@@ -62,9 +55,11 @@ def sample_project(tmp_path: Path) -> Path:
 
         def load_data():
             return {"key": "value"}
-    """))
+    """)
+    )
 
-    (tmp_path / "utils.py").write_text(textwrap.dedent("""\
+    (tmp_path / "utils.py").write_text(
+        textwrap.dedent("""\
         from helpers import transform, log
 
         def process(data):
@@ -77,15 +72,18 @@ def sample_project(tmp_path: Path) -> Path:
                 raise ValueError("empty")
             log("validated")
             return data
-    """))
+    """)
+    )
 
-    (tmp_path / "helpers.py").write_text(textwrap.dedent("""\
+    (tmp_path / "helpers.py").write_text(
+        textwrap.dedent("""\
         def transform(data):
             return {k: v.upper() for k, v in data.items()}
 
         def log(message):
             print(f"[LOG] {message}")
-    """))
+    """)
+    )
 
     return tmp_path
 
@@ -111,9 +109,7 @@ def chain_graph() -> CallGraph:
     for name in nodes:
         g.add_node(GraphNode(id=name, kind=NodeKind.FUNCTION, name=name))
     for i in range(len(nodes) - 1):
-        g.add_edge(GraphEdge(
-            source_id=nodes[i], target_id=nodes[i + 1], kind=EdgeKind.CALLS
-        ))
+        g.add_edge(GraphEdge(source_id=nodes[i], target_id=nodes[i + 1], kind=EdgeKind.CALLS))
     return g
 
 
@@ -122,7 +118,7 @@ def chain_graph() -> CallGraph:
 # ─────────────────────────────────────────────────────────────────
 
 
-def _get_server_tools() -> Dict:
+def _get_server_tools() -> dict:
     """
     Build the MCP server and return a dict of tool callables.
 
@@ -153,9 +149,7 @@ class TestExtractCallGraph:
     def test_basic_extraction(self, sample_project: Path):
         """Extract call graph from sample project."""
         tools = _get_server_tools()
-        result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["extract_call_graph"](workingDirectory=str(sample_project))
 
         assert isinstance(result, dict)
         assert result["node_count"] > 0
@@ -168,9 +162,7 @@ class TestExtractCallGraph:
     def test_functions_have_required_fields(self, sample_project: Path):
         """Each function entry has id, name, kind."""
         tools = _get_server_tools()
-        result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["extract_call_graph"](workingDirectory=str(sample_project))
 
         for func in result["functions"]:
             assert "id" in func
@@ -181,9 +173,7 @@ class TestExtractCallGraph:
         """Raises ValueError for non-existent directory."""
         tools = _get_server_tools()
         with pytest.raises(ValueError, match="Not a valid directory"):
-            tools["extract_call_graph"](
-                workingDirectory="/nonexistent/path/xyz"
-            )
+            tools["extract_call_graph"](workingDirectory="/nonexistent/path/xyz")
 
     def test_missing_working_directory(self):
         """Raises ValueError for missing workingDirectory."""
@@ -194,9 +184,7 @@ class TestExtractCallGraph:
     def test_result_is_json_serializable(self, sample_project: Path):
         """Result must be JSON-serializable."""
         tools = _get_server_tools()
-        result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["extract_call_graph"](workingDirectory=str(sample_project))
         serialized = json.dumps(result)
         assert isinstance(serialized, str)
 
@@ -207,9 +195,7 @@ class TestExtractCallGraph:
         if not graph_dir.is_dir():
             pytest.skip("graph/ directory not found")
 
-        result = tools["extract_call_graph"](
-            workingDirectory=str(graph_dir)
-        )
+        result = tools["extract_call_graph"](workingDirectory=str(graph_dir))
         # curate-ipsum's graph package has many functions
         assert result["node_count"] >= 10
         assert result["edge_count"] >= 5
@@ -226,9 +212,7 @@ class TestComputePartitioning:
     def test_basic_partitioning(self, sample_project: Path):
         """Partition the sample project's call graph."""
         tools = _get_server_tools()
-        result = tools["compute_partitioning"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["compute_partitioning"](workingDirectory=str(sample_project))
 
         assert isinstance(result, dict)
         assert "total_nodes" in result
@@ -239,9 +223,7 @@ class TestComputePartitioning:
     def test_partition_tree_structure(self, sample_project: Path):
         """Partition tree has required fields."""
         tools = _get_server_tools()
-        result = tools["compute_partitioning"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["compute_partitioning"](workingDirectory=str(sample_project))
 
         tree = result["partition_tree"]
         assert "id" in tree
@@ -266,18 +248,14 @@ class TestComputePartitioning:
     def test_result_is_json_serializable(self, sample_project: Path):
         """Result must be JSON-serializable."""
         tools = _get_server_tools()
-        result = tools["compute_partitioning"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["compute_partitioning"](workingDirectory=str(sample_project))
         serialized = json.dumps(result)
         assert isinstance(serialized, str)
 
     def test_all_nodes_covered(self, sample_project: Path):
         """Every node appears in exactly one leaf partition."""
         tools = _get_server_tools()
-        result = tools["compute_partitioning"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["compute_partitioning"](workingDirectory=str(sample_project))
 
         # Collect all node_ids from leaf partitions
         def collect_leaf_nodes(tree):
@@ -305,9 +283,7 @@ class TestQueryReachability:
         tools = _get_server_tools()
 
         # First extract to learn function IDs
-        graph_result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        graph_result = tools["extract_call_graph"](workingDirectory=str(sample_project))
         func_ids = [f["id"] for f in graph_result["functions"]]
 
         # Find main and process
@@ -330,9 +306,7 @@ class TestQueryReachability:
         """Helpers shouldn't reach main (no back-edges)."""
         tools = _get_server_tools()
 
-        graph_result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        graph_result = tools["extract_call_graph"](workingDirectory=str(sample_project))
         func_ids = [f["id"] for f in graph_result["functions"]]
 
         transform_id = next((f for f in func_ids if "transform" in f.lower()), None)
@@ -362,9 +336,7 @@ class TestQueryReachability:
         """A function can reach itself."""
         tools = _get_server_tools()
 
-        graph_result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        graph_result = tools["extract_call_graph"](workingDirectory=str(sample_project))
         if graph_result["functions"]:
             func_id = graph_result["functions"][0]["id"]
             result = tools["query_reachability"](
@@ -412,9 +384,7 @@ class TestGetHierarchy:
     def test_basic_hierarchy(self, sample_project: Path):
         """Build hierarchy for sample project."""
         tools = _get_server_tools()
-        result = tools["get_hierarchy"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["get_hierarchy"](workingDirectory=str(sample_project))
 
         assert isinstance(result, dict)
         assert "id" in result
@@ -427,9 +397,7 @@ class TestGetHierarchy:
     def test_leaf_groups_cover_all_nodes(self, sample_project: Path):
         """All nodes should appear in some leaf group."""
         tools = _get_server_tools()
-        result = tools["get_hierarchy"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["get_hierarchy"](workingDirectory=str(sample_project))
 
         total_in_leaves = sum(g["size"] for g in result["leaf_groups"])
         assert total_in_leaves == result["size"]
@@ -437,9 +405,7 @@ class TestGetHierarchy:
     def test_result_is_json_serializable(self, sample_project: Path):
         """Result must be JSON-serializable."""
         tools = _get_server_tools()
-        result = tools["get_hierarchy"](
-            workingDirectory=str(sample_project)
-        )
+        result = tools["get_hierarchy"](workingDirectory=str(sample_project))
         serialized = json.dumps(result)
         assert isinstance(serialized, str)
 
@@ -457,9 +423,7 @@ class TestFindFunctionPartition:
         tools = _get_server_tools()
 
         # First get a valid function name
-        graph_result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        graph_result = tools["extract_call_graph"](workingDirectory=str(sample_project))
         if not graph_result["functions"]:
             pytest.skip("No functions found")
 
@@ -525,9 +489,7 @@ class TestFullPipeline:
         tools = _get_server_tools()
 
         # Step 1: Extract
-        graph_result = tools["extract_call_graph"](
-            workingDirectory=str(sample_project)
-        )
+        graph_result = tools["extract_call_graph"](workingDirectory=str(sample_project))
         assert graph_result["node_count"] > 0
 
         # Step 2: Partition
@@ -555,9 +517,7 @@ class TestFullPipeline:
             assert "reachable" in reach_result
 
         # Step 5: Hierarchy
-        hier_result = tools["get_hierarchy"](
-            workingDirectory=str(sample_project)
-        )
+        hier_result = tools["get_hierarchy"](workingDirectory=str(sample_project))
         assert hier_result["size"] == graph_result["node_count"]
 
     def test_pipeline_on_own_source(self):
@@ -569,9 +529,7 @@ class TestFullPipeline:
         tools = _get_server_tools()
 
         # Extract
-        graph_result = tools["extract_call_graph"](
-            workingDirectory=str(graph_dir)
-        )
+        graph_result = tools["extract_call_graph"](workingDirectory=str(graph_dir))
         assert graph_result["node_count"] >= 10
 
         # Partition
@@ -582,9 +540,7 @@ class TestFullPipeline:
         assert partition_result["total_nodes"] == graph_result["node_count"]
 
         # Hierarchy
-        hier_result = tools["get_hierarchy"](
-            workingDirectory=str(graph_dir)
-        )
+        hier_result = tools["get_hierarchy"](workingDirectory=str(graph_dir))
         assert hier_result["size"] == graph_result["node_count"]
 
         # All results should be JSON-serializable

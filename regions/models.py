@@ -8,11 +8,10 @@ Supports serialization to/from strings for storage compatibility.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 
-class RegionLevel(str, Enum):
+class RegionLevel(StrEnum):
     """Granularity level of a region."""
 
     FILE = "file"
@@ -49,10 +48,10 @@ class Region:
     """
 
     file_path: str
-    class_name: Optional[str] = None
-    func_name: Optional[str] = None
-    line_start: Optional[int] = None
-    line_end: Optional[int] = None
+    class_name: str | None = None
+    func_name: str | None = None
+    line_start: int | None = None
+    line_end: int | None = None
 
     def __post_init__(self) -> None:
         """Validate region fields."""
@@ -61,10 +60,7 @@ class Region:
 
         if self.line_start is not None and self.line_end is not None:
             if self.line_start > self.line_end:
-                raise ValueError(
-                    f"line_start ({self.line_start}) cannot be greater than "
-                    f"line_end ({self.line_end})"
-                )
+                raise ValueError(f"line_start ({self.line_start}) cannot be greater than line_end ({self.line_end})")
             if self.line_start < 1:
                 raise ValueError(f"line_start must be >= 1, got {self.line_start}")
 
@@ -124,10 +120,7 @@ class Region:
                 return False
             if other.line_start is None or other.line_end is None:
                 return False
-            return (
-                self.line_start <= other.line_start
-                and self.line_end >= other.line_end
-            )
+            return self.line_start <= other.line_start and self.line_end >= other.line_end
 
         return False
 
@@ -152,9 +145,7 @@ class Region:
             and other.line_end is not None
         ):
             # Check for non-overlap and negate
-            no_overlap = (
-                self.line_end < other.line_start or other.line_end < self.line_start
-            )
+            no_overlap = self.line_end < other.line_start or other.line_end < self.line_start
             return not no_overlap
 
         # Same function (regardless of line ranges)
@@ -224,11 +215,11 @@ class Region:
             # Assume it's a file path or legacy region ID
             return cls(file_path=s)
 
-        file_path: Optional[str] = None
-        class_name: Optional[str] = None
-        func_name: Optional[str] = None
-        line_start: Optional[int] = None
-        line_end: Optional[int] = None
+        file_path: str | None = None
+        class_name: str | None = None
+        func_name: str | None = None
+        line_start: int | None = None
+        line_end: int | None = None
 
         parts = s.split("::")
         for part in parts:
@@ -273,7 +264,7 @@ class Region:
         cls,
         path: str,
         func_name: str,
-        class_name: Optional[str] = None,
+        class_name: str | None = None,
     ) -> "Region":
         """Create a function-level region."""
         return cls(file_path=path, class_name=class_name, func_name=func_name)
@@ -284,8 +275,8 @@ class Region:
         path: str,
         start: int,
         end: int,
-        func_name: Optional[str] = None,
-        class_name: Optional[str] = None,
+        func_name: str | None = None,
+        class_name: str | None = None,
     ) -> "Region":
         """Create a line-range region."""
         return cls(
@@ -303,7 +294,7 @@ class Region:
         return f"Region({self.to_string()!r})"
 
 
-def normalize_region_id(region_id: Optional[str]) -> Optional[Region]:
+def normalize_region_id(region_id: str | None) -> Region | None:
     """
     Convert legacy regionId string to Region, or return None.
 
@@ -314,7 +305,7 @@ def normalize_region_id(region_id: Optional[str]) -> Optional[Region]:
     return Region.from_string(region_id)
 
 
-def region_to_id(region: Optional[Region]) -> Optional[str]:
+def region_to_id(region: Region | None) -> str | None:
     """
     Convert Region back to string for storage.
 

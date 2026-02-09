@@ -1,0 +1,18 @@
+# Purpose-built angr runner container
+#
+# Includes run_angr.py baked in — the host never needs angr installed.
+# Contract:
+#   Input:  /work/request.json  (VerificationRequest, see schemas/)
+#   Output: /work/response.json (VerificationResult)
+#   Binary: /bin_in/<name>      (mounted read-only by caller)
+#
+# Decision: D-016
+
+FROM angr/angr:latest
+
+COPY verification/runners/run_angr.py /opt/runner/run_angr.py
+
+WORKDIR /work
+
+ENTRYPOINT ["python", "/opt/runner/run_angr.py"]
+CMD ["/work/request.json", "/work/response.json"]

@@ -39,6 +39,15 @@ Usage:
     print(index.reaches("module.func_a", "module.func_b"))
 """
 
+from .ast_extractor import ASTExtractor
+from .dependency_extractor import DependencyExtractor
+from .extractor import (
+    CallGraphExtractor,
+    ExtractorError,
+    ParseError,
+    UnsupportedFeatureError,
+    get_extractor,
+)
 from .models import (
     CallGraph,
     EdgeKind,
@@ -49,21 +58,10 @@ from .models import (
     SourceLocation,
 )
 
-from .extractor import (
-    CallGraphExtractor,
-    ExtractorError,
-    ParseError,
-    UnsupportedFeatureError,
-    get_extractor,
-)
-
-from .ast_extractor import ASTExtractor
-
-from .dependency_extractor import DependencyExtractor
-
 # ASR extractor is optional (requires LPython)
 try:
     from .asr_extractor import ASRExtractor, LPythonNotFoundError
+
     HAS_LPYTHON = True
 except ImportError:
     ASRExtractor = None  # type: ignore
@@ -80,27 +78,29 @@ try:
         compute_fiedler_components,
         find_connected_components,
     )
+
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
 
 # Planarity and Kameda are optional (requires networkx)
 try:
+    from .kameda import KamedaIndex
     from .planarity import (
         PlanarityResult,
         callgraph_to_networkx,
         check_planarity,
         networkx_to_callgraph,
     )
-    from .kameda import KamedaIndex
+
     HAS_NETWORKX = True
 except ImportError:
     HAS_NETWORKX = False
 
 # Partitioner and hierarchy need scipy
 try:
-    from .partitioner import GraphPartitioner, Partition, augment_partition
     from .hierarchy import HierarchyBuilder, HierarchyNode
+    from .partitioner import GraphPartitioner, Partition, augment_partition
 except ImportError:
     pass  # scipy not available
 

@@ -1,0 +1,164 @@
+name: Publish MCP
+
+# Builds and publishes the MCP server bundle via three channels:
+#   1. Docker image to GHCR (always)
+#   2. Official MCP Registry via mcp-publisher (always)
+#   3. Smithery registry (if SMITHERY_ENABLED=true)
+#
+# Can be triggered manually or called from the tag-release workflow.
+#
+# The Docker image includes the full server + baked-in embedding model,
+# ready to be used as an MCP stdio transport:
+#
+#   docker run -i --rm ghcr.io/<owner>/curate-ipsum:latest
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag for the image (e.g., 0.3.0)"
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ── Build + push MCP server image ───────────────────────────────────────────
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=v${{ inputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=v${{ inputs.version }}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.mcp-server
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # ── Publish to official MCP Registry ────────────────────────────────────────
+  mcp-registry:
+    needs: docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify server.json version
+        run: |
+          JSON_VERSION=$(python3 -c "
+          import json
+          data = json.load(open('server.json'))
+          print(data['version'])
+          ")
+          echo "server.json version: ${JSON_VERSION}"
+          echo "release version:     ${{ inputs.version }}"
+          if [ "${JSON_VERSION}" != "${{ inputs.version }}" ]; then
+            echo "::warning::server.json version (${JSON_VERSION}) differs from release (${{ inputs.version }})"
+          fi
+
+      - name: Install mcp-publisher
+        run: npm install -g @anthropic-ai/mcp-publisher
+
+      - name: Publish to MCP Registry
+        run: mcp-publisher publish --file server.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Publish to Smithery MCP registry (optional) ─────────────────────────────
+  smithery:
+    needs: docker
+    runs-on: ubuntu-latest
+    if: ${{ vars.SMITHERY_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Smithery CLI
+        run: npm install -g @smithery/cli
+
+      - name: Publish to Smithery
+        run: smithery publish --yes
+        env:
+          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+
+  # ── Build MCPB bundle artifact ──────────────────────────────────────────────
+  mcpb:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Build MCPB bundle
+        run: |
+          BUNDLE_DIR="curate-ipsum-${{ inputs.version }}"
+          mkdir -p "${BUNDLE_DIR}"
+
+          # Copy server source + configs
+          cp -r server.py tools.py models.py "${BUNDLE_DIR}/"
+          cp -r adapters domains graph models.py parsers rag regions \
+                storage synthesis theory verification "${BUNDLE_DIR}/" 2>/dev/null || true
+          cp manifest.json "${BUNDLE_DIR}/"
+          cp -r icons "${BUNDLE_DIR}/"
+          cp pyproject.toml uv.lock "${BUNDLE_DIR}/"
+          cp README.md LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
+
+          # Create the .mcpb archive (ZIP)
+          cd "${BUNDLE_DIR}" && zip -r "../curate-ipsum-${{ inputs.version }}.mcpb" . -x '*.pyc' '__pycache__/*'
+          cd ..
+
+          ls -lh "curate-ipsum-${{ inputs.version }}.mcpb"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mcpb-bundle
+          path: "curate-ipsum-${{ inputs.version }}.mcpb"
+          retention-days: 90

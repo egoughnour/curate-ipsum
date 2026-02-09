@@ -1,8 +1,72 @@
+<!-- mcp-name: io.github.egoughnour/curate-ipsum -->
+
 # Curate-Ipsum
 
-**A graph-spectral framework for verified code synthesis through belief revision**
+**A graph-spectral MCP server for verified code synthesis through belief revision**
+
+[![PyPI](https://img.shields.io/pypi/v/curate-ipsum)](https://pypi.org/project/curate-ipsum/)
+[![Python](https://img.shields.io/pypi/pyversions/curate-ipsum)](https://pypi.org/project/curate-ipsum/)
+[![CI](https://github.com/egoughnour/curate-ipsum/actions/workflows/ci.yml/badge.svg)](https://github.com/egoughnour/curate-ipsum/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/egoughnour/curate-ipsum)](LICENSE)
 
 Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unverified) and formally verified patches (slow, correct, trustworthy). It treats mutation testing as one component of a larger system for maintaining robust, self-healing codebase metadata that supports reachability analysis, symbolic execution, and automated test generation.
+
+## Install
+
+```bash
+# PyPI
+pip install curate-ipsum
+
+# or with uv
+uv pip install curate-ipsum
+
+# Docker (includes baked-in embedding model)
+docker pull ghcr.io/egoughnour/curate-ipsum:latest
+```
+
+### Claude Desktop / MCP Client
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "curate-ipsum": {
+      "command": "uvx",
+      "args": ["curate-ipsum"]
+    }
+  }
+}
+```
+
+Or with Docker (embedding model pre-loaded, no Python needed):
+
+```json
+{
+  "mcpServers": {
+    "curate-ipsum": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/egoughnour/curate-ipsum:latest"]
+    }
+  }
+}
+```
+
+## MCP Tools
+
+Curate-Ipsum exposes 30 tools over the MCP stdio transport, organised into six groups:
+
+**Testing** — `run_unit_tests`, `run_integration_tests`, `run_mutation_tests`, `get_run_history`, `get_region_metrics`, `detect_frameworks`, `parse_region`, `check_region_relationship`, `create_region`
+
+**Belief Revision** — `add_assertion`, `contract_assertion`, `revise_theory`, `get_entrenchment`, `list_assertions`, `get_theory_snapshot`, `store_evidence`, `get_provenance`, `why_believe`, `belief_stability`
+
+**Rollback & Failure** — `rollback_to`, `undo_last_operations`, `analyze_failure`, `list_world_history`
+
+**Graph-Spectral** — `extract_call_graph`, `compute_partitioning`, `query_reachability`, `get_hierarchy`, `find_function_partition`, `incremental_update`, `persistent_graph_stats`, `graph_query`
+
+**Verification** — `verify_property` (Z3/angr), `verify_with_orchestrator` (CEGAR budget escalation), `list_verification_backends`
+
+**Synthesis & RAG** — `synthesize_patch` (CEGIS + genetic + LLM), `synthesis_status`, `cancel_synthesis`, `list_synthesis_runs`, `rag_index_nodes`, `rag_search`, `rag_stats`
 
 ## Current Status
 
@@ -10,13 +74,13 @@ Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unveri
 
 | Component | Status |
 |-----------|--------|
-| Multi-framework parsing (5 frameworks) | ✅ Complete |
-| Graph Infrastructure (Spectral/Kameda) | ✅ Complete |
-| Belief Revision Engine (AGM/Provenance) | ✅ Complete |
-| Synthesis Loop (CEGIS/Genetic) | ✅ Complete |
-| Verification Backends | ⚪ Not Started |
-| Graph Persistence (SQLite/Kuzu) | ✅ Complete |
-| RAG / Semantic Search | ⚪ Deferred |
+| Multi-framework parsing (5 frameworks) | Complete |
+| Graph Infrastructure (Spectral/Kameda) | Complete |
+| Belief Revision Engine (AGM/Provenance) | Complete |
+| Synthesis Loop (CEGIS/Genetic) | Complete |
+| Verification Backends (Z3/angr) | Complete |
+| Graph Persistence (SQLite/Kuzu) | Complete |
+| RAG / Semantic Search (Chroma) | Complete |
 
 ## The Problem
 
@@ -200,15 +264,16 @@ flowchart TB
 - [x] Genetic algorithm with AST-aware crossover
 - [x] Entropy monitoring and diversity injection
 - [x] Counterexample-directed mutation
-- [ ] CEGAR abstraction hierarchy (Type → CFG → DFG → Concrete) [Moved to Verification]
+- [x] CEGAR budget escalation (10s → 30s → 120s)
 
-### Phase 6: Verification Backends
-- [ ] Z3 integration for SMT solving
-- [ ] KLEE container for concolic execution
-- [ ] SymPy path condition encoding
+### Phase 6: Verification Backends ✅
+- [x] Z3 integration for SMT solving (default backend)
+- [x] angr Docker symbolic execution (expensive tier)
+- [x] CEGAR orchestrator with budget escalation
+- [x] Verification harness builder (C source generation)
+- [x] Mock backend for testing
 - [ ] Alternative solvers (CVC5, Boolector)
-- [ ] Mathematical reformulation pipeline
-- [ ] Type/CFG abstraction levels (CEGAR preparation)
+- [ ] SymPy path condition encoding
 
 ### Phase 7: Graph Persistence ✅
 - [x] Abstract GraphStore ABC
@@ -218,12 +283,22 @@ flowchart TB
 - [x] Kameda & Fiedler persistence
 - [x] Incremental update engine
 
-### Phase 8: Production Hardening
-- [ ] CI/CD integration (GitHub Actions)
-- [ ] Regression detection and alerting
+### Phase 8: RAG / Semantic Search ✅
+- [x] ChromaDB vector store integration
+- [x] sentence-transformers embedding provider (all-MiniLM-L6-v2)
+- [x] Graph-expanded RAG pipeline (vector top-k → neighbor expansion → rerank)
+- [x] Decay scoring for temporal relevance
+- [x] CEGIS integration for context-aware synthesis
+
+### Phase 9: Production Hardening ✅
+- [x] CI/CD (GitHub Actions — lint, test matrix, integration, lockfile)
+- [x] Release pipeline (tag push → PyPI + GHCR + MCP registry)
+- [x] uv lockfile (149 packages)
+- [x] pre-commit hooks (ruff format + lint + lock check)
+- [x] MCP bundle packaging (server.json, smithery.yaml, manifest.json)
 - [ ] HTML/SARIF reporting
 - [ ] IDE extensions (VSCode)
-- [ ] Self-healing metadata consistency
+- [ ] Regression detection and alerting
 
 ## Future Work
 
@@ -232,51 +307,44 @@ flowchart TB
 - [ ] Non-contradictory framework assignment
 - [ ] Cross-framework survival analysis
 
-### Semantic Search & RAG (Deferred)
-- [ ] Code Graph RAG for semantic search
-- [ ] Semantic search index
-- [ ] RAG retrieval pipeline
+### Semantic Search & RAG
+- [x] Code Graph RAG for semantic search
+- [x] Semantic search index (ChromaDB)
+- [x] RAG retrieval pipeline with graph expansion
 - [ ] Text-to-Cypher queries
 
 ## Quick Start
 
 ```bash
-# Clone the repository
+# Clone and install (dev)
 git clone https://github.com/egoughnour/curate-ipsum.git
 cd curate-ipsum
+uv sync --extra dev --extra verify --extra rag --extra graph --extra synthesis
 
-# Install dependencies
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Run the MCP server
+uv run curate-ipsum
 
-# Configure MCP server
-cp example_config.toml config.toml
-# Edit config.toml with your paths
-
-# Run the server
-python server.py
+# Or run tests
+make test                     # fast suite (no Docker/model needed)
+make test-all                 # including integration tests
 ```
 
 ## Configuration
 
-```toml
-[mutation]
-tool = "stryker"  # or "mutmut", "cosmic-ray", "poodle"
-report_path = "reports/mutation/mutation.json"
+All configuration is via environment variables (see `.env.example`):
 
-[analysis]
-pid_window = 5
-pid_decay = 0.8
+```bash
+CURATE_IPSUM_GRAPH_BACKEND=sqlite   # or kuzu
+MUTATION_TOOL_DATA_DIR=.mutation_tool_data
+MUTATION_TOOL_LOG_LEVEL=INFO
+CHROMA_HOST=                         # empty = in-process, or localhost:8000
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+```
 
-[graph]
-backend = "networkx"  # or "neo4j", "janusgraph"
-fiedler_tolerance = 1e-6
+For the full service stack (ChromaDB + angr runner):
 
-[synthesis]
-llm_candidates = 10
-max_cegis_iterations = 100
-entropy_threshold = 0.3
+```bash
+make docker-up-verify         # starts Chroma + angr via Docker Compose
 ```
 
 ## Documentation

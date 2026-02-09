@@ -42,7 +42,6 @@ import logging
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from models import FileMutationStats
 
@@ -68,12 +67,12 @@ class CosmicRayMutant:
     module: str
     operator: str
     occurrence: int
-    line_number: Optional[int]
+    line_number: int | None
     worker_outcome: str  # "normal", "timeout", "exception"
     test_outcome: str  # "survived", "killed", "incompetent"
 
 
-def find_cosmic_ray_session(working_directory: str) -> Optional[Path]:
+def find_cosmic_ray_session(working_directory: str) -> Path | None:
     """
     Locate the cosmic-ray session database or JSON dump.
 
@@ -175,7 +174,7 @@ def _module_to_filepath(module: str) -> str:
     return module.replace(".", "/") + ".py"
 
 
-def _parse_json_dump(json_path: Path) -> List[CosmicRayMutant]:
+def _parse_json_dump(json_path: Path) -> list[CosmicRayMutant]:
     """
     Parse cosmic-ray JSON dump output.
 
@@ -201,19 +200,15 @@ def _parse_json_dump(json_path: Path) -> List[CosmicRayMutant]:
                 operator=item.get("operator", ""),
                 occurrence=int(item.get("occurrence", 0)),
                 line_number=item.get("line_number"),
-                worker_outcome=_normalize_worker_outcome(
-                    item.get("worker_outcome", "normal")
-                ),
-                test_outcome=_normalize_test_outcome(
-                    item.get("test_outcome", "survived")
-                ),
+                worker_outcome=_normalize_worker_outcome(item.get("worker_outcome", "normal")),
+                test_outcome=_normalize_test_outcome(item.get("test_outcome", "survived")),
             )
         )
 
     return mutants
 
 
-def _parse_session_db(db_path: Path) -> List[CosmicRayMutant]:
+def _parse_session_db(db_path: Path) -> list[CosmicRayMutant]:
     """
     Parse cosmic-ray SQLite session database.
 
@@ -315,7 +310,7 @@ def _parse_session_db(db_path: Path) -> List[CosmicRayMutant]:
         conn.close()
 
 
-def parse_cosmic_ray_session(session_path: Path) -> List[CosmicRayMutant]:
+def parse_cosmic_ray_session(session_path: Path) -> list[CosmicRayMutant]:
     """
     Parse cosmic-ray results from session file (SQLite or JSON).
 
@@ -357,8 +352,8 @@ def parse_cosmic_ray_session(session_path: Path) -> List[CosmicRayMutant]:
 
 
 def aggregate_cosmic_ray_stats(
-    mutants: List[CosmicRayMutant],
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    mutants: list[CosmicRayMutant],
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Aggregate cosmic-ray mutants into summary statistics.
 
@@ -381,12 +376,12 @@ def aggregate_cosmic_ray_stats(
         return (0, 0, 0, 0, 0.0, [])
 
     # Group by module -> file path
-    by_file_map: Dict[str, List[CosmicRayMutant]] = {}
+    by_file_map: dict[str, list[CosmicRayMutant]] = {}
     for m in mutants:
         file_path = _module_to_filepath(m.module) if m.module else "<unknown>"
         by_file_map.setdefault(file_path, []).append(m)
 
-    file_stats: List[FileMutationStats] = []
+    file_stats: list[FileMutationStats] = []
     total_killed = 0
     total_survived = 0
     total_no_coverage = 0
@@ -394,21 +389,10 @@ def aggregate_cosmic_ray_stats(
     for file_path in sorted(by_file_map.keys()):
         file_mutants = by_file_map[file_path]
 
-        killed = sum(
-            1
-            for m in file_mutants
-            if m.test_outcome == "killed" and m.worker_outcome == "normal"
-        )
-        survived = sum(
-            1
-            for m in file_mutants
-            if m.test_outcome == "survived" and m.worker_outcome == "normal"
-        )
+        killed = sum(1 for m in file_mutants if m.test_outcome == "killed" and m.worker_outcome == "normal")
+        survived = sum(1 for m in file_mutants if m.test_outcome == "survived" and m.worker_outcome == "normal")
         no_coverage = sum(
-            1
-            for m in file_mutants
-            if m.worker_outcome in ("timeout", "exception")
-            or m.test_outcome == "incompetent"
+            1 for m in file_mutants if m.worker_outcome in ("timeout", "exception") or m.test_outcome == "incompetent"
         )
 
         total = len(file_mutants)
@@ -454,8 +438,8 @@ def aggregate_cosmic_ray_stats(
 
 def parse_cosmic_ray_output(
     working_directory: str,
-    report_path: Optional[str] = None,
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    report_path: str | None = None,
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Parse cosmic-ray mutation testing output.
 

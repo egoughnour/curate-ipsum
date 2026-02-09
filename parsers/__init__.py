@@ -21,9 +21,9 @@ Usage:
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple
 
 from models import FileMutationStats
+from parsers.cosmic_ray_parser import parse_cosmic_ray_output
 from parsers.detection import (
     FrameworkDetection,
     MutationFramework,
@@ -32,7 +32,6 @@ from parsers.detection import (
     detect_language,
     recommend_framework,
 )
-from parsers.cosmic_ray_parser import parse_cosmic_ray_output
 from parsers.mutmut_parser import parse_mutmut_output
 from parsers.poodle_parser import parse_poodle_output
 from parsers.stryker_parser import parse_stryker_output
@@ -68,9 +67,9 @@ class UnsupportedFrameworkError(Exception):
 
 def parse_mutation_output(
     working_directory: str,
-    tool: Optional[str] = None,
-    report_path: Optional[str] = None,
-) -> Tuple[int, int, int, int, float, List[FileMutationStats]]:
+    tool: str | None = None,
+    report_path: str | None = None,
+) -> tuple[int, int, int, int, float, list[FileMutationStats]]:
     """
     Parse mutation testing output, auto-detecting framework if not specified.
 
@@ -145,8 +144,8 @@ def parse_mutation_output(
 
     elif tool_lower in ("mutpy", "mut_py"):
         raise UnsupportedFrameworkError(
-            f"mutpy parser not yet implemented. "
-            f"Supported frameworks: stryker, mutmut, cosmic-ray, poodle, universalmutator"
+            "mutpy parser not yet implemented. "
+            "Supported frameworks: stryker, mutmut, cosmic-ray, poodle, universalmutator"
         )
 
     else:
@@ -156,7 +155,7 @@ def parse_mutation_output(
         )
 
 
-def get_detected_tool(working_directory: str) -> Optional[str]:
+def get_detected_tool(working_directory: str) -> str | None:
     """
     Get the name of the auto-detected tool without parsing.
 

@@ -1,19 +1,15 @@
 """Tests for storage.sqlite_graph_store — SQLite-backed graph persistence."""
 
-import json
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from graph.models import (
     CallGraph,
     EdgeKind,
+    FunctionSignature,
     GraphEdge,
     GraphNode,
     NodeKind,
     SourceLocation,
-    FunctionSignature,
 )
 from storage.sqlite_graph_store import SQLiteGraphStore
 
@@ -33,39 +29,58 @@ def sample_graph():
     graph = CallGraph()
 
     # Add modules and functions
-    graph.add_node(GraphNode(
-        id="mod.foo",
-        kind=NodeKind.FUNCTION,
-        name="foo",
-        location=SourceLocation(file="mod.py", line_start=1, line_end=5),
-        signature=FunctionSignature(name="foo", params=("x", "y"), return_type="int"),
-        docstring="Compute foo.",
-    ))
-    graph.add_node(GraphNode(
-        id="mod.bar",
-        kind=NodeKind.FUNCTION,
-        name="bar",
-        location=SourceLocation(file="mod.py", line_start=7, line_end=12),
-        signature=FunctionSignature(name="bar", params=("z",)),
-    ))
-    graph.add_node(GraphNode(
-        id="util.helper",
-        kind=NodeKind.FUNCTION,
-        name="helper",
-        location=SourceLocation(file="util.py", line_start=1, line_end=3),
-    ))
+    graph.add_node(
+        GraphNode(
+            id="mod.foo",
+            kind=NodeKind.FUNCTION,
+            name="foo",
+            location=SourceLocation(file="mod.py", line_start=1, line_end=5),
+            signature=FunctionSignature(name="foo", params=("x", "y"), return_type="int"),
+            docstring="Compute foo.",
+        )
+    )
+    graph.add_node(
+        GraphNode(
+            id="mod.bar",
+            kind=NodeKind.FUNCTION,
+            name="bar",
+            location=SourceLocation(file="mod.py", line_start=7, line_end=12),
+            signature=FunctionSignature(name="bar", params=("z",)),
+        )
+    )
+    graph.add_node(
+        GraphNode(
+            id="util.helper",
+            kind=NodeKind.FUNCTION,
+            name="helper",
+            location=SourceLocation(file="util.py", line_start=1, line_end=3),
+        )
+    )
 
     # Edges
-    graph.add_edge(GraphEdge(
-        source_id="mod.foo", target_id="mod.bar", kind=EdgeKind.CALLS,
-    ))
-    graph.add_edge(GraphEdge(
-        source_id="mod.foo", target_id="util.helper", kind=EdgeKind.CALLS,
-        confidence=0.9, is_conditional=True,
-    ))
-    graph.add_edge(GraphEdge(
-        source_id="mod.bar", target_id="util.helper", kind=EdgeKind.REFERENCES,
-    ))
+    graph.add_edge(
+        GraphEdge(
+            source_id="mod.foo",
+            target_id="mod.bar",
+            kind=EdgeKind.CALLS,
+        )
+    )
+    graph.add_edge(
+        GraphEdge(
+            source_id="mod.foo",
+            target_id="util.helper",
+            kind=EdgeKind.CALLS,
+            confidence=0.9,
+            is_conditional=True,
+        )
+    )
+    graph.add_edge(
+        GraphEdge(
+            source_id="mod.bar",
+            target_id="util.helper",
+            kind=EdgeKind.REFERENCES,
+        )
+    )
 
     return graph
 
@@ -145,14 +160,17 @@ class TestSingleNodeEdge:
 
     def test_store_and_get_node(self, store):
         """Store a single node and retrieve it."""
-        store.store_node({
-            "id": "my.func",
-            "kind": "function",
-            "name": "func",
-            "file_path": "my.py",
-            "line_start": 10,
-            "line_end": 20,
-        }, PROJECT_ID)
+        store.store_node(
+            {
+                "id": "my.func",
+                "kind": "function",
+                "name": "func",
+                "file_path": "my.py",
+                "line_start": 10,
+                "line_end": 20,
+            },
+            PROJECT_ID,
+        )
 
         result = store.get_node("my.func", PROJECT_ID)
         assert result is not None
@@ -195,14 +213,10 @@ class TestNeighbors:
         """Filter neighbors by edge kind."""
         store.store_graph(sample_graph, PROJECT_ID)
 
-        calls_only = store.get_neighbors(
-            "mod.foo", PROJECT_ID, direction="outgoing", edge_kind="calls"
-        )
+        calls_only = store.get_neighbors("mod.foo", PROJECT_ID, direction="outgoing", edge_kind="calls")
         assert set(calls_only) == {"mod.bar", "util.helper"}
 
-        ref_only = store.get_neighbors(
-            "mod.bar", PROJECT_ID, direction="outgoing", edge_kind="references"
-        )
+        ref_only = store.get_neighbors("mod.bar", PROJECT_ID, direction="outgoing", edge_kind="references")
         assert ref_only == ["util.helper"]
 
 

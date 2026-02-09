@@ -11,9 +11,10 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -294,10 +295,7 @@ class TestRegionFactories:
 
     def test_for_lines_with_context(self):
         """Region.for_lines() with function/class context."""
-        region = Region.for_lines(
-            "src/main.py", 10, 20,
-            func_name="compute", class_name="Calculator"
-        )
+        region = Region.for_lines("src/main.py", 10, 20, func_name="compute", class_name="Calculator")
 
         assert region.file_path == "src/main.py"
         assert region.func_name == "compute"
