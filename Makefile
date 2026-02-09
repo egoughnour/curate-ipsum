@@ -90,15 +90,17 @@ ifndef VERSION
 	$(error VERSION is required — usage: make bump VERSION=0.3.0)
 endif
 	@echo "Bumping version to $(VERSION)"
-	sed -i 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
-	python3 -c "import json,pathlib; \
+	python3 -c "\
+	import json, pathlib, re; \
+	pt = pathlib.Path('pyproject.toml'); \
+	pt.write_text(re.sub(r'^version = \".*\"', 'version = \"$(VERSION)\"', pt.read_text(), count=1, flags=re.M)); \
 	[( \
-	  p:=pathlib.Path(f), \
-	  d:=json.loads(p.read_text()), \
-	  d.__setitem__('version','$(VERSION)'), \
-	  [pkg.__setitem__('version','$(VERSION)') for pkg in d.get('packages',[])], \
-	  p.write_text(json.dumps(d,indent=2)+'\n') \
-	) for f in ('server.json','manifest.json')]"
+	  p := pathlib.Path(f), \
+	  d := json.loads(p.read_text()), \
+	  d.__setitem__('version', '$(VERSION)'), \
+	  [pkg.__setitem__('version', '$(VERSION)') for pkg in d.get('packages', [])], \
+	  p.write_text(json.dumps(d, indent=2) + '\n') \
+	) for f in ('server.json', 'manifest.json')]"
 	uv lock
 	@echo "Updated pyproject.toml, server.json, manifest.json → $(VERSION)"
 
