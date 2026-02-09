@@ -1,9 +1,14 @@
 """
 angr Docker-based symbolic execution backend.
 
-Runs angr inside a Docker container (angr/angr image), communicating
-via JSON files mounted into the container. This follows the
-angr_adapter_baseline pattern from quick-verification/.
+Runs angr inside a Docker container, communicating via JSON files
+mounted into the container.
+
+Build the image with:  docker compose --profile verify build
+Run standalone:        docker compose run --rm angr-runner
+
+The runner script (verification/runners/run_angr.py) is baked into
+the image via docker/Dockerfile.angr-runner.
 
 Decision: D-016
 """
@@ -31,10 +36,11 @@ from verification.types import (
 
 LOG = logging.getLogger("verification.backends.angr_docker")
 
-# Default Docker image for angr runner
-DEFAULT_ANGR_IMAGE = "angr/angr"
-# Path to the runner script inside the container
-DEFAULT_RUNNER_SCRIPT = "/runner/run_angr.py"
+# Default: the compose-built image (docker compose --profile verify build)
+# Falls back to upstream angr/angr if the compose image isn't built yet.
+DEFAULT_ANGR_IMAGE = os.environ.get("ANGR_DOCKER_IMAGE", "curate-ipsum-angr-runner")
+# Path to the runner script inside the container (baked in by Dockerfile)
+DEFAULT_RUNNER_SCRIPT = "/opt/runner/run_angr.py"
 
 
 class AngrDockerBackend(VerificationBackend):
@@ -176,11 +182,18 @@ class AngrDockerBackend(VerificationBackend):
             # or will be provided by a pre-built runner image
             pass
 
-        cmd.extend([
-            self._image,
-            "python3", self._runner_script,
-            "/work/request.json",
-            "/work/response.json",
-        ])
+        # The compose-built image has ENTRYPOINT [run_angr.py] so just pass paths.
+        # For the upstream angr/angr image, invoke the runner script explicitly.
+        cmd.append(self._image)
+        if self._image == "curate-ipsum-angr-runner":
+            # Compose-built: ENTRYPOINT already set, just pass args
+            cmd.extend(["/work/request.json", "/work/response.json"])
+        else:
+            # Upstream image: run the runner script explicitly
+            cmd.extend([
+                "python3", self._runner_script,
+                "/work/request.json",
+                "/work/response.json",
+            ])
 
         return cmd

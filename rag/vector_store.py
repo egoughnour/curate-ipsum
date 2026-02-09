@@ -1,9 +1,11 @@
 """
 Abstract vector store interface with Chroma backend.
 
-Follows the D-014 pattern (abstract base + factory function).
-Chroma chosen for near-zero-dep embedded operation with persistence.
+chromadb is a core dependency. Chroma operates in two modes:
+- Embedded PersistentClient: no server needed, local persistence
+- HttpClient: connects to the Chroma Docker service (docker compose up -d)
 
+Follows the D-014 pattern (abstract base + factory function).
 Decision: D-017
 """
 
@@ -77,13 +79,16 @@ class VectorStore(ABC):
 
 class ChromaVectorStore(VectorStore):
     """
-    Chroma-based vector store.
+    Chroma-based vector store (core dependency).
 
     Operates in two modes:
-    - Embedded (PersistentClient): zero-dependency, local persistence
-    - Client/server (HttpClient): connects to a Chroma Docker service
+    - Embedded (PersistentClient): no server, local persistence
+    - Client/server (HttpClient): connects to docker compose chroma service
 
-    Decision: D-017 — Chroma chosen for near-zero-dep embedded operation.
+    Set CHROMA_HOST env var to connect to a remote Chroma instance,
+    otherwise defaults to embedded mode.
+
+    Decision: D-017
     """
 
     def __init__(
@@ -93,13 +98,7 @@ class ChromaVectorStore(VectorStore):
         chroma_host: Optional[str] = None,
         chroma_port: int = 8000,
     ) -> None:
-        try:
-            import chromadb
-        except ImportError:
-            raise ImportError(
-                "chromadb is required for ChromaVectorStore. "
-                "Install with: pip install chromadb"
-            )
+        import chromadb
 
         if chroma_host:
             self._client = chromadb.HttpClient(host=chroma_host, port=chroma_port)

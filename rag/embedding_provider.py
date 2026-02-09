@@ -1,6 +1,9 @@
 """
 Embedding provider abstraction with local sentence-transformers backend.
 
+sentence-transformers and all-MiniLM-L6-v2 are core dependencies (not optional).
+Alternative/larger models can be installed via [embeddings-gpu] or [embeddings-large].
+
 Decision: D-017
 """
 
@@ -36,16 +39,12 @@ class LocalEmbeddingProvider(EmbeddingProvider):
     Local embedding via sentence-transformers.
 
     Default model: all-MiniLM-L6-v2 (384 dimensions, fast, good for code).
+    Install [embeddings-gpu] for GPU acceleration or [embeddings-large]
+    for InstructorEmbedding support.
     """
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError:
-            raise ImportError(
-                "sentence-transformers is required for LocalEmbeddingProvider. "
-                "Install with: pip install sentence-transformers"
-            )
+        from sentence_transformers import SentenceTransformer
 
         self._model_name = model_name
         LOG.info("Loading embedding model: %s", model_name)

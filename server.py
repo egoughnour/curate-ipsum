@@ -1209,7 +1209,37 @@ def build_server() -> "FastMCP":
         except Exception:
             pass
 
-        engine = CEGISEngine(config, llm_client, theory_manager)
+        # M5: attach verification backend (Z3 default — cheap tier)
+        verification_backend = None
+        try:
+            verification_backend = _get_verification_backend("z3")
+        except Exception as exc:
+            LOG.debug("Z3 verification backend not available: %s", exc)
+
+        # M6: attach RAG pipeline for context-aware prompting
+        rag_pipeline = None
+        try:
+            from rag.embedding_provider import LocalEmbeddingProvider
+            from rag.search import RAGPipeline, RAGConfig as _RAGCfg
+
+            _vs = _get_vector_store("code_nodes")
+            _emb = LocalEmbeddingProvider()
+            _gs = None
+            try:
+                _gs = _get_graph_store(workingDirectory)
+            except Exception:
+                pass
+            rag_pipeline = RAGPipeline(
+                _vs, _emb, _gs, _RAGCfg(project_id=projectId),
+            )
+        except Exception as exc:
+            LOG.debug("RAG pipeline not available: %s", exc)
+
+        engine = CEGISEngine(
+            config, llm_client, theory_manager,
+            verification_backend=verification_backend,
+            rag_pipeline=rag_pipeline,
+        )
         _synthesis_engines[engine._current_run_id or "unknown"] = engine
 
         try:
@@ -1435,8 +1465,8 @@ def build_server() -> "FastMCP":
 
     _verification_backends: Dict[str, Any] = {}
 
-    def _get_verification_backend(backend: str = "mock", **kwargs: Any) -> Any:
-        """Get or create a VerificationBackend."""
+    def _get_verification_backend(backend: str = "z3", **kwargs: Any) -> Any:
+        """Get or create a VerificationBackend. Defaults to Z3 (the cheap tier)."""
         key = f"{backend}_default"
         if key not in _verification_backends:
             from verification.backend import build_verification_backend
@@ -1451,7 +1481,7 @@ def build_server() -> "FastMCP":
         )
     )
     async def verify_property_tool(
-        backend: str = "mock",
+        backend: str = "z3",
         targetBinary: str = "",
         entry: str = "",
         constraints: Optional[List[str]] = None,
@@ -1490,7 +1520,7 @@ def build_server() -> "FastMCP":
         )
     )
     async def verify_with_orchestrator_tool(
-        backend: str = "mock",
+        backend: str = "z3",
         targetBinary: str = "",
         entry: str = "",
         constraints: Optional[List[str]] = None,
