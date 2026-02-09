@@ -114,6 +114,20 @@ release: bump ## Bump, commit, tag, push (usage: make release VERSION=0.3.0)
 docker-mcp: ## Build MCP server Docker image locally
 	docker build -f docker/Dockerfile.mcp-server -t curate-ipsum:local .
 
+# ── Documentation ─────────────────────────────────────────────────────────────
+
+.PHONY: docs
+docs: ## Build Sphinx HTML documentation
+	uv run sphinx-build -b html docs/ docs/_build/html
+
+.PHONY: docs-live
+docs-live: ## Serve docs with live reload (requires sphinx-autobuild)
+	uv run sphinx-autobuild docs/ docs/_build/html --open-browser
+
+.PHONY: docs-clean
+docs-clean: ## Remove built documentation
+	rm -rf docs/_build
+
 # ── Utilities ─────────────────────────────────────────────────────────────────
 
 .PHONY: clean

@@ -48,6 +48,12 @@ embeddings-large = [
     "sentence-transformers>=2.2",
     "InstructorEmbedding>=1.0",
 ]
+docs = [
+    "sphinx>=7.0",
+    "furo>=2024.1",
+    "myst-parser>=3.0",
+    "sphinx-copybutton>=0.5",
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
@@ -59,6 +65,12 @@ dev = [
     "httpx>=0.24",
     "kuzu>=0.11.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/egoughnour/curate-ipsum"
+Documentation = "https://curate-ipsum.readthedocs.io"
+Repository = "https://github.com/egoughnour/curate-ipsum"
+Changelog = "https://github.com/egoughnour/curate-ipsum/releases"
 
 [project.scripts]
 curate-ipsum = "server:main"

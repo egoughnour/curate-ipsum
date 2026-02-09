@@ -24,6 +24,9 @@ chroma_data/
 .idea/
 *.swp
 
+# Docs build output
+docs/_build/
+
 # Tool caches
 .mypy_cache/
 .pytest_cache/
