@@ -41,7 +41,8 @@ graphdb = [
     "kuzu>=0.11.0",
 ]
 embeddings-gpu = [
-    "sentence-transformers[gpu]>=2.2",
+    "sentence-transformers>=2.2",
+    "torch>=2.0",              # GPU-enabled PyTorch (user installs CUDA variant)
 ]
 embeddings-large = [
     "sentence-transformers>=2.2",
@@ -52,6 +53,7 @@ dev = [
     "pytest-asyncio>=0.21",
     "ruff>=0.1.0",
     "mypy>=1.0",
+    "pre-commit>=3.0",
     "scipy>=1.10",
     "networkx>=3.0",
     "httpx>=0.24",
@@ -85,3 +87,8 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: requires external services (Docker daemon + embedding model)",
+    "docker: requires Docker daemon running",
+    "embedding: requires sentence-transformers model available (all-MiniLM-L6-v2)",
+]

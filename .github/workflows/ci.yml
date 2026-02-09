@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Fast checks (lint + type) ──────────────────────────────────────────────
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  # ── Unit + e2e tests (no Docker, no model download) ────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install ${{ matrix.python-version }}
+      - run: uv sync --all-extras --python ${{ matrix.python-version }}
+      - run: uv run pytest -m "not integration" -v --tb=short
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
+
+  # ── Integration tests (Docker + embedding model) ───────────────────────────
+  integration:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras
+
+      # Docker is pre-installed on ubuntu-latest runners
+      - name: Build angr-runner image
+        run: docker compose -f docker/docker-compose.yml --profile verify build
+
+      - name: Run integration tests
+        run: uv run pytest -m integration -v --tb=short
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
+
+  # ── Lock file consistency ──────────────────────────────────────────────────
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv lock --check
