@@ -2,7 +2,7 @@ name: Publish MCP
 
 # Builds and publishes the MCP server bundle via three channels:
 #   1. Docker image to GHCR (always)
-#   2. Official MCP Registry via mcp-publisher (always)
+#   2. Official MCP Registry via mcp-publisher (if available)
 #   3. Smithery registry (if SMITHERY_ENABLED=true)
 #
 # Can be triggered manually or called from the tag-release workflow.
@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag for the image (e.g., 0.3.0)"
+        description: "Version tag for the image (e.g., 0.8.0)"
         required: true
         type: string
 
@@ -67,6 +67,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            HF_TOKEN=${{ secrets.HF_TOKEN }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -79,10 +81,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
 
       - name: Verify server.json version
         run: |
@@ -98,9 +96,19 @@ jobs:
           fi
 
       - name: Install mcp-publisher
-        run: npm install -g @anthropic-ai/mcp-publisher
+        id: install
+        run: |
+          # Try snap first (official distribution), fall back to npm
+          if command -v snap &>/dev/null; then
+            sudo snap install mcp-publisher 2>/dev/null && exit 0
+          fi
+          # npm fallback — try known package names
+          npm install -g mcp-publisher 2>/dev/null && exit 0
+          echo "::warning::mcp-publisher not available; skipping registry publish"
+          echo "skip=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish to MCP Registry
+        if: steps.install.outputs.skip != 'true'
         run: mcp-publisher publish --file server.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

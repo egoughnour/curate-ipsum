@@ -1,14 +1,17 @@
 name: Tag Release
 
-# Triggered on version tag push (v*). Validates the tag, then fans out to
-# the release (PyPI + GitHub Release) and MCP publish (GHCR image) workflows.
+# Triggered on version tag push (v*). Validates the tag, runs CI, then:
+#   1. Builds sdist + wheel, publishes to PyPI (Trusted Publisher OIDC)
+#   2. Creates a GitHub Release with auto-generated changelog
+#   3. Fans out to publish-mcp.yml for Docker image + MCP registry
+#
+# PyPI publish is inlined (not a reusable workflow) because OIDC
+# id-token permissions do not propagate through workflow_call.
 #
 # Typical flow:
-#   make release VERSION=0.3.0
-#     → bumps pyproject.toml, commits, tags v0.3.0, pushes
+#   make release VERSION=0.8.0
+#     → bumps pyproject.toml + server.json + manifest.json, commits, tags, pushes
 #     → this workflow fires
-#       → release.yml  (PyPI + GH Release)
-#       → publish-mcp.yml (Docker image to GHCR)
 
 on:
   push:
@@ -32,8 +35,8 @@ jobs:
       - name: Extract version from tag
         id: extract
         run: |
-          TAG="${GITHUB_REF_NAME}"          # e.g. v0.3.0
-          VERSION="${TAG#v}"                # strip leading v → 0.3.0
+          TAG="${GITHUB_REF_NAME}"          # e.g. v0.8.0
+          VERSION="${TAG#v}"                # strip leading v → 0.8.0
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${TAG} → Version: ${VERSION}"
 
@@ -56,22 +59,112 @@ jobs:
     needs: validate
     uses: ./.github/workflows/ci.yml
 
-  # ── Fan out: PyPI release + GitHub Release ──────────────────────────────────
-  release:
+  # ── Build sdist + wheel + MCPB bundle ────────────────────────────────────────
+  build:
     needs: [validate, ci]
-    uses: ./.github/workflows/release.yml
-    with:
-      version: ${{ needs.validate.outputs.version }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Verify package contents
+        run: |
+          ls -lh dist/
+          uv run --no-project -- pip install dist/*.whl --dry-run
+
+      - name: Build MCPB bundle
+        run: |
+          BUNDLE_DIR="curate-ipsum-${{ needs.validate.outputs.version }}"
+          mkdir -p "${BUNDLE_DIR}"
+          cp -r server.py tools.py models.py "${BUNDLE_DIR}/"
+          cp -r adapters domains graph parsers rag regions \
+                storage synthesis theory verification "${BUNDLE_DIR}/" 2>/dev/null || true
+          cp manifest.json "${BUNDLE_DIR}/"
+          cp -r icons "${BUNDLE_DIR}/"
+          cp pyproject.toml uv.lock README.md "${BUNDLE_DIR}/"
+          cp LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
+          cd "${BUNDLE_DIR}" && zip -r ../dist/curate-ipsum.mcpb . -x '*.pyc' '__pycache__/*'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 5
+
+  # ── Publish to PyPI (Trusted Publisher OIDC) ────────────────────────────────
+  # Inlined here because id-token: write doesn't propagate through workflow_call.
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC for Trusted Publisher
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ── GitHub Release ──────────────────────────────────────────────────────────
+  github-release:
+    needs: [validate, build]
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for changelog
 
-  # ── Fan out: MCP server image to GHCR ───────────────────────────────────────
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Generate changelog from commits
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -2 | tail -1)
+          if [ -z "${PREV_TAG}" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+          echo "range=${RANGE}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## What's Changed"
+            echo ""
+            git log "${RANGE}" --pretty=format:"- %s (%h)" --no-merges
+            echo ""
+          } > changelog.md
+          cat changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          name: v${{ needs.validate.outputs.version }}
+          body_path: changelog.md
+          files: dist/*
+          generate_release_notes: true
+
+  # ── Fan out: MCP server image to GHCR + registries ─────────────────────────
   publish-mcp:
     needs: [validate, ci]
     uses: ./.github/workflows/publish-mcp.yml
     with:
       version: ${{ needs.validate.outputs.version }}
+    secrets: inherit
     permissions:
       contents: read
       packages: write

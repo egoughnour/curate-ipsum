@@ -3,63 +3,77 @@
   "name": "io.github.egoughnour/curate-ipsum",
   "title": "Curate-Ipsum",
   "description": "Graph-spectral framework for verified code synthesis through belief revision, mutation testing, and CEGIS/CEGAR verification loops.",
-  "version": "0.8.0",
-  "websiteUrl": "https://github.com/egoughnour/curate-ipsum",
   "repository": {
     "url": "https://github.com/egoughnour/curate-ipsum",
-    "type": "git"
+    "source": "github"
   },
+  "version": "0.8.0",
   "packages": [
     {
       "registryType": "pypi",
-      "registryBaseUrl": "https://pypi.org",
       "identifier": "curate-ipsum",
       "version": "0.8.0",
-      "transport": "stdio",
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
         {
           "name": "CURATE_IPSUM_GRAPH_BACKEND",
-          "required": false,
-          "description": "Graph store backend: 'sqlite' (default) or 'kuzu'"
+          "description": "Graph store backend: 'sqlite' (default) or 'kuzu'",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         },
         {
           "name": "MUTATION_TOOL_DATA_DIR",
-          "required": false,
-          "description": "Directory for persistent data (default: .mutation_tool_data)"
+          "description": "Directory for persistent data (default: .mutation_tool_data)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         },
         {
           "name": "MUTATION_TOOL_LOG_LEVEL",
-          "required": false,
-          "description": "Log level: DEBUG, INFO, WARNING, ERROR (default: INFO)"
+          "description": "Log level: DEBUG, INFO, WARNING, ERROR (default: INFO)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         },
         {
           "name": "CHROMA_HOST",
-          "required": false,
-          "description": "ChromaDB server host for Docker mode (default: use ephemeral in-process)"
+          "description": "ChromaDB server host for Docker mode (default: use ephemeral in-process)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         },
         {
           "name": "EMBEDDING_MODEL",
-          "required": false,
-          "description": "sentence-transformers model name (default: all-MiniLM-L6-v2)"
+          "description": "sentence-transformers model name (default: all-MiniLM-L6-v2)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         }
       ]
     },
     {
-      "registryType": "oci",
-      "registryBaseUrl": "https://ghcr.io",
-      "identifier": "egoughnour/curate-ipsum",
-      "version": "0.8.0",
-      "transport": "stdio",
+      "registryType": "mcpb",
+      "identifier": "https://github.com/egoughnour/curate-ipsum/releases/latest/download/curate-ipsum.mcpb",
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
         {
           "name": "CURATE_IPSUM_GRAPH_BACKEND",
-          "required": false,
-          "description": "Graph store backend: 'sqlite' (default) or 'kuzu'"
+          "description": "Graph store backend: 'sqlite' (default) or 'kuzu'",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         },
         {
-          "name": "CHROMA_HOST",
-          "required": false,
-          "description": "ChromaDB server host (default: use ephemeral in-process)"
+          "name": "MUTATION_TOOL_DATA_DIR",
+          "description": "Directory for persistent data (default: .mutation_tool_data)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         }
       ]
     }

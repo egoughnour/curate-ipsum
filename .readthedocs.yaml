@@ -8,14 +8,9 @@ build:
   tools:
     python: "3.12"
   commands:
-    # Use uv for dependency installation (fast, deterministic)
-    - pip install uv
-    - uv venv $READTHEDOCS_VIRTUALENV_PATH
-    - uv pip install --python $READTHEDOCS_VIRTUALENV_PATH/bin/python sphinx furo myst-parser sphinx-copybutton
-    # Install project in mock-friendly mode (docs extras only)
-    - uv pip install --python $READTHEDOCS_VIRTUALENV_PATH/bin/python -e ".[docs]"
-    - $READTHEDOCS_VIRTUALENV_PATH/bin/python -m sphinx -b html docs/ $READTHEDOCS_OUTPUT/html
-
-sphinx:
-  configuration: docs/conf.py
-  fail_on_warning: false
+    # Install docs dependencies (sphinx, theme, extensions)
+    - python -m pip install sphinx furo myst-parser sphinx-copybutton
+    # Install project without heavy deps — autodoc_mock_imports handles the rest
+    - python -m pip install --no-deps -e .
+    # Build HTML docs
+    - python -m sphinx -T -b html docs/ $READTHEDOCS_OUTPUT/html

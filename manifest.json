@@ -1,24 +1,22 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/mcpb/manifest-schema.json",
   "manifest_version": "0.4",
   "name": "curate-ipsum",
   "display_name": "Curate-Ipsum",
   "version": "0.8.0",
   "description": "Graph-spectral framework for verified code synthesis through belief revision.",
   "long_description": "Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unverified) and formally verified patches (slow, correct, trustworthy). It treats mutation testing as input to a CEGIS/CEGAR synthesis loop powered by belief revision, graph-spectral analysis, and RAG-augmented context retrieval.",
-  "author": "Erik Goughnour <e.goughnour@gmail.com>",
-  "license": "MIT",
-  "repository": "https://github.com/egoughnour/curate-ipsum",
-  "documentation_url": "https://github.com/egoughnour/curate-ipsum#readme",
-  "icon": "icons/icon.png",
-  "icons": {
-    "light": "icons/icon-light.png",
-    "dark": "icons/icon-dark.png",
-    "default": "icons/icon.png"
+  "author": {
+    "name": "Erik Goughnour",
+    "email": "e.goughnour@gmail.com"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/egoughnour/curate-ipsum.git"
+  },
+  "icon": "icons/icon.png",
   "server": {
     "type": "python",
-    "entry_point": "${__dirname}/server.py",
+    "entry_point": "server.py",
     "mcp_config": {
       "command": "uv",
       "args": [
@@ -28,52 +26,201 @@
         "curate-ipsum"
       ],
       "env": {
-        "MUTATION_TOOL_DATA_DIR": "${__dirname}/.mutation_tool_data",
-        "MUTATION_TOOL_LOG_LEVEL": "INFO"
-      }
-    },
-    "configuration_schema": {
-      "type": "object",
-      "properties": {
-        "graph_backend": {
-          "type": "string",
-          "title": "Graph Store Backend",
-          "description": "Persistent graph store: 'sqlite' (zero-config) or 'kuzu'",
-          "enum": [
-            "sqlite",
-            "kuzu"
-          ],
-          "default": "sqlite"
-        },
-        "data_dir": {
-          "type": "string",
-          "title": "Data Directory",
-          "description": "Directory for persistent data",
-          "default": ".mutation_tool_data"
-        },
-        "chroma_host": {
-          "type": "string",
-          "title": "ChromaDB Host",
-          "description": "Host for ChromaDB server (leave empty for in-process mode)"
-        },
-        "embedding_model": {
-          "type": "string",
-          "title": "Embedding Model",
-          "description": "sentence-transformers model for code embeddings",
-          "default": "all-MiniLM-L6-v2"
-        },
-        "log_level": {
-          "type": "string",
-          "title": "Log Level",
-          "enum": [
-            "DEBUG",
-            "INFO",
-            "WARNING",
-            "ERROR"
-          ],
-          "default": "INFO"
-        }
+        "MUTATION_TOOL_DATA_DIR": "${user_config.data_dir}",
+        "MUTATION_TOOL_LOG_LEVEL": "${user_config.log_level}",
+        "CURATE_IPSUM_GRAPH_BACKEND": "${user_config.graph_backend}"
       }
     }
-  }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ],
+    "runtimes": {
+      "python": ">=3.11"
+    }
+  },
+  "user_config": {
+    "graph_backend": {
+      "type": "string",
+      "title": "Graph Store Backend",
+      "description": "Persistent graph store: 'sqlite' (zero-config) or 'kuzu'",
+      "required": false,
+      "default": "sqlite"
+    },
+    "data_dir": {
+      "type": "directory",
+      "title": "Data Directory",
+      "description": "Directory for persistent data (graph store, embeddings, etc.)",
+      "required": false,
+      "default": "${HOME}/.mutation_tool_data"
+    },
+    "log_level": {
+      "type": "string",
+      "title": "Log Level",
+      "description": "Logging verbosity: DEBUG, INFO, WARNING, ERROR",
+      "required": false,
+      "default": "INFO"
+    }
+  },
+  "tools": [
+    {
+      "name": "run_unit_tests_tool",
+      "description": "Run unit tests for a project and return a summarized result"
+    },
+    {
+      "name": "run_integration_tests_tool",
+      "description": "Run integration tests for a project and return a summarized result"
+    },
+    {
+      "name": "run_mutation_tests_tool",
+      "description": "Run mutation tests for a project, tracking killed/survived mutants"
+    },
+    {
+      "name": "get_run_history_tool",
+      "description": "Return recent test runs for a project and optional region"
+    },
+    {
+      "name": "get_region_metrics_tool",
+      "description": "Compute PID-like metrics and mutation score for a specific region"
+    },
+    {
+      "name": "detect_frameworks_tool",
+      "description": "Detect test frameworks, languages, and build tools in a project"
+    },
+    {
+      "name": "parse_region_tool",
+      "description": "Parse a source region to extract functions, classes, and structure"
+    },
+    {
+      "name": "check_region_relationship_tool",
+      "description": "Check the relationship between two regions (contains, overlaps, etc.)"
+    },
+    {
+      "name": "create_region_tool",
+      "description": "Create or update a tracked code region in the belief graph"
+    },
+    {
+      "name": "add_assertion_tool",
+      "description": "Add a new assertion to the belief theory for a region"
+    },
+    {
+      "name": "contract_assertion_tool",
+      "description": "Remove an assertion from the theory via AGM contraction"
+    },
+    {
+      "name": "get_entrenchment_tool",
+      "description": "Get the epistemic entrenchment degree of an assertion"
+    },
+    {
+      "name": "list_assertions_tool",
+      "description": "List all assertions in the current theory for a project"
+    },
+    {
+      "name": "get_theory_snapshot_tool",
+      "description": "Get a full snapshot of the current belief theory state"
+    },
+    {
+      "name": "revise_theory_tool",
+      "description": "Perform AGM belief revision with new evidence"
+    },
+    {
+      "name": "store_evidence_tool",
+      "description": "Store evidence (test results, analysis) with provenance tracking"
+    },
+    {
+      "name": "get_provenance_tool",
+      "description": "Get the full provenance chain for all evidence in a project"
+    },
+    {
+      "name": "why_believe_tool",
+      "description": "Explain why an assertion is believed, with supporting evidence"
+    },
+    {
+      "name": "belief_stability_tool",
+      "description": "Analyze the stability of a belief under perturbation"
+    },
+    {
+      "name": "rollback_to_tool",
+      "description": "Rollback the theory to a previous world state"
+    },
+    {
+      "name": "undo_last_operations_tool",
+      "description": "Undo the last N operations on the theory"
+    },
+    {
+      "name": "analyze_failure_tool",
+      "description": "Analyze test failures and suggest belief revisions"
+    },
+    {
+      "name": "list_world_history_tool",
+      "description": "List the history of world states for a project"
+    },
+    {
+      "name": "synthesize_patch_tool",
+      "description": "Synthesize a verified code patch using CEGIS/CEGAR loop"
+    },
+    {
+      "name": "synthesis_status_tool",
+      "description": "Get the status of an ongoing synthesis run"
+    },
+    {
+      "name": "cancel_synthesis_tool",
+      "description": "Cancel an ongoing synthesis run"
+    },
+    {
+      "name": "list_synthesis_runs_tool",
+      "description": "List all synthesis runs for a project"
+    },
+    {
+      "name": "incremental_update_tool",
+      "description": "Incrementally update the graph after a code change"
+    },
+    {
+      "name": "persistent_graph_stats_tool",
+      "description": "Get statistics about the persistent graph store"
+    },
+    {
+      "name": "graph_query_tool",
+      "description": "Query the code dependency graph with spectral analysis"
+    },
+    {
+      "name": "verify_property_tool",
+      "description": "Verify a property using the configured verification backend"
+    },
+    {
+      "name": "verify_with_orchestrator_tool",
+      "description": "Verify using the multi-backend orchestrator (z3, klee, angr)"
+    },
+    {
+      "name": "list_verification_backends_tool",
+      "description": "List available verification backends and their capabilities"
+    },
+    {
+      "name": "rag_index_nodes_tool",
+      "description": "Index code nodes in the RAG vector store for semantic search"
+    },
+    {
+      "name": "rag_search_tool",
+      "description": "Semantic search over indexed code nodes"
+    },
+    {
+      "name": "rag_stats_tool",
+      "description": "Get statistics about the RAG vector store"
+    }
+  ],
+  "keywords": [
+    "mutation-testing",
+    "belief-revision",
+    "mcp",
+    "synthesis",
+    "verification",
+    "cegis",
+    "graph-spectral",
+    "rag",
+    "code-analysis"
+  ],
+  "license": "MIT"
 }

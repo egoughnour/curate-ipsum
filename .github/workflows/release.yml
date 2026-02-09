@@ -1,7 +1,10 @@
-name: Release
+name: Release (Manual Fallback)
 
-# Builds sdist + wheel and publishes to PyPI via Trusted Publisher.
-# Can be triggered manually or called from the tag-release workflow.
+# DEPRECATED for automated releases — build/pypi/github-release are now
+# inlined in tag-release.yml (Trusted Publisher OIDC requires id-token: write
+# which doesn't propagate through workflow_call).
+#
+# This workflow remains as a manual fallback (workflow_dispatch only).
 #
 # Prerequisites (one-time):
 #   1. Create a PyPI Trusted Publisher for this repo:
@@ -9,15 +12,10 @@ name: Release
 #   2. Create a GitHub Environment named "pypi" with protection rules.
 
 on:
-  workflow_call:
-    inputs:
-      version:
-        required: true
-        type: string
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (e.g., 0.3.0 — no 'v' prefix)"
+        description: "Version to release (e.g., 0.8.0 — no 'v' prefix)"
         required: true
         type: string
 
@@ -52,7 +50,6 @@ jobs:
       - name: Verify package contents
         run: |
           ls -lh dist/
-          # Sanity-check the wheel is importable
           uv run --no-project -- pip install dist/*.whl --dry-run
 
       - uses: actions/upload-artifact@v4
@@ -96,7 +93,6 @@ jobs:
       - name: Generate changelog from commits
         id: changelog
         run: |
-          # Find the previous tag
           PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -2 | tail -1)
           if [ -z "${PREV_TAG}" ]; then
             RANGE="HEAD"
