@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "curate-ipsum",
   "display_name": "Curate-Ipsum",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Graph-spectral framework for verified code synthesis through belief revision.",
   "long_description": "Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unverified) and formally verified patches (slow, correct, trustworthy). It treats mutation testing as input to a CEGIS/CEGAR synthesis loop powered by belief revision, graph-spectral analysis, and RAG-augmented context retrieval.",
   "author": "Erik Goughnour <e.goughnour@gmail.com>",
