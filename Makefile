@@ -82,6 +82,38 @@ docker-down: ## Stop all services
 docker-logs: ## Tail Docker service logs
 	docker compose -f docker/docker-compose.yml logs -f
 
+# ── Release ───────────────────────────────────────────────────────────────
+
+.PHONY: bump
+bump: ## Bump version in pyproject.toml (usage: make bump VERSION=0.3.0)
+ifndef VERSION
+	$(error VERSION is required — usage: make bump VERSION=0.3.0)
+endif
+	@echo "Bumping version to $(VERSION)"
+	sed -i 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
+	python3 -c "import json,pathlib; \
+	[( \
+	  p:=pathlib.Path(f), \
+	  d:=json.loads(p.read_text()), \
+	  d.__setitem__('version','$(VERSION)'), \
+	  [pkg.__setitem__('version','$(VERSION)') for pkg in d.get('packages',[])], \
+	  p.write_text(json.dumps(d,indent=2)+'\n') \
+	) for f in ('server.json','manifest.json')]"
+	uv lock
+	@echo "Updated pyproject.toml, server.json, manifest.json → $(VERSION)"
+
+.PHONY: release
+release: bump ## Bump, commit, tag, push (usage: make release VERSION=0.3.0)
+	git add pyproject.toml uv.lock server.json manifest.json
+	git commit -m "release: v$(VERSION)"
+	git tag -a "v$(VERSION)" -m "v$(VERSION)"
+	git push origin main --follow-tags
+	@echo "Pushed v$(VERSION) — GitHub Actions will handle PyPI + GHCR"
+
+.PHONY: docker-mcp
+docker-mcp: ## Build MCP server Docker image locally
+	docker build -f docker/Dockerfile.mcp-server -t curate-ipsum:local .
+
 # ── Utilities ─────────────────────────────────────────────────────────────────
 
 .PHONY: clean

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/mcpb/manifest-schema.json",
+  "manifest_version": "0.4",
+  "name": "curate-ipsum",
+  "display_name": "Curate-Ipsum",
+  "version": "0.2.0",
+  "description": "Graph-spectral framework for verified code synthesis through belief revision.",
+  "long_description": "Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unverified) and formally verified patches (slow, correct, trustworthy). It treats mutation testing as input to a CEGIS/CEGAR synthesis loop powered by belief revision, graph-spectral analysis, and RAG-augmented context retrieval.",
+  "author": "Erik Goughnour <e.goughnour@gmail.com>",
+  "license": "MIT",
+  "repository": "https://github.com/egoughnour/curate-ipsum",
+  "documentation_url": "https://github.com/egoughnour/curate-ipsum#readme",
+  "icon": "icons/icon.png",
+  "icons": {
+    "light": "icons/icon-light.png",
+    "dark": "icons/icon-dark.png",
+    "default": "icons/icon.png"
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "${__dirname}/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${__dirname}",
+        "curate-ipsum"
+      ],
+      "env": {
+        "MUTATION_TOOL_DATA_DIR": "${__dirname}/.mutation_tool_data",
+        "MUTATION_TOOL_LOG_LEVEL": "INFO"
+      }
+    },
+    "configuration_schema": {
+      "type": "object",
+      "properties": {
+        "graph_backend": {
+          "type": "string",
+          "title": "Graph Store Backend",
+          "description": "Persistent graph store: 'sqlite' (zero-config) or 'kuzu'",
+          "enum": ["sqlite", "kuzu"],
+          "default": "sqlite"
+        },
+        "data_dir": {
+          "type": "string",
+          "title": "Data Directory",
+          "description": "Directory for persistent data",
+          "default": ".mutation_tool_data"
+        },
+        "chroma_host": {
+          "type": "string",
+          "title": "ChromaDB Host",
+          "description": "Host for ChromaDB server (leave empty for in-process mode)"
+        },
+        "embedding_model": {
+          "type": "string",
+          "title": "Embedding Model",
+          "description": "sentence-transformers model for code embeddings",
+          "default": "all-MiniLM-L6-v2"
+        },
+        "log_level": {
+          "type": "string",
+          "title": "Log Level",
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
+          "default": "INFO"
+        }
+      }
+    }
+  }
+}

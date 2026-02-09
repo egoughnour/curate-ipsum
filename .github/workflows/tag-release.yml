@@ -1,0 +1,77 @@
+name: Tag Release
+
+# Triggered on version tag push (v*). Validates the tag, then fans out to
+# the release (PyPI + GitHub Release) and MCP publish (GHCR image) workflows.
+#
+# Typical flow:
+#   make release VERSION=0.3.0
+#     → bumps pyproject.toml, commits, tags v0.3.0, pushes
+#     → this workflow fires
+#       → release.yml  (PyPI + GH Release)
+#       → publish-mcp.yml (Docker image to GHCR)
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"  # v1.2.3, v1.2.3-rc.1, etc.
+
+# Only one release at a time
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # ── Validate tag vs pyproject.toml ──────────────────────────────────────────
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: extract
+        run: |
+          TAG="${GITHUB_REF_NAME}"          # e.g. v0.3.0
+          VERSION="${TAG#v}"                # strip leading v → 0.3.0
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Tag: ${TAG} → Version: ${VERSION}"
+
+      - name: Verify pyproject.toml matches
+        run: |
+          TOML_VERSION=$(python3 -c "
+          import re, pathlib
+          m = re.search(r'^version\s*=\s*\"(.+?)\"', pathlib.Path('pyproject.toml').read_text(), re.M)
+          print(m.group(1))
+          ")
+          echo "pyproject.toml: ${TOML_VERSION}"
+          echo "tag:            ${{ steps.extract.outputs.version }}"
+          if [ "${TOML_VERSION}" != "${{ steps.extract.outputs.version }}" ]; then
+            echo "::error::Tag version (${{ steps.extract.outputs.version }}) does not match pyproject.toml (${TOML_VERSION}). Run: make release VERSION=${{ steps.extract.outputs.version }}"
+            exit 1
+          fi
+
+  # ── Gate: CI must pass on the tagged commit ─────────────────────────────────
+  ci:
+    needs: validate
+    uses: ./.github/workflows/ci.yml
+
+  # ── Fan out: PyPI release + GitHub Release ──────────────────────────────────
+  release:
+    needs: [validate, ci]
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.validate.outputs.version }}
+    permissions:
+      contents: write
+      id-token: write
+
+  # ── Fan out: MCP server image to GHCR ───────────────────────────────────────
+  publish-mcp:
+    needs: [validate, ci]
+    uses: ./.github/workflows/publish-mcp.yml
+    with:
+      version: ${{ needs.validate.outputs.version }}
+    permissions:
+      contents: read
+      packages: write

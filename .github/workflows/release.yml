@@ -1,0 +1,123 @@
+name: Release
+
+# Builds sdist + wheel and publishes to PyPI via Trusted Publisher.
+# Can be triggered manually or called from the tag-release workflow.
+#
+# Prerequisites (one-time):
+#   1. Create a PyPI Trusted Publisher for this repo:
+#      https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/
+#   2. Create a GitHub Environment named "pypi" with protection rules.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 0.3.0 — no 'v' prefix)"
+        required: true
+        type: string
+
+jobs:
+  # ── Build artifacts ──────────────────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Verify version matches pyproject.toml
+        run: |
+          TOML_VERSION=$(python3 -c "
+          import re, pathlib
+          m = re.search(r'^version\s*=\s*\"(.+?)\"', pathlib.Path('pyproject.toml').read_text(), re.M)
+          print(m.group(1))
+          ")
+          echo "pyproject.toml version: ${TOML_VERSION}"
+          echo "requested version:      ${{ inputs.version }}"
+          if [ "${TOML_VERSION}" != "${{ inputs.version }}" ]; then
+            echo "::error::Version mismatch — pyproject.toml has ${TOML_VERSION}, expected ${{ inputs.version }}"
+            exit 1
+          fi
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Verify package contents
+        run: |
+          ls -lh dist/
+          # Sanity-check the wheel is importable
+          uv run --no-project -- pip install dist/*.whl --dry-run
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 5
+
+  # ── Publish to PyPI ──────────────────────────────────────────────────────────
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC for Trusted Publisher
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ── GitHub Release ───────────────────────────────────────────────────────────
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for changelog
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Generate changelog from commits
+        id: changelog
+        run: |
+          # Find the previous tag
+          PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -2 | tail -1)
+          if [ -z "${PREV_TAG}" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+          echo "range=${RANGE}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## What's Changed"
+            echo ""
+            git log "${RANGE}" --pretty=format:"- %s (%h)" --no-merges
+            echo ""
+          } > changelog.md
+          cat changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: v${{ inputs.version }}
+          body_path: changelog.md
+          files: dist/*
+          generate_release_notes: true

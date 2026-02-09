@@ -37,8 +37,14 @@ coverage.xml
 .git/
 .gitignore
 
-# Docs / non-runtime
-*.md
+# Docs / non-runtime (keep README.md for PyPI long_description)
+!README.md
 LICENSE
 quick-verification/
 docs/
+
+# MCPB / registry metadata (not needed in Docker image)
+manifest.json
+smithery.yaml
+icons/
+*.mcpb
