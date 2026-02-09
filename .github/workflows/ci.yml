@@ -47,7 +47,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv sync --extra dev --extra rag --extra graph --extra synthesis --extra graphdb
+      - run: uv sync --extra dev --extra verify --extra rag --extra graph --extra synthesis --extra graphdb
 
       # Docker is pre-installed on ubuntu-latest runners
       - name: Build angr-runner image

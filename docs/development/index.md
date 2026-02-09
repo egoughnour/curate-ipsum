@@ -12,7 +12,7 @@ releasing
 ```bash
 git clone https://github.com/egoughnour/curate-ipsum.git
 cd curate-ipsum
-uv sync --extra dev --extra rag --extra graph --extra synthesis --extra graphdb
+uv sync --extra dev --extra verify --extra rag --extra graph --extra synthesis --extra graphdb
 uv run pre-commit install
 ```
 

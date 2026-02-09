@@ -15,7 +15,10 @@ uv pip install curate-ipsum
 ### Optional extras
 
 ```bash
-# RAG pipeline — ChromaDB + sentence-transformers (recommended)
+# Z3 SMT solver for formal verification (recommended)
+pip install "curate-ipsum[verify]"
+
+# RAG pipeline — ChromaDB + sentence-transformers
 pip install "curate-ipsum[rag]"
 
 # Graph-spectral analysis (scipy + networkx)
@@ -31,7 +34,7 @@ pip install "curate-ipsum[graphdb]"
 pip install "curate-ipsum[embeddings-gpu]"
 
 # Kitchen sink for development
-pip install "curate-ipsum[dev,rag,graph,synthesis,graphdb]"
+pip install "curate-ipsum[dev,verify,rag,graph,synthesis,graphdb]"
 ```
 
 ## Docker
@@ -48,7 +51,7 @@ docker pull ghcr.io/egoughnour/curate-ipsum:latest
 ```bash
 git clone https://github.com/egoughnour/curate-ipsum.git
 cd curate-ipsum
-uv sync --extra dev --extra rag --extra graph --extra synthesis --extra graphdb
+uv sync --extra dev --extra verify --extra rag --extra graph --extra synthesis --extra graphdb
 uv run pre-commit install  # set up pre-commit hooks
 ```
 

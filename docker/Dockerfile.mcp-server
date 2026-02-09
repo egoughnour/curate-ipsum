@@ -31,7 +31,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # ── Dependency layer (cached unless lock changes) ─────────────────────────────
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --extra rag --extra graph --extra synthesis
+RUN uv sync --frozen --no-dev --extra verify --extra rag --extra graph --extra synthesis
 
 # ── Source layer ──────────────────────────────────────────────────────────────
 COPY . .

@@ -489,7 +489,6 @@ dependencies = [
     { name = "mcp" },
     { name = "py-brs" },
     { name = "pydantic" },
-    { name = "z3-solver" },
 ]
 
 [package.optional-dependencies]
@@ -533,6 +532,9 @@ rag = [
 synthesis = [
     { name = "httpx" },
 ]
+verify = [
+    { name = "z3-solver" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -562,9 +564,9 @@ requires-dist = [
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
     { name = "sphinx-copybutton", marker = "extra == 'docs'", specifier = ">=0.5" },
     { name = "torch", marker = "extra == 'embeddings-gpu'", specifier = ">=2.0" },
-    { name = "z3-solver", specifier = ">=4.12" },
+    { name = "z3-solver", marker = "extra == 'verify'", specifier = ">=4.12" },
 ]
-provides-extras = ["rag", "graph", "synthesis", "graphdb", "embeddings-gpu", "embeddings-large", "docs", "dev"]
+provides-extras = ["verify", "rag", "graph", "synthesis", "graphdb", "embeddings-gpu", "embeddings-large", "docs", "dev"]
 
 [[package]]
 name = "distlib"
