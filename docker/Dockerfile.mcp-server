@@ -30,7 +30,7 @@ RUN apt-get update && \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # ── Dependency layer (cached unless lock changes) ─────────────────────────────
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --extra verify --extra rag --extra graph --extra synthesis
 
 # ── Source layer ──────────────────────────────────────────────────────────────
@@ -38,14 +38,14 @@ COPY . .
 
 # ── Bake the embedding model into the image ──────────────────────────────────
 RUN uv run python -c "\
-from sentence_transformers import SentenceTransformer; \
-SentenceTransformer('all-MiniLM-L6-v2')"
+    from sentence_transformers import SentenceTransformer; \
+    SentenceTransformer('all-MiniLM-L6-v2')"
 
 # ── Labels (OCI) ─────────────────────────────────────────────────────────────
 LABEL org.opencontainers.image.title="curate-ipsum" \
-      org.opencontainers.image.description="Mutation testing orchestration MCP server with belief revision" \
-      org.opencontainers.image.source="https://github.com/egoughnour/curate-ipsum" \
-      org.opencontainers.image.licenses="MIT"
+    org.opencontainers.image.description="Mutation testing orchestration MCP server with belief revision" \
+    org.opencontainers.image.source="https://github.com/egoughnour/curate-ipsum" \
+    org.opencontainers.image.licenses="MIT"
 
 # MCP servers speak stdio
 ENTRYPOINT ["uv", "run", "curate-ipsum"]
