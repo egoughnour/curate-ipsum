@@ -1,6 +1,6 @@
 [project]
 name = "curate-ipsum"
-version = "0.8.0"
+version = "1.0.0"
 description = "Mutation testing orchestration MCP server with belief revision"
 readme = "README.md"
 license = {text = "MIT"}
