@@ -319,7 +319,7 @@ flowchart TB
 # Clone and install (dev)
 git clone https://github.com/egoughnour/curate-ipsum.git
 cd curate-ipsum
-uv sync --all-extras          # deterministic install from uv.lock
+uv sync --extra dev --extra rag --extra graph --extra synthesis
 
 # Run the MCP server
 uv run curate-ipsum

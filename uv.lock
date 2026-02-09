@@ -486,11 +486,9 @@ name = "curate-ipsum"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
-    { name = "chromadb" },
     { name = "mcp" },
     { name = "py-brs" },
     { name = "pydantic" },
-    { name = "sentence-transformers" },
     { name = "z3-solver" },
 ]
 
@@ -528,13 +526,17 @@ graph = [
 graphdb = [
     { name = "kuzu" },
 ]
+rag = [
+    { name = "chromadb" },
+    { name = "sentence-transformers" },
+]
 synthesis = [
     { name = "httpx" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "chromadb", specifier = ">=0.4" },
+    { name = "chromadb", marker = "extra == 'rag'", specifier = ">=0.4" },
     { name = "furo", marker = "extra == 'docs'", specifier = ">=2024.1" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "httpx", marker = "extra == 'synthesis'", specifier = ">=0.24" },
@@ -554,15 +556,15 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "scipy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "scipy", marker = "extra == 'graph'", specifier = ">=1.10" },
-    { name = "sentence-transformers", specifier = ">=2.2" },
     { name = "sentence-transformers", marker = "extra == 'embeddings-gpu'", specifier = ">=2.2" },
     { name = "sentence-transformers", marker = "extra == 'embeddings-large'", specifier = ">=2.2" },
+    { name = "sentence-transformers", marker = "extra == 'rag'", specifier = ">=2.2" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
     { name = "sphinx-copybutton", marker = "extra == 'docs'", specifier = ">=0.5" },
     { name = "torch", marker = "extra == 'embeddings-gpu'", specifier = ">=2.0" },
     { name = "z3-solver", specifier = ">=4.12" },
 ]
-provides-extras = ["graph", "synthesis", "graphdb", "embeddings-gpu", "embeddings-large", "docs", "dev"]
+provides-extras = ["rag", "graph", "synthesis", "graphdb", "embeddings-gpu", "embeddings-large", "docs", "dev"]
 
 [[package]]
 name = "distlib"

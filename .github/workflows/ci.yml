@@ -12,17 +12,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Fast checks (lint + type) ──────────────────────────────────────────────
+  # ── Fast checks (lint only — no project sync) ───────────────────────────────
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - run: uv sync --all-extras
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
+      - run: uvx ruff check .
+      - run: uvx ruff format --check .
 
   # ── Unit + e2e tests (no Docker, no model download) ────────────────────────
   test:
@@ -36,7 +33,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv python install ${{ matrix.python-version }}
-      - run: uv sync --all-extras --python ${{ matrix.python-version }}
+      - run: uv sync --extra dev --python ${{ matrix.python-version }}
       - run: uv run pytest -m "not integration" -v --tb=short
         env:
           PYTHONDONTWRITEBYTECODE: 1
@@ -50,7 +47,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv sync --all-extras
+      - run: uv sync --extra dev --extra rag --extra graph --extra synthesis --extra graphdb
 
       # Docker is pre-installed on ubuntu-latest runners
       - name: Build angr-runner image

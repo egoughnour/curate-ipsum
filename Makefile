@@ -5,7 +5,7 @@ SHELL := /bin/bash
 
 .PHONY: install
 install: ## Install project + dev dependencies via uv
-	uv sync --all-extras
+	uv sync --extra dev --extra rag --extra graph --extra synthesis --extra graphdb
 
 .PHONY: lock
 lock: ## Regenerate uv.lock
@@ -14,7 +14,7 @@ lock: ## Regenerate uv.lock
 .PHONY: update
 update: ## Update all dependencies and regenerate lock
 	uv lock --upgrade
-	uv sync --all-extras
+	uv sync --extra dev --extra rag --extra graph --extra synthesis --extra graphdb
 
 # ── Quality ───────────────────────────────────────────────────────────────────
 
