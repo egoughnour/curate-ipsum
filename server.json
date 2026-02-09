@@ -3,7 +3,7 @@
   "name": "io.github.egoughnour/curate-ipsum",
   "title": "Curate-Ipsum",
   "description": "Graph-spectral framework for verified code synthesis through belief revision, mutation testing, and CEGIS/CEGAR verification loops.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "websiteUrl": "https://github.com/egoughnour/curate-ipsum",
   "repository": {
     "url": "https://github.com/egoughnour/curate-ipsum",
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "curate-ipsum",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "transport": "stdio",
       "environmentVariables": [
         {
@@ -48,7 +48,7 @@
       "registryType": "oci",
       "registryBaseUrl": "https://ghcr.io",
       "identifier": "egoughnour/curate-ipsum",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "transport": "stdio",
       "environmentVariables": [
         {
