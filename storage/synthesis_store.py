@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from synthesis.models import (
@@ -40,7 +40,7 @@ class SynthesisStore:
         self._ensure_dir()
         payload = result.to_dict()
         payload["project_id"] = project_id
-        payload["stored_at"] = datetime.now(timezone.utc).isoformat()
+        payload["stored_at"] = datetime.now(UTC).isoformat()
 
         with self._file.open("a", encoding="utf-8") as f:
             f.write(json.dumps(payload) + "\n")

@@ -11,7 +11,7 @@ These tests verify:
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -38,7 +38,7 @@ def sample_test_result() -> TestRunResult:
         projectId="test_project",
         commitSha="abc123def456",
         regionId="src/main.py::compute_value",
-        timestamp=datetime(2025, 1, 27, 12, 0, 0, tzinfo=timezone.utc),
+        timestamp=datetime(2025, 1, 27, 12, 0, 0, tzinfo=UTC),
         kind=RunKind.UNIT,
         passed=True,
         totalTests=10,
@@ -58,7 +58,7 @@ def sample_failed_test_result() -> TestRunResult:
         projectId="test_project",
         commitSha="abc123def456",
         regionId="src/main.py::compute_value",
-        timestamp=datetime(2025, 1, 27, 12, 5, 0, tzinfo=timezone.utc),
+        timestamp=datetime(2025, 1, 27, 12, 5, 0, tzinfo=UTC),
         kind=RunKind.UNIT,
         passed=False,
         totalTests=10,
@@ -78,7 +78,7 @@ def sample_mutation_result() -> MutationRunResult:
         projectId="test_project",
         commitSha="abc123def456",
         regionId="src/main.py::compute_value",
-        timestamp=datetime(2025, 1, 27, 12, 10, 0, tzinfo=timezone.utc),
+        timestamp=datetime(2025, 1, 27, 12, 10, 0, tzinfo=UTC),
         kind=RunKind.MUTATION,
         tool="stryker",
         totalMutants=100,
@@ -108,7 +108,7 @@ def sample_low_score_mutation_result() -> MutationRunResult:
         projectId="test_project",
         commitSha="abc123def456",
         regionId="src/main.py::compute_value",
-        timestamp=datetime(2025, 1, 27, 12, 15, 0, tzinfo=timezone.utc),
+        timestamp=datetime(2025, 1, 27, 12, 15, 0, tzinfo=UTC),
         kind=RunKind.MUTATION,
         tool="stryker",
         totalMutants=100,
@@ -227,7 +227,7 @@ class TestTheoryManager:
             projectId="test_project",
             commitSha="abc123",
             regionId="region_1",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             kind=RunKind.UNIT,
             passed=True,
             totalTests=5,

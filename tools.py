@@ -8,7 +8,7 @@ import re
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -59,7 +59,7 @@ async def run_command(command: str, working_directory: str, timeout: float | Non
 
     try:
         stdout_bytes, stderr_bytes = await asyncio.wait_for(process.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         process.kill()
         stdout_bytes, stderr_bytes = await process.communicate()
         duration_ms = int((time.perf_counter() - start) * 1000)
@@ -365,7 +365,7 @@ async def _execute_test_run(
         projectId=project_id,
         commitSha=commit_sha,
         regionId=region_id,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         kind=kind,
         passed=passed_flag,
         totalTests=total_tests,
@@ -456,7 +456,7 @@ async def run_mutation_tests(
         projectId=projectId,
         commitSha=commitSha,
         regionId=regionId,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         kind=RunKind.MUTATION,
         tool=actual_tool,
         totalMutants=total_mutants,

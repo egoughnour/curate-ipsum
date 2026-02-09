@@ -95,7 +95,7 @@ def _resolve_relative_import(
     return base if base else None
 
 
-# Standard library module names (Python 3.10+).
+# Standard library module names (available since Python 3.10).
 # We use sys.stdlib_module_names when available, else a fallback set.
 _STDLIB_MODULES: set[str] = getattr(sys, "stdlib_module_names", set()) or {
     "abc",

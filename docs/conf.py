@@ -4,13 +4,13 @@
 from __future__ import annotations
 
 import importlib.metadata
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # -- Project information -----------------------------------------------------
 
 project = "curate-ipsum"
 author = "Erik Goughnour"
-copyright = f"{datetime.now(timezone.utc).year}, {author}"  # noqa: A001
+copyright = f"{datetime.now(UTC).year}, {author}"  # noqa: A001
 
 try:
     release = importlib.metadata.version("curate-ipsum")
@@ -45,11 +45,11 @@ root_doc = "index"
 # -- MyST parser options -----------------------------------------------------
 
 myst_enable_extensions = [
-    "colon_fence",     # ::: directive syntax
-    "deflist",         # definition lists
-    "fieldlist",       # field lists
-    "tasklist",        # - [x] checkboxes
-    "attrs_inline",    # inline attributes
+    "colon_fence",  # ::: directive syntax
+    "deflist",  # definition lists
+    "fieldlist",  # field lists
+    "tasklist",  # - [x] checkboxes
+    "attrs_inline",  # inline attributes
 ]
 myst_heading_anchors = 3  # auto-generate anchors for h1-h3
 

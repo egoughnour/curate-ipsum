@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 
-class SynthesisStatus(str, Enum):
+class SynthesisStatus(StrEnum):
     """Outcome of a synthesis run."""
 
     SUCCESS = "success"
@@ -23,7 +23,7 @@ class SynthesisStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class PatchSource(str, Enum):
+class PatchSource(StrEnum):
     """How a code patch was produced."""
 
     LLM = "llm"
@@ -32,7 +32,7 @@ class PatchSource(str, Enum):
     SEED = "seed"
 
 
-class LLMBackend(str, Enum):
+class LLMBackend(StrEnum):
     """Which LLM backend to use."""
 
     CLOUD = "cloud"

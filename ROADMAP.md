@@ -197,7 +197,7 @@ M5 (Verification) ─────→ M7 (Production)
 - Graph DB: Neo4j instance (can start with embedded)
 
 ### Dependencies
-- Python 3.10+
+- Python 3.11+
 - scipy, networkx (graph algorithms)
 - z3-solver (SMT)
 - sympy (symbolic math)

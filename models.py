@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal, Union
 
 from pydantic import BaseModel
 
 
-class RunKind(str, Enum):
+class RunKind(StrEnum):
     UNIT = "unit"
     INTEGRATION = "integration"
     MUTATION = "mutation"

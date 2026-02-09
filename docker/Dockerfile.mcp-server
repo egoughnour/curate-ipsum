@@ -17,7 +17,7 @@
 # With external Chroma:
 #   docker run -i --rm -e CHROMA_HOST=host.docker.internal curate-ipsum
 
-FROM python:3.10-slim AS base
+FROM python:3.11-slim AS base
 
 WORKDIR /app
 

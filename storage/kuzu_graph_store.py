@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -866,9 +867,9 @@ class KuzuGraphStore(GraphStore):
 
     def set_file_hashes(self, project_id: str, hashes: dict[str, str]) -> None:
         """Store file hashes for incremental update detection."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         for fp, h in hashes.items():
             fh_id = f"{project_id}::{fp}"

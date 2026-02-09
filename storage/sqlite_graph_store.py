@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -748,7 +748,7 @@ class SQLiteGraphStore(GraphStore):
     def set_file_hashes(self, project_id: str, hashes: dict[str, str]) -> None:
         """Store file hashes for incremental update detection."""
         cur = self._conn.cursor()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Upsert each hash
         rows = [(fp, project_id, h, now) for fp, h in hashes.items()]

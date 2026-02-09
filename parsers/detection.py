@@ -11,13 +11,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 LOG = logging.getLogger("parsers.detection")
 
 
-class MutationFramework(str, Enum):
+class MutationFramework(StrEnum):
     """Supported mutation testing frameworks."""
 
     STRYKER = "stryker"

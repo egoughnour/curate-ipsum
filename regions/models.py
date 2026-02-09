@@ -8,10 +8,10 @@ Supports serialization to/from strings for storage compatibility.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class RegionLevel(str, Enum):
+class RegionLevel(StrEnum):
     """Granularity level of a region."""
 
     FILE = "file"

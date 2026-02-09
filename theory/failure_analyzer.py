@@ -19,13 +19,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from theory.assertions import Assertion, AssertionKind
 
 
-class FailureMode(str, Enum):
+class FailureMode(StrEnum):
     """Classification of why a synthesis attempt failed."""
 
     TYPE_MISMATCH = "type_mismatch"

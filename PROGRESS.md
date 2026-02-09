@@ -10,7 +10,7 @@ Curate-ipsum is a **mutation testing orchestration MCP server** that bridges LLM
 
 ### Primary Environment
 
-- Python 3.10+ on any POSIX-compatible system
+- Python 3.11+ on any POSIX-compatible system
 - Dependencies: `py-brs>=2.0.0`, `pydantic>=2.0`, `mcp>=1.0.0`
 - Optional: `scipy>=1.10`, `networkx>=3.0` (graph extras), `z3-solver`, `sympy` (Phase 5+)
 

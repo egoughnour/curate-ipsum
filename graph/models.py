@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class NodeKind(str, Enum):
+class NodeKind(StrEnum):
     """Kind of node in the call graph."""
 
     MODULE = "module"
@@ -23,7 +23,7 @@ class NodeKind(str, Enum):
     COMPREHENSION = "comprehension"
 
 
-class EdgeKind(str, Enum):
+class EdgeKind(StrEnum):
     """Kind of edge in the call graph."""
 
     CALLS = "calls"  # Direct function call

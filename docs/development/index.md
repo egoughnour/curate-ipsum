@@ -19,7 +19,7 @@ uv run pre-commit install
 ## Code quality
 
 The project uses [ruff](https://docs.astral.sh/ruff/) for both linting and
-formatting, configured for Python 3.10+ with a 120-character line length.
+formatting, configured for Python 3.11+ with a 120-character line length.
 
 ```bash
 make lint          # ruff check
