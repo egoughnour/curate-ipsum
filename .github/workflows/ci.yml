@@ -27,13 +27,15 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
       - run: uv python install ${{ matrix.python-version }}
-      - run: uv sync --extra dev --python ${{ matrix.python-version }}
+      - run: uv sync --extra dev
       - run: uv run pytest -m "not integration" -v --tb=short
         env:
           PYTHONDONTWRITEBYTECODE: 1
