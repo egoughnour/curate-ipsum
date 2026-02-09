@@ -29,7 +29,7 @@ tag push (v0.3.0)
     │
     ├── validate (tag ↔ pyproject.toml)
     │
-    ├── CI gate (lint + test matrix 3.11/3.12/3.13 + integration)
+    ├── CI gate (lint + test matrix 3.11/3.12/3.13)
     │
     ├── release.yml
     │   ├── build sdist + wheel

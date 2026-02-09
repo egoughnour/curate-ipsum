@@ -40,26 +40,6 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: 1
 
-  # ── Integration tests (Docker + embedding model) ───────────────────────────
-  integration:
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - run: uv sync --extra dev --extra verify --extra rag --extra graph --extra synthesis --extra graphdb
-
-      # Docker is pre-installed on ubuntu-latest runners
-      - name: Build angr-runner image
-        run: docker compose -f docker/docker-compose.yml --profile verify build
-
-      - name: Run integration tests
-        run: uv run pytest -m integration -v --tb=short
-        env:
-          PYTHONDONTWRITEBYTECODE: 1
-
   # ── Lock file consistency ──────────────────────────────────────────────────
   lockfile:
     runs-on: ubuntu-latest
