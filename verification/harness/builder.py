@@ -10,12 +10,10 @@ Decision: D-016
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 LOG = logging.getLogger("verification.harness.builder")
 
@@ -25,10 +23,10 @@ class HarnessSpec:
     """Specification for generating a C harness."""
 
     function_name: str
-    parameters: List[Dict[str, str]] = field(default_factory=list)
+    parameters: list[dict[str, str]] = field(default_factory=list)
     # Each param: {"name": "x", "type": "int", "bits": "32"}
     violation_condition: str = ""  # C expression for the violation
-    includes: List[str] = field(default_factory=list)
+    includes: list[str] = field(default_factory=list)
     extra_code: str = ""
 
 
@@ -66,22 +64,17 @@ class HarnessBuilder:
         binary_path = builder.build(spec, output_dir="/tmp/harnesses")
     """
 
-    def __init__(self, cc: str = "gcc", cflags: Optional[List[str]] = None) -> None:
+    def __init__(self, cc: str = "gcc", cflags: list[str] | None = None) -> None:
         self._cc = cc
         self._cflags = cflags or ["-O0", "-g", "-fno-inline", "-fno-stack-protector"]
 
     def generate_source(self, spec: HarnessSpec) -> str:
         """Generate C source code for the harness."""
-        includes = "\n".join(f'#include <{h}>' for h in (spec.includes or ["stdio.h"]))
+        includes = "\n".join(f"#include <{h}>" for h in (spec.includes or ["stdio.h"]))
 
-        params = ", ".join(
-            f"{p.get('type', 'int')} {p['name']}"
-            for p in spec.parameters
-        ) or "void"
+        params = ", ".join(f"{p.get('type', 'int')} {p['name']}" for p in spec.parameters) or "void"
 
-        call_args = ", ".join(
-            f"0" for _ in spec.parameters
-        )
+        call_args = ", ".join("0" for _ in spec.parameters)
 
         violation = spec.violation_condition or "0"
 
@@ -97,7 +90,7 @@ class HarnessBuilder:
     def build(
         self,
         spec: HarnessSpec,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> str:
         """
         Generate and compile a harness binary.
@@ -121,19 +114,16 @@ class HarnessBuilder:
 
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Harness compilation failed (exit {result.returncode}):\n"
-                f"{result.stderr}"
-            )
+            raise RuntimeError(f"Harness compilation failed (exit {result.returncode}):\n{result.stderr}")
 
         return str(bin_path)
 
     def build_from_spec(
         self,
         function_name: str,
-        params: List[Dict[str, str]],
+        params: list[dict[str, str]],
         violation: str,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> str:
         """Convenience: build a harness from individual arguments."""
         spec = HarnessSpec(
