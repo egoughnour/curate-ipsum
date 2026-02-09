@@ -30,10 +30,8 @@ class MockGraphStoreForRAG:
 
 class TestVectorStore:
     def test_chroma_add_and_count(self):
-        try:
-            from rag.vector_store import ChromaVectorStore, VectorDocument
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_add_count")
         store.add(
@@ -45,10 +43,8 @@ class TestVectorStore:
         assert store.count() == 2
 
     def test_chroma_search(self):
-        try:
-            from rag.vector_store import ChromaVectorStore, VectorDocument
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_search")
         store.add(
@@ -65,10 +61,8 @@ class TestVectorStore:
         assert results[0].score > results[1].score
 
     def test_chroma_delete(self):
-        try:
-            from rag.vector_store import ChromaVectorStore, VectorDocument
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_delete")
         store.add(
@@ -82,20 +76,16 @@ class TestVectorStore:
         assert store.count() == 1
 
     def test_chroma_empty_search(self):
-        try:
-            from rag.vector_store import ChromaVectorStore
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.vector_store import ChromaVectorStore
 
         store = ChromaVectorStore(collection_name="test_empty_search")
         results = store.search([1.0, 0.0], top_k=5)
         assert results == []
 
     def test_build_factory(self):
-        try:
-            from rag.vector_store import build_vector_store
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.vector_store import build_vector_store
 
         store = build_vector_store("chroma", collection_name="test_factory")
         assert store.count() == 0
@@ -128,12 +118,10 @@ class TestEmbeddingProvider:
 
 class TestRAGPipeline:
     def test_search_returns_results(self):
-        try:
-            from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGConfig, RAGPipeline
-            from rag.vector_store import ChromaVectorStore, VectorDocument
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.embedding_provider import MockEmbeddingProvider
+        from rag.search import RAGConfig, RAGPipeline
+        from rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_pipeline_search")
         store.add(
@@ -152,12 +140,10 @@ class TestRAGPipeline:
         assert all(hasattr(r, "score") for r in results)
 
     def test_pack_context(self):
-        try:
-            from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGConfig, RAGPipeline, RAGResult
-            from rag.vector_store import ChromaVectorStore
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.embedding_provider import MockEmbeddingProvider
+        from rag.search import RAGConfig, RAGPipeline, RAGResult
+        from rag.vector_store import ChromaVectorStore
 
         store = ChromaVectorStore(collection_name="test_pack_context")
         embedder = MockEmbeddingProvider()
@@ -173,12 +159,10 @@ class TestRAGPipeline:
 
     def test_graph_expansion(self):
         """Pipeline should expand results using GraphStore neighbors."""
-        try:
-            from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGConfig, RAGPipeline
-            from rag.vector_store import ChromaVectorStore, VectorDocument
-        except ImportError:
-            pytest.skip("chromadb not installed")
+        pytest.importorskip("chromadb")
+        from rag.embedding_provider import MockEmbeddingProvider
+        from rag.search import RAGConfig, RAGPipeline
+        from rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_graph_expansion")
         store.add(
@@ -239,13 +223,10 @@ class TestCEGISVerificationIntegration:
     @pytest.mark.asyncio
     async def test_cegis_with_rag_pipeline(self):
         """CEGIS should enrich prompts via RAG when pipeline is provided."""
-        try:
-            from rag.embedding_provider import MockEmbeddingProvider
-            from rag.search import RAGConfig, RAGPipeline
-            from rag.vector_store import ChromaVectorStore, VectorDocument
-        except ImportError:
-            pytest.skip("chromadb not installed")
-
+        pytest.importorskip("chromadb")
+        from rag.embedding_provider import MockEmbeddingProvider
+        from rag.search import RAGConfig, RAGPipeline
+        from rag.vector_store import ChromaVectorStore, VectorDocument
         from synthesis.cegis import CEGISEngine
         from synthesis.llm_client import MockLLMClient
         from synthesis.models import Specification, SynthesisConfig, SynthesisStatus

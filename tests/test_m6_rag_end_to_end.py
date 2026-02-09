@@ -19,7 +19,9 @@ from uuid import uuid4
 
 import pytest
 
-from graph.models import (
+chromadb = pytest.importorskip("chromadb")  # skip entire module if chromadb is absent
+
+from graph.models import (  # noqa: E402
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -28,10 +30,10 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from rag.embedding_provider import EmbeddingProvider
-from rag.search import RAGConfig, RAGPipeline, RAGResult
-from rag.vector_store import ChromaVectorStore, VectorDocument
-from storage.graph_store import build_graph_store
+from rag.embedding_provider import EmbeddingProvider  # noqa: E402
+from rag.search import RAGConfig, RAGPipeline, RAGResult  # noqa: E402
+from rag.vector_store import ChromaVectorStore, VectorDocument  # noqa: E402
+from storage.graph_store import build_graph_store  # noqa: E402
 
 # ─── Deterministic Embedding Provider ─────────────────────────────────────────
 #
