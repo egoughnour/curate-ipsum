@@ -7,12 +7,12 @@
     "url": "https://github.com/egoughnour/curate-ipsum",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "2.0.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "curate-ipsum",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       },
@@ -76,7 +76,7 @@
           "isSecret": false
         }
       ],
-      "version": "1.0.0"
+      "version": "2.0.0"
     }
   ]
 }
