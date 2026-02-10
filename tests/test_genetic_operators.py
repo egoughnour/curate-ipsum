@@ -1,16 +1,16 @@
 """Tests for genetic operators, population management, fitness, and entropy."""
 
-from synthesis.ast_operators import ASTCrossover, ASTMutator
-from synthesis.entropy import EntropyManager
-from synthesis.fitness import FitnessEvaluator
-from synthesis.models import (
+from curate_ipsum.synthesis.ast_operators import ASTCrossover, ASTMutator
+from curate_ipsum.synthesis.entropy import EntropyManager
+from curate_ipsum.synthesis.fitness import FitnessEvaluator
+from curate_ipsum.synthesis.models import (
     Counterexample,
     Individual,
     PatchSource,
     Specification,
     SynthesisConfig,
 )
-from synthesis.population import Population
+from curate_ipsum.synthesis.population import Population
 
 # ── Population ──────────────────────────────────────────────────────────────
 

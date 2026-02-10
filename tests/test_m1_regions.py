@@ -11,14 +11,9 @@ Tests cover:
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from regions.models import Region, RegionLevel
+from curate_ipsum.regions.models import Region, RegionLevel
 
 
 class TestRegionParsing:

@@ -19,9 +19,9 @@ brs = pytest.importorskip("brs")
 
 from brs import Evidence
 
-from theory.failure_analyzer import FailureMode
-from theory.manager import TheoryManager
-from theory.provenance import RevisionType
+from curate_ipsum.theory.failure_analyzer import FailureMode
+from curate_ipsum.theory.manager import TheoryManager
+from curate_ipsum.theory.provenance import RevisionType
 
 
 @pytest.fixture

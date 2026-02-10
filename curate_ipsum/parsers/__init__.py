@@ -6,7 +6,7 @@ from multiple frameworks (Stryker, mutmut, etc.) with automatic framework
 detection.
 
 Usage:
-    from parsers import parse_mutation_output
+    from curate_ipsum.parsers import parse_mutation_output
 
     # Auto-detect framework
     result = parse_mutation_output(working_directory="/path/to/project")
@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import logging
 
-from models import FileMutationStats
-from parsers.cosmic_ray_parser import parse_cosmic_ray_output
-from parsers.detection import (
+from curate_ipsum.models import FileMutationStats
+from curate_ipsum.parsers.cosmic_ray_parser import parse_cosmic_ray_output
+from curate_ipsum.parsers.detection import (
     FrameworkDetection,
     MutationFramework,
     ProjectLanguage,
@@ -32,10 +32,10 @@ from parsers.detection import (
     detect_language,
     recommend_framework,
 )
-from parsers.mutmut_parser import parse_mutmut_output
-from parsers.poodle_parser import parse_poodle_output
-from parsers.stryker_parser import parse_stryker_output
-from parsers.universalmutator_parser import parse_universalmutator_output
+from curate_ipsum.parsers.mutmut_parser import parse_mutmut_output
+from curate_ipsum.parsers.poodle_parser import parse_poodle_output
+from curate_ipsum.parsers.stryker_parser import parse_stryker_output
+from curate_ipsum.parsers.universalmutator_parser import parse_universalmutator_output
 
 LOG = logging.getLogger("parsers")
 

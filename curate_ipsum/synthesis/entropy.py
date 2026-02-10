@@ -15,7 +15,7 @@ import logging
 import math
 from collections import Counter
 
-from synthesis.models import Individual, SynthesisConfig
+from curate_ipsum.synthesis.models import Individual, SynthesisConfig
 
 LOG = logging.getLogger("synthesis.entropy")
 

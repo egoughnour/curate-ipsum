@@ -4,15 +4,11 @@ Tests for call graph extraction.
 Tests the AST-based extractor with various Python code patterns.
 """
 
-import sys
-from pathlib import Path
 from textwrap import dedent
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from graph import (
+from curate_ipsum.graph import (
     ASTExtractor,
     CallGraph,
     EdgeKind,

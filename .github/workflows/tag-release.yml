@@ -82,9 +82,7 @@ jobs:
         run: |
           BUNDLE_DIR="curate-ipsum-${{ needs.validate.outputs.version }}"
           mkdir -p "${BUNDLE_DIR}"
-          cp -r server.py tools.py models.py "${BUNDLE_DIR}/"
-          cp -r adapters domains graph parsers rag regions \
-                storage synthesis theory verification "${BUNDLE_DIR}/" 2>/dev/null || true
+          cp -r curate_ipsum "${BUNDLE_DIR}/"
           cp manifest.json "${BUNDLE_DIR}/"
           cp -r icons "${BUNDLE_DIR}/"
           cp pyproject.toml uv.lock README.md "${BUNDLE_DIR}/"

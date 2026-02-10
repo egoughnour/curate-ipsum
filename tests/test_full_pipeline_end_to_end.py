@@ -20,7 +20,7 @@ import pytest
 
 z3 = pytest.importorskip("z3")
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -29,20 +29,20 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from rag.embedding_provider import EmbeddingProvider
-from rag.search import RAGConfig, RAGPipeline
-from rag.vector_store import ChromaVectorStore, VectorDocument
-from storage.graph_store import build_graph_store
-from synthesis.cegis import CEGISEngine
-from synthesis.llm_client import MockLLMClient
-from synthesis.models import (
+from curate_ipsum.rag.embedding_provider import EmbeddingProvider
+from curate_ipsum.rag.search import RAGConfig, RAGPipeline
+from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
+from curate_ipsum.storage.graph_store import build_graph_store
+from curate_ipsum.synthesis.cegis import CEGISEngine
+from curate_ipsum.synthesis.llm_client import MockLLMClient
+from curate_ipsum.synthesis.models import (
     Specification,
     SynthesisConfig,
     SynthesisStatus,
 )
-from verification.backends.z3_backend import Z3Backend
-from verification.orchestrator import VerificationOrchestrator
-from verification.types import (
+from curate_ipsum.verification.backends.z3_backend import Z3Backend
+from curate_ipsum.verification.orchestrator import VerificationOrchestrator
+from curate_ipsum.verification.types import (
     Budget,
     SymbolSpec,
     VerificationRequest,

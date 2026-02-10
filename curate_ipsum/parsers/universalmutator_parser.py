@@ -26,7 +26,7 @@ import logging
 import re
 from pathlib import Path
 
-from models import FileMutationStats
+from curate_ipsum.models import FileMutationStats
 
 LOG = logging.getLogger("parsers.universalmutator")
 

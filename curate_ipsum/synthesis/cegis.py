@@ -19,11 +19,11 @@ import random
 import time
 from typing import TYPE_CHECKING
 
-from synthesis.ast_operators import ASTCrossover, ASTMutator
-from synthesis.entropy import EntropyManager
-from synthesis.fitness import FitnessEvaluator
-from synthesis.llm_client import LLMClient, build_synthesis_prompt
-from synthesis.models import (
+from curate_ipsum.synthesis.ast_operators import ASTCrossover, ASTMutator
+from curate_ipsum.synthesis.entropy import EntropyManager
+from curate_ipsum.synthesis.fitness import FitnessEvaluator
+from curate_ipsum.synthesis.llm_client import LLMClient, build_synthesis_prompt
+from curate_ipsum.synthesis.models import (
     CodePatch,
     Counterexample,
     Individual,
@@ -32,12 +32,12 @@ from synthesis.models import (
     SynthesisResult,
     SynthesisStatus,
 )
-from synthesis.population import Population
+from curate_ipsum.synthesis.population import Population
 
 if TYPE_CHECKING:
-    from rag.search import RAGPipeline
-    from theory.manager import TheoryManager
-    from verification.backend import VerificationBackend
+    from curate_ipsum.rag.search import RAGPipeline
+    from curate_ipsum.theory.manager import TheoryManager
+    from curate_ipsum.verification.backend import VerificationBackend
 
 LOG = logging.getLogger("synthesis.cegis")
 
@@ -239,7 +239,7 @@ class CEGISEngine:
             import os
             import tempfile
 
-            from tools import run_command
+            from curate_ipsum.tools import run_command
 
             # Write patch to temp file
             with tempfile.NamedTemporaryFile(
@@ -302,7 +302,7 @@ class CEGISEngine:
             return True
 
         try:
-            from verification.types import (
+            from curate_ipsum.verification.types import (
                 Budget,
                 VerificationRequest,
                 VerificationStatus,
@@ -348,7 +348,7 @@ class CEGISEngine:
             return None
 
         try:
-            from tools import run_command
+            from curate_ipsum.tools import run_command
 
             for cmd in spec.test_commands:
                 result = await run_command(

@@ -4,9 +4,9 @@ import asyncio
 
 import pytest
 
-from synthesis.cegis import CEGISEngine
-from synthesis.llm_client import MockLLMClient
-from synthesis.models import (
+from curate_ipsum.synthesis.cegis import CEGISEngine
+from curate_ipsum.synthesis.llm_client import MockLLMClient
+from curate_ipsum.synthesis.models import (
     Specification,
     SynthesisConfig,
     SynthesisResult,
@@ -88,7 +88,7 @@ class TestCEGISBasic:
     @pytest.mark.asyncio
     async def test_cancellation(self):
         """Cancelling mid-run should return CANCELLED status."""
-        from synthesis.llm_client import LLMClient
+        from curate_ipsum.synthesis.llm_client import LLMClient
 
         class SlowMockClient(LLMClient):
             """LLM client that sleeps, giving time for cancellation."""

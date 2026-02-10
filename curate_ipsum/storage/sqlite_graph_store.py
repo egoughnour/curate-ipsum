@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -28,7 +28,7 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from storage.graph_store import GraphStore
+from curate_ipsum.storage.graph_store import GraphStore
 
 LOG = logging.getLogger("storage.sqlite_graph_store")
 

@@ -2,9 +2,9 @@
 
 import pytest
 
-from verification.backend import build_verification_backend
-from verification.backends.mock import MockBackend
-from verification.types import (
+from curate_ipsum.verification.backend import build_verification_backend
+from curate_ipsum.verification.backends.mock import MockBackend
+from curate_ipsum.verification.types import (
     Budget,
     SymbolSpec,
     VerificationRequest,
@@ -82,7 +82,7 @@ class TestZ3Backend:
     async def test_addr_reached_rejected(self):
         """Z3 doesn't support addr_reached — should return error."""
         try:
-            from verification.backends.z3_backend import Z3Backend
+            from curate_ipsum.verification.backends.z3_backend import Z3Backend
         except ImportError:
             pytest.skip("z3-solver not installed")
 
@@ -98,7 +98,7 @@ class TestZ3Backend:
         try:
             import z3  # noqa: F401
 
-            from verification.backends.z3_backend import Z3Backend
+            from curate_ipsum.verification.backends.z3_backend import Z3Backend
         except ImportError:
             pytest.skip("z3-solver not installed")
 
@@ -121,7 +121,7 @@ class TestZ3Backend:
         try:
             import z3  # noqa: F401
 
-            from verification.backends.z3_backend import Z3Backend
+            from curate_ipsum.verification.backends.z3_backend import Z3Backend
         except ImportError:
             pytest.skip("z3-solver not installed")
 
@@ -136,7 +136,7 @@ class TestZ3Backend:
 
     def test_z3_supports(self):
         try:
-            from verification.backends.z3_backend import Z3Backend
+            from curate_ipsum.verification.backends.z3_backend import Z3Backend
         except ImportError:
             pytest.skip("z3-solver not installed")
 

@@ -15,8 +15,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from verification.backend import VerificationBackend
-from verification.types import (
+from curate_ipsum.verification.backend import VerificationBackend
+from curate_ipsum.verification.types import (
     Budget,
     Counterexample,
     VerificationRequest,

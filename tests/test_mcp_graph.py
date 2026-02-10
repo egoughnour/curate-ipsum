@@ -24,7 +24,7 @@ import pytest
 scipy = pytest.importorskip("scipy")
 nx = pytest.importorskip("networkx")
 
-from graph import (
+from curate_ipsum.graph import (
     CallGraph,
     EdgeKind,
     GraphEdge,
@@ -125,7 +125,7 @@ def _get_server_tools() -> dict:
     The tools are the raw Python functions registered on the server,
     extracted so we can call them directly without MCP transport.
     """
-    from server import build_server
+    from curate_ipsum.server import build_server
 
     srv = build_server()
     # FastMCP stores tools internally; we call the underlying functions directly.

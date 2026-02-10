@@ -6,12 +6,12 @@ Uses MockLLMClient with realistic (but simple) code candidates.
 
 import pytest
 
-from synthesis.ast_operators import ASTCrossover, ASTMutator
-from synthesis.cegis import CEGISEngine
-from synthesis.entropy import EntropyManager
-from synthesis.fitness import FitnessEvaluator
-from synthesis.llm_client import MockLLMClient
-from synthesis.models import (
+from curate_ipsum.synthesis.ast_operators import ASTCrossover, ASTMutator
+from curate_ipsum.synthesis.cegis import CEGISEngine
+from curate_ipsum.synthesis.entropy import EntropyManager
+from curate_ipsum.synthesis.fitness import FitnessEvaluator
+from curate_ipsum.synthesis.llm_client import MockLLMClient
+from curate_ipsum.synthesis.models import (
     CodePatch,
     Counterexample,
     Individual,
@@ -21,7 +21,7 @@ from synthesis.models import (
     SynthesisResult,
     SynthesisStatus,
 )
-from synthesis.population import Population
+from curate_ipsum.synthesis.population import Population
 
 
 class TestFullPipeline:

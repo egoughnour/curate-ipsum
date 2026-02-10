@@ -25,8 +25,8 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from models import FileMutationStats
-from regions.models import Region
+from curate_ipsum.models import FileMutationStats
+from curate_ipsum.regions.models import Region
 
 LOG = logging.getLogger("parsers.mutmut")
 

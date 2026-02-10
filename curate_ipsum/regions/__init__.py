@@ -11,7 +11,7 @@ Regions support containment queries (does region A contain region B?)
 and overlap detection for aggregating metrics across related code.
 """
 
-from regions.models import Region, RegionLevel, normalize_region_id, region_to_id
+from curate_ipsum.regions.models import Region, RegionLevel, normalize_region_id, region_to_id
 
 __all__ = [
     "Region",

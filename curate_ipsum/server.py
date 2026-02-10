@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from tools import (
+from curate_ipsum.tools import (
     DATA_DIR,
     history_tool,
     region_metrics_tool,
@@ -57,7 +57,7 @@ def build_server() -> "FastMCP":
     def _get_graph_store(project_path: str) -> Any:
         """Get or create a GraphStore for the given project path."""
         if project_path not in _graph_stores:
-            from storage.graph_store import build_graph_store
+            from curate_ipsum.storage.graph_store import build_graph_store
 
             _graph_stores[project_path] = build_graph_store(GRAPH_BACKEND, Path(project_path))
         return _graph_stores[project_path]
@@ -65,7 +65,7 @@ def build_server() -> "FastMCP":
     def _get_synthesis_store() -> Any:
         """Get or create the SynthesisStore singleton."""
         if "store" not in _synthesis_store_cache:
-            from storage.synthesis_store import SynthesisStore
+            from curate_ipsum.storage.synthesis_store import SynthesisStore
 
             store_dir = DATA_DIR / "synthesis"
             _synthesis_store_cache["store"] = SynthesisStore(store_dir)
@@ -177,7 +177,7 @@ def build_server() -> "FastMCP":
         """Detect mutation frameworks in a project."""
         _validate_required("workingDirectory", workingDirectory)
 
-        from parsers import (
+        from curate_ipsum.parsers import (
             detect_available_frameworks,
             detect_language,
             recommend_framework,
@@ -219,7 +219,7 @@ def build_server() -> "FastMCP":
         """Parse a region string into components."""
         _validate_required("regionId", regionId)
 
-        from regions import Region
+        from curate_ipsum.regions import Region
 
         region = Region.from_string(regionId)
 
@@ -248,7 +248,7 @@ def build_server() -> "FastMCP":
         _validate_required("regionA", regionA)
         _validate_required("regionB", regionB)
 
-        from regions import Region
+        from curate_ipsum.regions import Region
 
         a = Region.from_string(regionA)
         b = Region.from_string(regionB)
@@ -279,7 +279,7 @@ def build_server() -> "FastMCP":
         """Create a region identifier."""
         _validate_required("filePath", filePath)
 
-        from regions import Region
+        from curate_ipsum.regions import Region
 
         if level == "file":
             region = Region.for_file(filePath)
@@ -309,7 +309,7 @@ def build_server() -> "FastMCP":
 
     def _get_theory_manager(project_id: str) -> "TheoryManager":
         """Get or create a TheoryManager for a project."""
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         return TheoryManager(Path(DATA_DIR) / project_id)
 
@@ -758,7 +758,7 @@ def build_server() -> "FastMCP":
 
     def _extract_graph(working_directory: str, backend: str = "auto") -> "CallGraph":
         """Extract a call graph from a project directory."""
-        from graph import get_extractor
+        from curate_ipsum.graph import get_extractor
 
         directory = Path(working_directory)
         if not directory.is_dir():
@@ -849,7 +849,7 @@ def build_server() -> "FastMCP":
         _validate_required("workingDirectory", workingDirectory)
         _require_graph_extras()
 
-        from graph import GraphPartitioner
+        from curate_ipsum.graph import GraphPartitioner
 
         graph = _extract_graph(workingDirectory)
         partitioner = GraphPartitioner(
@@ -914,7 +914,7 @@ def build_server() -> "FastMCP":
         _require_graph_extras()
         _require_networkx_extra()
 
-        from graph import KamedaIndex, check_planarity
+        from curate_ipsum.graph import KamedaIndex, check_planarity
 
         graph = _extract_graph(workingDirectory)
 
@@ -1038,7 +1038,7 @@ def build_server() -> "FastMCP":
         _validate_required("workingDirectory", workingDirectory)
         _require_graph_extras()
 
-        from graph import HierarchyBuilder
+        from curate_ipsum.graph import HierarchyBuilder
 
         graph = _extract_graph(workingDirectory)
         builder = HierarchyBuilder()
@@ -1070,7 +1070,7 @@ def build_server() -> "FastMCP":
         _validate_required("function_name", function_name)
         _require_graph_extras()
 
-        from graph import GraphPartitioner
+        from curate_ipsum.graph import GraphPartitioner
 
         graph = _extract_graph(workingDirectory)
 
@@ -1154,9 +1154,9 @@ def build_server() -> "FastMCP":
         _validate_required("workingDirectory", workingDirectory)
         _validate_required("testCommand", testCommand)
 
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig
 
         config = SynthesisConfig(
             llm_backend=llmBackend,
@@ -1167,14 +1167,14 @@ def build_server() -> "FastMCP":
         # Select LLM client
         if llmBackend == "cloud":
             try:
-                from synthesis.cloud_llm import CloudLLMClient
+                from curate_ipsum.synthesis.cloud_llm import CloudLLMClient
 
                 llm_client = CloudLLMClient()
             except (ImportError, ValueError) as exc:
                 return {"error": f"Cloud LLM not available: {exc}"}
         elif llmBackend == "local":
             try:
-                from synthesis.local_llm import LocalLLMClient
+                from curate_ipsum.synthesis.local_llm import LocalLLMClient
 
                 llm_client = LocalLLMClient()
             except ImportError as exc:
@@ -1210,9 +1210,9 @@ def build_server() -> "FastMCP":
         # M6: attach RAG pipeline for context-aware prompting
         rag_pipeline = None
         try:
-            from rag.embedding_provider import LocalEmbeddingProvider
-            from rag.search import RAGConfig as _RAGCfg
-            from rag.search import RAGPipeline
+            from curate_ipsum.rag.embedding_provider import LocalEmbeddingProvider
+            from curate_ipsum.rag.search import RAGConfig as _RAGCfg
+            from curate_ipsum.rag.search import RAGPipeline
 
             _vs = _get_vector_store("code_nodes")
             _emb = LocalEmbeddingProvider()
@@ -1353,7 +1353,7 @@ def build_server() -> "FastMCP":
         _validate_required("projectId", projectId)
         _validate_required("workingDirectory", workingDirectory)
 
-        from storage.incremental import IncrementalEngine
+        from curate_ipsum.storage.incremental import IncrementalEngine
 
         store = _get_graph_store(workingDirectory)
         engine = IncrementalEngine(store)
@@ -1469,7 +1469,7 @@ def build_server() -> "FastMCP":
         """Get or create a VerificationBackend. Defaults to Z3 (the cheap tier)."""
         key = f"{backend}_default"
         if key not in _verification_backends:
-            from verification.backend import build_verification_backend
+            from curate_ipsum.verification.backend import build_verification_backend
 
             _verification_backends[key] = build_verification_backend(backend, **kwargs)
         return _verification_backends[key]
@@ -1494,7 +1494,7 @@ def build_server() -> "FastMCP":
         maxStates: int = 50000,
     ) -> dict:
         """Run verification with the specified backend."""
-        from verification.types import Budget, VerificationRequest
+        from curate_ipsum.verification.types import Budget, VerificationRequest
 
         request = VerificationRequest(
             target_binary=targetBinary,
@@ -1530,8 +1530,8 @@ def build_server() -> "FastMCP":
         maxIterations: int = 3,
     ) -> dict:
         """Run CEGAR orchestrator with budget escalation."""
-        from verification.orchestrator import VerificationOrchestrator
-        from verification.types import Budget, VerificationRequest
+        from curate_ipsum.verification.orchestrator import VerificationOrchestrator
+        from curate_ipsum.verification.types import Budget, VerificationRequest
 
         request = VerificationRequest(
             target_binary=targetBinary,
@@ -1579,7 +1579,7 @@ def build_server() -> "FastMCP":
     def _get_vector_store(collection: str = "code_nodes", persist_dir: str | None = None) -> Any:
         """Get or create a VectorStore."""
         if collection not in _vector_stores:
-            from rag.vector_store import build_vector_store
+            from curate_ipsum.rag.vector_store import build_vector_store
 
             kwargs: dict[str, Any] = {"collection_name": collection}
             if persist_dir:
@@ -1602,7 +1602,7 @@ def build_server() -> "FastMCP":
         """Index code nodes for RAG retrieval."""
         _validate_required("projectId", projectId)
 
-        from rag.vector_store import VectorDocument
+        from curate_ipsum.rag.vector_store import VectorDocument
 
         store = _get_vector_store(collection, persistDirectory)
         docs = []
@@ -1635,12 +1635,12 @@ def build_server() -> "FastMCP":
         """Search for relevant code via RAG pipeline."""
         _validate_required("query", query)
 
-        from rag.embedding_provider import MockEmbeddingProvider
-        from rag.search import RAGConfig, RAGPipeline
+        from curate_ipsum.rag.embedding_provider import MockEmbeddingProvider
+        from curate_ipsum.rag.search import RAGConfig, RAGPipeline
 
         store = _get_vector_store(collection)
         try:
-            from rag.embedding_provider import LocalEmbeddingProvider
+            from curate_ipsum.rag.embedding_provider import LocalEmbeddingProvider
 
             embedder = LocalEmbeddingProvider()
         except ImportError:

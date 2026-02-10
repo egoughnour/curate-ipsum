@@ -8,7 +8,7 @@ import pytest
 
 kuzu = pytest.importorskip("kuzu", reason="kuzu not installed")
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -17,7 +17,7 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from storage.kuzu_graph_store import KuzuGraphStore
+from curate_ipsum.storage.kuzu_graph_store import KuzuGraphStore
 
 
 @pytest.fixture

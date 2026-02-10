@@ -9,7 +9,7 @@ Decision: D-016
 
 from __future__ import annotations
 
-from verification.types import (
+from curate_ipsum.verification.types import (
     Budget,
     Counterexample,
     SymbolSpec,

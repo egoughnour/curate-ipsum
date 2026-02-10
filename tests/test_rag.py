@@ -31,7 +31,7 @@ class MockGraphStoreForRAG:
 class TestVectorStore:
     def test_chroma_add_and_count(self):
         pytest.importorskip("chromadb")
-        from rag.vector_store import ChromaVectorStore, VectorDocument
+        from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_add_count")
         store.add(
@@ -44,7 +44,7 @@ class TestVectorStore:
 
     def test_chroma_search(self):
         pytest.importorskip("chromadb")
-        from rag.vector_store import ChromaVectorStore, VectorDocument
+        from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_search")
         store.add(
@@ -62,7 +62,7 @@ class TestVectorStore:
 
     def test_chroma_delete(self):
         pytest.importorskip("chromadb")
-        from rag.vector_store import ChromaVectorStore, VectorDocument
+        from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_delete")
         store.add(
@@ -77,7 +77,7 @@ class TestVectorStore:
 
     def test_chroma_empty_search(self):
         pytest.importorskip("chromadb")
-        from rag.vector_store import ChromaVectorStore
+        from curate_ipsum.rag.vector_store import ChromaVectorStore
 
         store = ChromaVectorStore(collection_name="test_empty_search")
         results = store.search([1.0, 0.0], top_k=5)
@@ -85,13 +85,13 @@ class TestVectorStore:
 
     def test_build_factory(self):
         pytest.importorskip("chromadb")
-        from rag.vector_store import build_vector_store
+        from curate_ipsum.rag.vector_store import build_vector_store
 
         store = build_vector_store("chroma", collection_name="test_factory")
         assert store.count() == 0
 
     def test_factory_unknown_raises(self):
-        from rag.vector_store import build_vector_store
+        from curate_ipsum.rag.vector_store import build_vector_store
 
         with pytest.raises(ValueError, match="Unknown vector store backend"):
             build_vector_store("nonexistent")
@@ -99,7 +99,7 @@ class TestVectorStore:
 
 class TestEmbeddingProvider:
     def test_mock_embedding(self):
-        from rag.embedding_provider import MockEmbeddingProvider
+        from curate_ipsum.rag.embedding_provider import MockEmbeddingProvider
 
         provider = MockEmbeddingProvider(dim=128)
         vecs = provider.embed(["hello", "world"])
@@ -109,7 +109,7 @@ class TestEmbeddingProvider:
         assert provider.dimension() == 128
 
     def test_mock_empty(self):
-        from rag.embedding_provider import MockEmbeddingProvider
+        from curate_ipsum.rag.embedding_provider import MockEmbeddingProvider
 
         provider = MockEmbeddingProvider()
         vecs = provider.embed([])
@@ -119,9 +119,9 @@ class TestEmbeddingProvider:
 class TestRAGPipeline:
     def test_search_returns_results(self):
         pytest.importorskip("chromadb")
-        from rag.embedding_provider import MockEmbeddingProvider
-        from rag.search import RAGConfig, RAGPipeline
-        from rag.vector_store import ChromaVectorStore, VectorDocument
+        from curate_ipsum.rag.embedding_provider import MockEmbeddingProvider
+        from curate_ipsum.rag.search import RAGConfig, RAGPipeline
+        from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_pipeline_search")
         store.add(
@@ -141,9 +141,9 @@ class TestRAGPipeline:
 
     def test_pack_context(self):
         pytest.importorskip("chromadb")
-        from rag.embedding_provider import MockEmbeddingProvider
-        from rag.search import RAGConfig, RAGPipeline, RAGResult
-        from rag.vector_store import ChromaVectorStore
+        from curate_ipsum.rag.embedding_provider import MockEmbeddingProvider
+        from curate_ipsum.rag.search import RAGConfig, RAGPipeline, RAGResult
+        from curate_ipsum.rag.vector_store import ChromaVectorStore
 
         store = ChromaVectorStore(collection_name="test_pack_context")
         embedder = MockEmbeddingProvider()
@@ -160,9 +160,9 @@ class TestRAGPipeline:
     def test_graph_expansion(self):
         """Pipeline should expand results using GraphStore neighbors."""
         pytest.importorskip("chromadb")
-        from rag.embedding_provider import MockEmbeddingProvider
-        from rag.search import RAGConfig, RAGPipeline
-        from rag.vector_store import ChromaVectorStore, VectorDocument
+        from curate_ipsum.rag.embedding_provider import MockEmbeddingProvider
+        from curate_ipsum.rag.search import RAGConfig, RAGPipeline
+        from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
 
         store = ChromaVectorStore(collection_name="test_graph_expansion")
         store.add(
@@ -205,10 +205,10 @@ class TestCEGISVerificationIntegration:
 
     @pytest.mark.asyncio
     async def test_cegis_with_mock_verification(self):
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig, SynthesisStatus
-        from verification.backends.mock import MockBackend
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig, SynthesisStatus
+        from curate_ipsum.verification.backends.mock import MockBackend
 
         config = SynthesisConfig(max_iterations=5, population_size=3, top_k=3)
         llm = MockLLMClient()
@@ -224,12 +224,12 @@ class TestCEGISVerificationIntegration:
     async def test_cegis_with_rag_pipeline(self):
         """CEGIS should enrich prompts via RAG when pipeline is provided."""
         pytest.importorskip("chromadb")
-        from rag.embedding_provider import MockEmbeddingProvider
-        from rag.search import RAGConfig, RAGPipeline
-        from rag.vector_store import ChromaVectorStore, VectorDocument
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig, SynthesisStatus
+        from curate_ipsum.rag.embedding_provider import MockEmbeddingProvider
+        from curate_ipsum.rag.search import RAGConfig, RAGPipeline
+        from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig, SynthesisStatus
 
         store = ChromaVectorStore(collection_name="test_cegis_rag")
         store.add(

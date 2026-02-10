@@ -149,20 +149,13 @@ jobs:
         run: |
           BUNDLE_DIR="curate-ipsum-${{ inputs.version }}"
           mkdir -p "${BUNDLE_DIR}"
-
-          # Copy server source + configs
-          cp -r server.py tools.py models.py "${BUNDLE_DIR}/"
-          cp -r adapters domains graph models.py parsers rag regions \
-                storage synthesis theory verification "${BUNDLE_DIR}/" 2>/dev/null || true
+          cp -r curate_ipsum "${BUNDLE_DIR}/"
           cp manifest.json "${BUNDLE_DIR}/"
           cp -r icons "${BUNDLE_DIR}/"
-          cp pyproject.toml uv.lock "${BUNDLE_DIR}/"
-          cp README.md LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
-
-          # Create the .mcpb archive (ZIP)
+          cp pyproject.toml uv.lock README.md "${BUNDLE_DIR}/"
+          cp LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
           cd "${BUNDLE_DIR}" && zip -r "../curate-ipsum-${{ inputs.version }}.mcpb" . -x '*.pyc' '__pycache__/*'
           cd ..
-
           ls -lh "curate-ipsum-${{ inputs.version }}.mcpb"
 
       - uses: actions/upload-artifact@v4

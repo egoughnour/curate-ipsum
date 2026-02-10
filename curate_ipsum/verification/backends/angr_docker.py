@@ -26,8 +26,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from verification.backend import VerificationBackend
-from verification.types import (
+from curate_ipsum.verification.backend import VerificationBackend
+from curate_ipsum.verification.types import (
     VerificationRequest,
     VerificationResult,
     VerificationStatus,

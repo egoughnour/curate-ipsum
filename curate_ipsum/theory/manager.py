@@ -13,16 +13,16 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from theory.assertions import (
+from curate_ipsum.theory.assertions import (
     Assertion,
     AssertionKind,
     ContradictionDetector,
     assertion_to_node_dict,
     node_dict_to_assertion,
 )
-from theory.failure_analyzer import FailureAnalysis, FailureModeAnalyzer
-from theory.provenance import ProvenanceDAG, ProvenanceStore, RevisionEvent, RevisionType
-from theory.rollback import RollbackManager
+from curate_ipsum.theory.failure_analyzer import FailureAnalysis, FailureModeAnalyzer
+from curate_ipsum.theory.provenance import ProvenanceDAG, ProvenanceStore, RevisionEvent, RevisionType
+from curate_ipsum.theory.rollback import RollbackManager
 
 if TYPE_CHECKING:
     from brs import CASStore, ContractionResult

@@ -13,28 +13,25 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from parsers import (
+from curate_ipsum.parsers import (
     UnsupportedFrameworkError,
     parse_mutation_output,
 )
-from parsers.detection import (
+from curate_ipsum.parsers.detection import (
     MutationFramework,
     detect_available_frameworks,
     detect_language,
     recommend_framework,
 )
-from parsers.mutmut_parser import (
+from curate_ipsum.parsers.mutmut_parser import (
     find_mutmut_cache,
     parse_mutmut_output,
 )
-from parsers.stryker_parser import (
+from curate_ipsum.parsers.stryker_parser import (
     find_stryker_report,
     parse_stryker_output,
 )

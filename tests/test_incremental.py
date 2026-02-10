@@ -4,14 +4,14 @@ import hashlib
 
 import pytest
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     GraphNode,
     NodeKind,
     SourceLocation,
 )
-from storage.incremental import ChangeSet, IncrementalEngine
-from storage.sqlite_graph_store import SQLiteGraphStore
+from curate_ipsum.storage.incremental import ChangeSet, IncrementalEngine
+from curate_ipsum.storage.sqlite_graph_store import SQLiteGraphStore
 
 
 @pytest.fixture

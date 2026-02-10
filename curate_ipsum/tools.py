@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
-from models import (
+from curate_ipsum.models import (
     FileMutationStats,
     MutationRunResult,
     PIDComponents,
@@ -99,11 +99,11 @@ def _dual_write_to_brs(run: RunResult) -> None:
         return
 
     try:
-        from adapters.evidence_adapter import (
+        from curate_ipsum.adapters.evidence_adapter import (
             mutation_result_to_evidence,
             test_result_to_evidence,
         )
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
     except ImportError:
         LOG.debug("BRS dual-write skipped: py-brs not installed")
         return
@@ -436,7 +436,7 @@ async def run_mutation_tests(
     result = await run_command(command, workingDirectory)
 
     # Use unified parser with auto-detection
-    from parsers import get_detected_tool, parse_mutation_output
+    from curate_ipsum.parsers import get_detected_tool, parse_mutation_output
 
     try:
         total_mutants, killed, survived, no_coverage, mutation_score, by_file = parse_mutation_output(

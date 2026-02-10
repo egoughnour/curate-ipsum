@@ -16,7 +16,7 @@
   "icon": "icons/icon.png",
   "server": {
     "type": "python",
-    "entry_point": "server.py",
+    "entry_point": "curate_ipsum/server.py",
     "mcp_config": {
       "command": "uv",
       "args": [

@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import re
 
-from synthesis.llm_client import LLMClient
+from curate_ipsum.synthesis.llm_client import LLMClient
 
 LOG = logging.getLogger("synthesis.local_llm")
 

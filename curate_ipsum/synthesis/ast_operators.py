@@ -15,7 +15,7 @@ import logging
 import random
 from typing import Any
 
-from synthesis.models import Counterexample, Individual, PatchSource
+from curate_ipsum.synthesis.models import Counterexample, Individual, PatchSource
 
 LOG = logging.getLogger("synthesis.ast_operators")
 

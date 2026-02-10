@@ -2,8 +2,8 @@
 
 import pytest
 
-from theory.assertions import Assertion, AssertionKind
-from theory.failure_analyzer import (
+from curate_ipsum.theory.assertions import Assertion, AssertionKind
+from curate_ipsum.theory.failure_analyzer import (
     FailureAnalysis,
     FailureMode,
     FailureModeAnalyzer,

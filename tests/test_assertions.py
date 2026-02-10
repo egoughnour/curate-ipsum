@@ -2,7 +2,7 @@
 
 import pytest
 
-from theory.assertions import (
+from curate_ipsum.theory.assertions import (
     Assertion,
     AssertionKind,
     ContradictionDetector,

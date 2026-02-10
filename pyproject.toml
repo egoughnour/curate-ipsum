@@ -77,14 +77,14 @@ Repository = "https://github.com/egoughnour/curate-ipsum"
 Changelog = "https://github.com/egoughnour/curate-ipsum/releases"
 
 [project.scripts]
-curate-ipsum = "server:main"
+curate-ipsum = "curate_ipsum.server:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = ["curate_ipsum"]
 
 [tool.ruff]
 line-length = 120
@@ -115,22 +115,22 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # MCP tool params are camelCase (protocol contract); lazy imports in annotations
-"server.py" = ["N803", "N815", "E402", "F821"]
-"tools.py" = ["N803", "N815"]
+"curate_ipsum/server.py" = ["N803", "N815", "E402", "F821"]
+"curate_ipsum/tools.py" = ["N803", "N815"]
 # Mathematical code uses uppercase matrix/graph variables
-"graph/spectral.py" = ["N803", "N806"]
-"graph/planarity.py" = ["N803", "N806"]
-"graph/kameda.py" = ["N803", "N806"]
-"graph/hierarchy.py" = ["N803", "N806"]
-"graph/partitioner.py" = ["N803", "N806"]
+"curate_ipsum/graph/spectral.py" = ["N803", "N806"]
+"curate_ipsum/graph/planarity.py" = ["N803", "N806"]
+"curate_ipsum/graph/kameda.py" = ["N803", "N806"]
+"curate_ipsum/graph/hierarchy.py" = ["N803", "N806"]
+"curate_ipsum/graph/partitioner.py" = ["N803", "N806"]
 # Angr runner is standalone script, has its own style
-"verification/runners/run_angr.py" = ["N803", "N806", "E741", "E402"]
+"curate_ipsum/verification/runners/run_angr.py" = ["N803", "N806", "E741", "E402"]
 # Abstract base classes with optional override methods
-"rag/vector_store.py" = ["B027"]
-"synthesis/llm_client.py" = ["B027"]
-"verification/backend.py" = ["B027"]
+"curate_ipsum/rag/vector_store.py" = ["B027"]
+"curate_ipsum/synthesis/llm_client.py" = ["B027"]
+"curate_ipsum/verification/backend.py" = ["B027"]
 # Mathematical code uses uppercase matrix/node variables
-"synthesis/ast_operators.py" = ["N806"]
+"curate_ipsum/synthesis/ast_operators.py" = ["N806"]
 "tests/test_spectral.py" = ["N806"]
 # Test files use pytest.importorskip which requires imports after setup
 "tests/test_full_pipeline_end_to_end.py" = ["E402"]
@@ -142,11 +142,7 @@ ignore = [
 "tests/test_rollback.py" = ["E402"]
 
 [tool.ruff.lint.isort]
-known-first-party = [
-    "adapters", "domains", "graph", "models", "parsers", "rag",
-    "regions", "server", "storage", "synthesis", "theory", "tools",
-    "verification",
-]
+known-first-party = ["curate_ipsum"]
 
 [tool.mypy]
 python_version = "3.11"

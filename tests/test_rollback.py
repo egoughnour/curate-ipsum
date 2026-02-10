@@ -4,8 +4,8 @@ import pytest
 
 brs = pytest.importorskip("brs")
 
-from theory.manager import TheoryManager
-from theory.rollback import Checkpoint, RollbackError
+from curate_ipsum.theory.manager import TheoryManager
+from curate_ipsum.theory.rollback import Checkpoint, RollbackError
 
 
 @pytest.fixture

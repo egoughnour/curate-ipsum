@@ -17,10 +17,10 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from theory.provenance import ProvenanceDAG, RevisionEvent, RevisionType
+from curate_ipsum.theory.provenance import ProvenanceDAG, RevisionEvent, RevisionType
 
 if TYPE_CHECKING:
-    from theory.manager import TheoryManager
+    from curate_ipsum.theory.manager import TheoryManager
 
 LOG = logging.getLogger("theory.rollback")
 

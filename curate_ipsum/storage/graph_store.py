@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from graph.models import CallGraph
+from curate_ipsum.graph.models import CallGraph
 
 LOG = logging.getLogger("storage.graph_store")
 
@@ -158,13 +158,13 @@ def build_graph_store(backend: str, project_path: Path) -> GraphStore:
     storage_dir.mkdir(parents=True, exist_ok=True)
 
     if backend == "sqlite":
-        from storage.sqlite_graph_store import SQLiteGraphStore
+        from curate_ipsum.storage.sqlite_graph_store import SQLiteGraphStore
 
         db_path = storage_dir / "graph.db"
         return SQLiteGraphStore(db_path)
 
     elif backend == "kuzu":
-        from storage.kuzu_graph_store import KuzuGraphStore
+        from curate_ipsum.storage.kuzu_graph_store import KuzuGraphStore
 
         db_path = storage_dir / "graph.kuzu"
         return KuzuGraphStore(db_path)

@@ -18,7 +18,7 @@ import os
 from collections.abc import Iterable
 from pathlib import Path
 
-from models import FileMutationStats
+from curate_ipsum.models import FileMutationStats
 
 LOG = logging.getLogger("parsers.stryker")
 

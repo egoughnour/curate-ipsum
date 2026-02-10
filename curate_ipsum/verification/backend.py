@@ -13,7 +13,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from verification.types import VerificationRequest, VerificationResult
+from curate_ipsum.verification.types import VerificationRequest, VerificationResult
 
 LOG = logging.getLogger("verification.backend")
 
@@ -77,17 +77,17 @@ def build_verification_backend(backend: str, **kwargs: Any) -> VerificationBacke
         ImportError: Backend dependencies not installed
     """
     if backend == "z3":
-        from verification.backends.z3_backend import Z3Backend
+        from curate_ipsum.verification.backends.z3_backend import Z3Backend
 
         return Z3Backend(**kwargs)
 
     elif backend == "angr":
-        from verification.backends.angr_docker import AngrDockerBackend
+        from curate_ipsum.verification.backends.angr_docker import AngrDockerBackend
 
         return AngrDockerBackend(**kwargs)
 
     elif backend == "mock":
-        from verification.backends.mock import MockBackend
+        from curate_ipsum.verification.backends.mock import MockBackend
 
         return MockBackend(**kwargs)
 

@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from storage.graph_store import GraphStore
+from curate_ipsum.storage.graph_store import GraphStore
 
 LOG = logging.getLogger("storage.incremental")
 

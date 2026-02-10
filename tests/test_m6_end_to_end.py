@@ -5,7 +5,7 @@ Tests the full flow: extract → persist → query → modify → incremental up
 
 import pytest
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -14,10 +14,10 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from storage.graph_store import build_graph_store
-from storage.incremental import IncrementalEngine
-from storage.synthesis_store import SynthesisStore
-from synthesis.models import SynthesisResult, SynthesisStatus
+from curate_ipsum.storage.graph_store import build_graph_store
+from curate_ipsum.storage.incremental import IncrementalEngine
+from curate_ipsum.storage.synthesis_store import SynthesisStore
+from curate_ipsum.synthesis.models import SynthesisResult, SynthesisStatus
 
 
 @pytest.fixture

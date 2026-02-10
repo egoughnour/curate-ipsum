@@ -17,22 +17,22 @@ This module provides:
    - Kameda O(1) reachability index
 
 Usage:
-    from graph import get_extractor, CallGraph
+    from curate_ipsum.graph import get_extractor, CallGraph
 
     # Extract call graph
     extractor = get_extractor()
     graph = extractor.extract_directory(Path("src/"))
 
     # Spectral partitioning (requires scipy)
-    from graph.spectral import compute_fiedler_components
-    from graph.partitioner import GraphPartitioner
+    from curate_ipsum.graph.spectral import compute_fiedler_components
+    from curate_ipsum.graph.partitioner import GraphPartitioner
 
     partitioner = GraphPartitioner(min_partition_size=3)
     tree = partitioner.partition(graph)
 
     # O(1) reachability (requires networkx)
-    from graph.planarity import check_planarity
-    from graph.kameda import KamedaIndex
+    from curate_ipsum.graph.planarity import check_planarity
+    from curate_ipsum.graph.kameda import KamedaIndex
 
     result = check_planarity(graph)
     index = KamedaIndex.build(result.planar_subgraph, result.embedding)

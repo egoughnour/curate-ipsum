@@ -8,13 +8,13 @@ Tests cover:
 
 from pathlib import Path
 
-from graph.dependency_extractor import (
+from curate_ipsum.graph.dependency_extractor import (
     DependencyExtractor,
     _resolve_relative_import,
     extract_imports_from_source,
 )
-from graph.hierarchy import HierarchyBuilder, HierarchyNode
-from graph.models import CallGraph, EdgeKind, GraphEdge, GraphNode, NodeKind
+from curate_ipsum.graph.hierarchy import HierarchyBuilder, HierarchyNode
+from curate_ipsum.graph.models import CallGraph, EdgeKind, GraphEdge, GraphNode, NodeKind
 
 # ─────────────────────────────────────────────────────────────────
 # HierarchyBuilder Tests

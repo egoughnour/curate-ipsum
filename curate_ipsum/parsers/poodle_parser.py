@@ -48,7 +48,7 @@ import json
 import logging
 from pathlib import Path
 
-from models import FileMutationStats
+from curate_ipsum.models import FileMutationStats
 
 LOG = logging.getLogger("parsers.poodle")
 

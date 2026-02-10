@@ -2,7 +2,7 @@
 
 import pytest
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -11,7 +11,7 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from storage.sqlite_graph_store import SQLiteGraphStore
+from curate_ipsum.storage.sqlite_graph_store import SQLiteGraphStore
 
 
 @pytest.fixture

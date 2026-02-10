@@ -19,14 +19,14 @@ import pytest
 # Gate the whole module on z3 availability
 z3 = pytest.importorskip("z3")
 
-from verification.backend import build_verification_backend
-from verification.backends.mock import MockBackend
-from verification.backends.z3_backend import Z3Backend
-from verification.orchestrator import (
+from curate_ipsum.verification.backend import build_verification_backend
+from curate_ipsum.verification.backends.mock import MockBackend
+from curate_ipsum.verification.backends.z3_backend import Z3Backend
+from curate_ipsum.verification.orchestrator import (
     DEFAULT_BUDGET_PRESETS,
     VerificationOrchestrator,
 )
-from verification.types import (
+from curate_ipsum.verification.types import (
     Budget,
     Counterexample,
     SymbolSpec,
@@ -269,9 +269,9 @@ class TestCEGISWithZ3:
     @pytest.mark.asyncio
     async def test_cegis_with_z3_constraints_no_crash(self):
         """CEGIS engine completes with Z3 backend and real constraints."""
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig, SynthesisStatus
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig, SynthesisStatus
 
         z3_backend = Z3Backend()
         config = SynthesisConfig(
@@ -310,9 +310,9 @@ class TestCEGISWithZ3:
 
         (In practice _run_formal_verification treats CE_FOUND as rejection.)
         """
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig, SynthesisStatus
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig, SynthesisStatus
 
         z3_backend = Z3Backend()
         config = SynthesisConfig(max_iterations=3, population_size=3, top_k=3)
@@ -347,7 +347,7 @@ class TestHarnessBuilderEndToEnd:
 
     def test_generates_valid_c_source(self, tmp_path):
         """Generated C source should contain the violation function and condition."""
-        from verification.harness.builder import HarnessBuilder, HarnessSpec
+        from curate_ipsum.verification.harness.builder import HarnessBuilder, HarnessSpec
 
         builder = HarnessBuilder()
         spec = HarnessSpec(
@@ -374,7 +374,7 @@ class TestHarnessBuilderEndToEnd:
 
     def test_build_from_spec_convenience(self, tmp_path):
         """build_from_spec should generate source via the convenience API."""
-        from verification.harness.builder import HarnessBuilder
+        from curate_ipsum.verification.harness.builder import HarnessBuilder
 
         builder = HarnessBuilder()
         source = builder.generate_source(

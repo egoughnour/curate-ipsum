@@ -19,7 +19,7 @@ import os
 import tempfile
 from typing import Any
 
-from synthesis.models import Counterexample, Individual, Specification, SynthesisConfig
+from curate_ipsum.synthesis.models import Counterexample, Individual, Specification, SynthesisConfig
 
 LOG = logging.getLogger("synthesis.fitness")
 
@@ -137,7 +137,7 @@ class FitnessEvaluator:
         total = len(spec.test_commands)
 
         try:
-            from tools import run_command
+            from curate_ipsum.tools import run_command
 
             # Create a temporary patched file
             with tempfile.NamedTemporaryFile(

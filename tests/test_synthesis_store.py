@@ -2,8 +2,8 @@
 
 import pytest
 
-from storage.synthesis_store import SynthesisStore
-from synthesis.models import (
+from curate_ipsum.storage.synthesis_store import SynthesisStore
+from curate_ipsum.synthesis.models import (
     CodePatch,
     PatchSource,
     SynthesisResult,

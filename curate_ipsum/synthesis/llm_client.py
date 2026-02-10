@@ -13,7 +13,7 @@ from __future__ import annotations
 import abc
 import logging
 
-from synthesis.models import Counterexample, Specification
+from curate_ipsum.synthesis.models import Counterexample, Specification
 
 LOG = logging.getLogger("synthesis.llm_client")
 

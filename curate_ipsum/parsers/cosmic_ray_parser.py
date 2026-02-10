@@ -43,7 +43,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from models import FileMutationStats
+from curate_ipsum.models import FileMutationStats
 
 LOG = logging.getLogger("parsers.cosmic_ray")
 

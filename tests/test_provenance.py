@@ -1,6 +1,6 @@
 """Tests for theory.provenance module."""
 
-from theory.provenance import (
+from curate_ipsum.theory.provenance import (
     ProvenanceDAG,
     RevisionEvent,
     RevisionType,

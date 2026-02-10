@@ -21,7 +21,7 @@ import pytest
 
 chromadb = pytest.importorskip("chromadb")  # skip entire module if chromadb is absent
 
-from graph.models import (  # noqa: E402
+from curate_ipsum.graph.models import (  # noqa: E402
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -30,10 +30,10 @@ from graph.models import (  # noqa: E402
     NodeKind,
     SourceLocation,
 )
-from rag.embedding_provider import EmbeddingProvider  # noqa: E402
-from rag.search import RAGConfig, RAGPipeline, RAGResult  # noqa: E402
-from rag.vector_store import ChromaVectorStore, VectorDocument  # noqa: E402
-from storage.graph_store import build_graph_store  # noqa: E402
+from curate_ipsum.rag.embedding_provider import EmbeddingProvider  # noqa: E402
+from curate_ipsum.rag.search import RAGConfig, RAGPipeline, RAGResult  # noqa: E402
+from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument  # noqa: E402
+from curate_ipsum.storage.graph_store import build_graph_store  # noqa: E402
 
 # ─── Deterministic Embedding Provider ─────────────────────────────────────────
 #
@@ -512,9 +512,9 @@ class TestRAGCEGISIntegration:
         We verify this by checking that the LLM client receives a prompt
         containing RAG-retrieved content.
         """
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig
 
         # Index a document that will be found by RAG
         text = "validate_input: Comprehensive input validation with bounds checking"
@@ -569,9 +569,9 @@ class TestRAGCEGISIntegration:
     @pytest.mark.asyncio
     async def test_rag_context_combined_with_spec_context(self, chroma_store, embedder):
         """RAG context is appended to the spec's existing context_code."""
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig
 
         text = "sanitize_string: Strip dangerous characters from input"
         embedding = embedder.embed([text])[0]

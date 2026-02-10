@@ -24,7 +24,7 @@ from uuid import uuid4
 
 import pytest
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     FunctionSignature,
@@ -33,12 +33,12 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from rag.search import RAGConfig, RAGPipeline
-from rag.vector_store import ChromaVectorStore, VectorDocument
-from storage.graph_store import build_graph_store
-from verification.backend import build_verification_backend
-from verification.backends.z3_backend import Z3Backend
-from verification.types import (
+from curate_ipsum.rag.search import RAGConfig, RAGPipeline
+from curate_ipsum.rag.vector_store import ChromaVectorStore, VectorDocument
+from curate_ipsum.storage.graph_store import build_graph_store
+from curate_ipsum.verification.backend import build_verification_backend
+from curate_ipsum.verification.backends.z3_backend import Z3Backend
+from curate_ipsum.verification.types import (
     Budget,
     SymbolSpec,
     VerificationRequest,
@@ -158,7 +158,7 @@ class TestRealEmbeddingModel:
 
     @pytest.fixture
     def real_embedder(self):
-        from rag.embedding_provider import LocalEmbeddingProvider
+        from curate_ipsum.rag.embedding_provider import LocalEmbeddingProvider
 
         return LocalEmbeddingProvider("all-MiniLM-L6-v2")
 
@@ -277,9 +277,9 @@ class TestRealEmbeddingModel:
 
         The synthesis prompt should contain semantically retrieved context.
         """
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig
 
         # Index a known document
         text = "hash_password: Hash password using bcrypt with provided salt"
@@ -469,7 +469,7 @@ class TestDockerDaemon:
         # For now, test the JSON protocol with a synthetic request that
         # exercises the runner's error path (no real binary, but validates
         # the full Docker invocation pipeline).
-        from verification.backends.angr_docker import AngrDockerBackend
+        from curate_ipsum.verification.backends.angr_docker import AngrDockerBackend
 
         backend = AngrDockerBackend(docker_image=image_name)
         assert backend.supports()["input"] == "binary"
@@ -495,7 +495,7 @@ class TestDockerDaemon:
     def test_angr_docker_backend_factory_wiring(self):
         """Factory produces AngrDockerBackend for 'angr' key."""
         backend = build_verification_backend("angr")
-        from verification.backends.angr_docker import AngrDockerBackend
+        from curate_ipsum.verification.backends.angr_docker import AngrDockerBackend
 
         assert isinstance(backend, AngrDockerBackend)
         assert backend.supports()["input"] == "binary"
@@ -523,7 +523,7 @@ class TestFullIntegration:
 
     @pytest.fixture
     def real_embedder(self):
-        from rag.embedding_provider import LocalEmbeddingProvider
+        from curate_ipsum.rag.embedding_provider import LocalEmbeddingProvider
 
         return LocalEmbeddingProvider("all-MiniLM-L6-v2")
 
@@ -595,9 +595,9 @@ class TestFullIntegration:
         assert "login" in context.lower() or "hash" in context.lower()
 
         # ── Real Z3 + CEGIS with RAG context ────────────────────────
-        from synthesis.cegis import CEGISEngine
-        from synthesis.llm_client import MockLLMClient
-        from synthesis.models import Specification, SynthesisConfig
+        from curate_ipsum.synthesis.cegis import CEGISEngine
+        from curate_ipsum.synthesis.llm_client import MockLLMClient
+        from curate_ipsum.synthesis.models import Specification, SynthesisConfig
 
         captured_prompts = []
 
@@ -665,7 +665,7 @@ class TestFullIntegration:
         Tests resource isolation: Z3 solver + Chroma client + embedding
         model all coexist without interference.
         """
-        from verification.orchestrator import VerificationOrchestrator
+        from curate_ipsum.verification.orchestrator import VerificationOrchestrator
 
         # RAG side: real embeddings into Chroma
         text = "verify_token: Verify JWT token signature and expiration"

@@ -1,6 +1,6 @@
 """Tests for verification.types — data models and serialization."""
 
-from verification.types import (
+from curate_ipsum.verification.types import (
     Budget,
     Counterexample,
     SymbolSpec,

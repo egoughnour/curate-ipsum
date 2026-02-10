@@ -12,7 +12,7 @@ Core synthesis (models, fitness, AST operators) uses only stdlib.
 from __future__ import annotations
 
 # Core models — always available
-from synthesis.models import (
+from curate_ipsum.synthesis.models import (
     CodePatch,
     Counterexample,
     Individual,

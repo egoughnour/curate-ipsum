@@ -2,13 +2,13 @@
 
 import pytest
 
-from verification.backends.mock import MockBackend
-from verification.orchestrator import (
+from curate_ipsum.verification.backends.mock import MockBackend
+from curate_ipsum.verification.orchestrator import (
     DEFAULT_BUDGET_PRESETS,
     OrchestratorResult,
     VerificationOrchestrator,
 )
-from verification.types import (
+from curate_ipsum.verification.types import (
     Budget,
     SymbolSpec,
     VerificationRequest,

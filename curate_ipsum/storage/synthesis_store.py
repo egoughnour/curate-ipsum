@@ -15,7 +15,7 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
-from synthesis.models import (
+from curate_ipsum.synthesis.models import (
     CodePatch,
     PatchSource,
     SynthesisResult,

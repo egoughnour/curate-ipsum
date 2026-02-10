@@ -6,7 +6,7 @@ This module provides the bridge between curate-ipsum's domain models
 belief revision infrastructure (Evidence, Node, Edge).
 """
 
-from adapters.evidence_adapter import (
+from curate_ipsum.adapters.evidence_adapter import (
     CodeEvidenceKind,
     mutation_result_to_evidence,
     test_result_to_evidence,

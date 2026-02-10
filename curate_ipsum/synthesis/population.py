@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import random
 
-from synthesis.models import Individual, PatchSource
+from curate_ipsum.synthesis.models import Individual, PatchSource
 
 LOG = logging.getLogger("synthesis.population")
 

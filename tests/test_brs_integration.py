@@ -10,15 +10,12 @@ These tests verify:
 
 from __future__ import annotations
 
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from models import (
+from curate_ipsum.models import (
     FileMutationStats,
     MutationRunResult,
     RunKind,
@@ -140,7 +137,7 @@ class TestEvidenceAdapter:
     def test_test_result_to_evidence_passed(self, sample_test_result: TestRunResult):
         """Test converting a passing test result to evidence."""
         pytest.importorskip("brs")
-        from adapters.evidence_adapter import CodeEvidenceKind, test_result_to_evidence
+        from curate_ipsum.adapters.evidence_adapter import CodeEvidenceKind, test_result_to_evidence
 
         evidence = test_result_to_evidence(sample_test_result)
 
@@ -155,7 +152,7 @@ class TestEvidenceAdapter:
     def test_test_result_to_evidence_failed(self, sample_failed_test_result: TestRunResult):
         """Test converting a failing test result to evidence."""
         pytest.importorskip("brs")
-        from adapters.evidence_adapter import CodeEvidenceKind, test_result_to_evidence
+        from curate_ipsum.adapters.evidence_adapter import CodeEvidenceKind, test_result_to_evidence
 
         evidence = test_result_to_evidence(sample_failed_test_result)
 
@@ -166,7 +163,7 @@ class TestEvidenceAdapter:
     def test_mutation_result_to_evidence_killed(self, sample_mutation_result: MutationRunResult):
         """Test converting a high-score mutation result to evidence."""
         pytest.importorskip("brs")
-        from adapters.evidence_adapter import CodeEvidenceKind, mutation_result_to_evidence
+        from curate_ipsum.adapters.evidence_adapter import CodeEvidenceKind, mutation_result_to_evidence
 
         evidence = mutation_result_to_evidence(sample_mutation_result)
 
@@ -179,7 +176,7 @@ class TestEvidenceAdapter:
     def test_mutation_result_to_evidence_survived(self, sample_low_score_mutation_result: MutationRunResult):
         """Test converting a low-score mutation result to evidence."""
         pytest.importorskip("brs")
-        from adapters.evidence_adapter import CodeEvidenceKind, mutation_result_to_evidence
+        from curate_ipsum.adapters.evidence_adapter import CodeEvidenceKind, mutation_result_to_evidence
 
         evidence = mutation_result_to_evidence(sample_low_score_mutation_result)
 
@@ -203,7 +200,7 @@ class TestTheoryManager:
     def test_manager_initialization(self, tmp_project_path: Path):
         """Test TheoryManager initializes correctly."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
@@ -214,13 +211,13 @@ class TestTheoryManager:
     def test_add_assertion(self, tmp_project_path: Path):
         """Test adding an assertion to the theory."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
         # First store some evidence
-        from adapters.evidence_adapter import test_result_to_evidence
-        from models import RunKind, TestRunResult
+        from curate_ipsum.adapters.evidence_adapter import test_result_to_evidence
+        from curate_ipsum.models import RunKind, TestRunResult
 
         test_result = TestRunResult(
             id="test_for_assertion",
@@ -256,7 +253,7 @@ class TestTheoryManager:
     def test_add_assertion_invalid_type(self, tmp_project_path: Path):
         """Test that invalid assertion types are rejected."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
@@ -270,7 +267,7 @@ class TestTheoryManager:
     def test_add_assertion_invalid_confidence(self, tmp_project_path: Path):
         """Test that out-of-range confidence is rejected."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
@@ -285,7 +282,7 @@ class TestTheoryManager:
     def test_list_assertions(self, tmp_project_path: Path):
         """Test listing assertions with filtering."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
@@ -322,7 +319,7 @@ class TestTheoryManager:
     def test_contract_assertion(self, tmp_project_path: Path):
         """Test contracting (removing) an assertion."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
@@ -345,7 +342,7 @@ class TestTheoryManager:
     def test_get_entrenchment(self, tmp_project_path: Path):
         """Test computing entrenchment scores."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
@@ -364,7 +361,7 @@ class TestTheoryManager:
     def test_get_theory_snapshot(self, tmp_project_path: Path):
         """Test getting theory snapshot."""
         pytest.importorskip("brs")
-        from theory import TheoryManager
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 
@@ -393,8 +390,8 @@ class TestDomainSmokeTests:
     def test_smoke_tests_on_empty_world(self, tmp_project_path: Path):
         """Test smoke tests run on an empty world."""
         pytest.importorskip("brs")
-        from domains.code_mutation_smoke import run_smoke
-        from theory import TheoryManager
+        from curate_ipsum.domains.code_mutation_smoke import run_smoke
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
         manager._ensure_world_exists()
@@ -417,8 +414,8 @@ class TestDomainSmokeTests:
 
         from brs import canonical_json, content_hash
 
-        from domains.code_mutation_smoke import run_smoke
-        from theory import TheoryManager
+        from curate_ipsum.domains.code_mutation_smoke import run_smoke
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
         manager._ensure_world_exists()
@@ -478,8 +475,8 @@ class TestEndToEndIntegration:
     def test_full_workflow(self, tmp_project_path: Path, sample_mutation_result: MutationRunResult):
         """Test a complete workflow from mutation result to assertion to contraction."""
         pytest.importorskip("brs")
-        from adapters.evidence_adapter import mutation_result_to_evidence
-        from theory import TheoryManager
+        from curate_ipsum.adapters.evidence_adapter import mutation_result_to_evidence
+        from curate_ipsum.theory import TheoryManager
 
         manager = TheoryManager(tmp_project_path)
 

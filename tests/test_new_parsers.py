@@ -13,18 +13,15 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from parsers import (
+from curate_ipsum.parsers import (
     UnsupportedFrameworkError,
     parse_mutation_output,
 )
-from parsers.cosmic_ray_parser import (
+from curate_ipsum.parsers.cosmic_ray_parser import (
     _module_to_filepath,
     _normalize_test_outcome,
     _normalize_worker_outcome,
@@ -33,15 +30,15 @@ from parsers.cosmic_ray_parser import (
     parse_cosmic_ray_output,
     parse_cosmic_ray_session,
 )
-from parsers.detection import (
+from curate_ipsum.parsers.detection import (
     MutationFramework,
     detect_available_frameworks,
 )
-from parsers.poodle_parser import (
+from curate_ipsum.parsers.poodle_parser import (
     find_poodle_report,
     parse_poodle_output,
 )
-from parsers.universalmutator_parser import (
+from curate_ipsum.parsers.universalmutator_parser import (
     _extract_source_file,
     find_universalmutator_results,
     parse_universalmutator_output,

@@ -6,20 +6,15 @@ Includes test graphs: complete graphs K5, K3,3, diamonds, trees, and chains.
 Verifies correctness of Kameda index against BFS ground truth.
 """
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from graph.kameda import KamedaIndex
-from graph.models import (
+from curate_ipsum.graph.kameda import KamedaIndex
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     GraphEdge,
     GraphNode,
     NodeKind,
 )
-from graph.planarity import (
+from curate_ipsum.graph.planarity import (
     callgraph_to_networkx,
     check_planarity,
     networkx_to_callgraph,

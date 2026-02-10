@@ -13,11 +13,11 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from rag.embedding_provider import EmbeddingProvider
-from rag.vector_store import VectorSearchResult, VectorStore
+from curate_ipsum.rag.embedding_provider import EmbeddingProvider
+from curate_ipsum.rag.vector_store import VectorSearchResult, VectorStore
 
 if TYPE_CHECKING:
-    from storage.graph_store import GraphStore
+    from curate_ipsum.storage.graph_store import GraphStore
 
 LOG = logging.getLogger("rag.search")
 

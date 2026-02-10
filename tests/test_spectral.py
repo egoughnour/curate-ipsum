@@ -8,7 +8,7 @@ and recursive Fiedler-based partitioning with virtual source/sink augmentation.
 import numpy as np
 import pytest
 
-from graph.models import (
+from curate_ipsum.graph.models import (
     CallGraph,
     EdgeKind,
     GraphEdge,
@@ -16,11 +16,11 @@ from graph.models import (
     NodeKind,
     SourceLocation,
 )
-from graph.partitioner import (
+from curate_ipsum.graph.partitioner import (
     GraphPartitioner,
     augment_partition,
 )
-from graph.spectral import (
+from curate_ipsum.graph.spectral import (
     FiedlerResult,
     build_adjacency_matrix,
     build_laplacian,

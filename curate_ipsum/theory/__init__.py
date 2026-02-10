@@ -11,6 +11,6 @@ Submodules:
     - failure_analyzer: Heuristic failure classification for synthesis
 """
 
-from theory.manager import TheoryManager
+from curate_ipsum.theory.manager import TheoryManager
 
 __all__ = ["TheoryManager"]

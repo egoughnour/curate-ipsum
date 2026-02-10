@@ -14,7 +14,7 @@ import os
 import re
 import time
 
-from synthesis.llm_client import LLMClient
+from curate_ipsum.synthesis.llm_client import LLMClient
 
 LOG = logging.getLogger("synthesis.cloud_llm")
 
