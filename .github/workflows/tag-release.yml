@@ -178,3 +178,4 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write          # Propagates to mcp-registry job for OIDC auth

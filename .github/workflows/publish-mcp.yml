@@ -93,6 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write          # Required for OIDC authentication
     steps:
       - uses: actions/checkout@v4
 
@@ -120,11 +121,13 @@ jobs:
               echo "skip=true" >> "$GITHUB_OUTPUT"
             }
 
+      - name: Authenticate to MCP Registry
+        if: steps.install.outputs.skip != 'true'
+        run: mcp-publisher login github-oidc
+
       - name: Publish to MCP Registry
         if: steps.install.outputs.skip != 'true'
-        run: mcp-publisher publish --file server.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mcp-publisher publish
 
   # ── Publish to Smithery MCP registry (optional) ─────────────────────────────
   smithery:
