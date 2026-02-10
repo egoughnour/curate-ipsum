@@ -80,6 +80,7 @@ jobs:
 
       - name: Build MCPB bundle
         run: |
+          mkdir -p mcpb
           BUNDLE_DIR="curate-ipsum-${{ needs.validate.outputs.version }}"
           mkdir -p "${BUNDLE_DIR}"
           cp -r curate_ipsum "${BUNDLE_DIR}/"
@@ -87,12 +88,18 @@ jobs:
           cp -r icons "${BUNDLE_DIR}/"
           cp pyproject.toml uv.lock README.md "${BUNDLE_DIR}/"
           cp LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
-          cd "${BUNDLE_DIR}" && zip -r ../dist/curate-ipsum.mcpb . -x '*.pyc' '__pycache__/*'
+          cd "${BUNDLE_DIR}" && zip -r ../mcpb/curate-ipsum.mcpb . -x '*.pyc' '__pycache__/*'
 
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
+          retention-days: 5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mcpb
+          path: mcpb/
           retention-days: 5
 
   # ── Publish to PyPI (Trusted Publisher OIDC) ────────────────────────────────
@@ -126,6 +133,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: dist
+          path: dist/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: mcpb
           path: dist/
 
       - name: Generate changelog from commits
