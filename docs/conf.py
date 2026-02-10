@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import importlib.metadata
+import re
 from datetime import UTC, datetime
+from pathlib import Path
 
 # -- Project information -----------------------------------------------------
 
@@ -15,7 +17,10 @@ copyright = f"{datetime.now(UTC).year}, {author}"  # noqa: A001
 try:
     release = importlib.metadata.version("curate-ipsum")
 except importlib.metadata.PackageNotFoundError:
-    release = "0.2.0"
+    # Fallback: parse version from pyproject.toml (RTD builds, etc.)
+    _pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    _m = re.search(r'^version\s*=\s*"(.+?)"', _pyproject.read_text(), re.M)
+    release = _m.group(1) if _m else "0.0.0"
 version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------

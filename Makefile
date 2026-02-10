@@ -100,13 +100,15 @@ endif
 	  d.__setitem__('version', '$(VERSION)'), \
 	  [pkg.__setitem__('version', '$(VERSION)') for pkg in d.get('packages', [])], \
 	  p.write_text(json.dumps(d, indent=2) + '\n') \
-	) for f in ('server.json', 'manifest.json')]"
+	) for f in ('server.json', 'manifest.json')]; \
+	sy = pathlib.Path('smithery.yaml'); \
+	sy.write_text(re.sub(r'^version: \".*\"', 'version: \"$(VERSION)\"', sy.read_text(), count=1, flags=re.M))"
 	uv lock
-	@echo "Updated pyproject.toml, server.json, manifest.json → $(VERSION)"
+	@echo "Updated pyproject.toml, server.json, manifest.json, smithery.yaml → $(VERSION)"
 
 .PHONY: release
 release: bump ## Bump, commit, tag, push (usage: make release VERSION=0.3.0)
-	git add pyproject.toml uv.lock server.json manifest.json
+	git add pyproject.toml uv.lock server.json manifest.json smithery.yaml
 	git commit -m "release: v$(VERSION)"
 	git tag -a "v$(VERSION)" -m "v$(VERSION)"
 	git push origin main --follow-tags
