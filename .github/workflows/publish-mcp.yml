@@ -60,7 +60,9 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
+        continue-on-error: true   # cache export may flake; image push verified below
         with:
           context: .
           file: docker/Dockerfile.mcp-server
@@ -69,9 +71,21 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             HF_TOKEN=${{ secrets.HF_TOKEN }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Registry cache stores layers in GHCR alongside the image.
+          # Since the image push already works, cache layers go to the
+          # same backend with deduplication — no separate Azure blob writes.
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
           platforms: linux/amd64
+
+      - name: Verify image push
+        run: |
+          digest="${{ steps.build.outputs.digest }}"
+          if [ -z "$digest" ]; then
+            echo "::error::Docker build or push failed"
+            exit 1
+          fi
+          echo "✓ Image pushed: $digest"
 
   # ── Publish to official MCP Registry ────────────────────────────────────────
   mcp-registry:
