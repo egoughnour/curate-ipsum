@@ -98,14 +98,13 @@ jobs:
       - name: Install mcp-publisher
         id: install
         run: |
-          # Try snap first (official distribution), fall back to npm
-          if command -v snap &>/dev/null; then
-            sudo snap install mcp-publisher 2>/dev/null && exit 0
-          fi
-          # npm fallback — try known package names
-          npm install -g mcp-publisher 2>/dev/null && exit 0
-          echo "::warning::mcp-publisher not available; skipping registry publish"
-          echo "skip=true" >> "$GITHUB_OUTPUT"
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher \
+            && sudo mv mcp-publisher /usr/local/bin/ \
+            || {
+              echo "::warning::mcp-publisher download failed; skipping registry publish"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            }
 
       - name: Publish to MCP Registry
         if: steps.install.outputs.skip != 'true'
@@ -128,8 +127,8 @@ jobs:
       - name: Install Smithery CLI
         run: npm install -g @smithery/cli
 
-      - name: Publish to Smithery
-        run: smithery publish --yes
+      - name: Deploy to Smithery
+        run: smithery deploy --name @egoughnour/curate-ipsum --key "$SMITHERY_API_KEY"
         env:
           SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
 
