@@ -142,10 +142,16 @@ jobs:
           node-version: 20
 
       - name: Install Smithery CLI
-        run: npm install -g @smithery/cli
+        run: npm install -g @smithery/cli@latest
 
-      - name: Deploy to Smithery
-        run: smithery deploy --name @egoughnour/curate-ipsum --key "$SMITHERY_API_KEY"
+      - name: Publish to Smithery
+        run: |
+          # --transport stdio: local/stdio server (not hosted shttp)
+          # 'publish' replaces deprecated 'deploy'
+          smithery publish \
+            --name @egoughnour/curate-ipsum \
+            --transport stdio \
+            --key "$SMITHERY_API_KEY"
         env:
           SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
 
