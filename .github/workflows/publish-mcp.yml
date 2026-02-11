@@ -89,7 +89,7 @@ jobs:
 
   # ── Publish to official MCP Registry ────────────────────────────────────────
   mcp-registry:
-    needs: docker
+    needs: [docker, mcpb]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -108,6 +108,26 @@ jobs:
           echo "release version:     ${{ inputs.version }}"
           if [ "${JSON_VERSION}" != "${{ inputs.version }}" ]; then
             echo "::warning::server.json version (${JSON_VERSION}) differs from release (${{ inputs.version }})"
+          fi
+
+      - name: Inject MCPB hash into server.json
+        run: |
+          MCPB_SHA256="${{ needs.mcpb.outputs.sha256 }}"
+          if [ -n "$MCPB_SHA256" ]; then
+            python3 -c "
+          import json
+          d = json.load(open('server.json'))
+          for pkg in d.get('packages', []):
+              if pkg.get('registryType') == 'mcpb':
+                  pkg['fileSha256'] = '${MCPB_SHA256}'
+          with open('server.json', 'w') as f:
+              json.dump(d, f, indent=2)
+              f.write('\n')
+          "
+            echo "Injected fileSha256: $MCPB_SHA256"
+            python3 -m json.tool server.json
+          else
+            echo "::warning::No MCPB SHA256 available; publishing without hash"
           fi
 
       - name: Install mcp-publisher
@@ -158,14 +178,12 @@ jobs:
   # ── Build MCPB bundle artifact ──────────────────────────────────────────────
   mcpb:
     runs-on: ubuntu-latest
+    outputs:
+      sha256: ${{ steps.verify.outputs.sha256 }}
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
 
       - name: Build MCPB bundle
         run: |
@@ -176,12 +194,31 @@ jobs:
           cp -r icons "${BUNDLE_DIR}/"
           cp pyproject.toml uv.lock README.md "${BUNDLE_DIR}/"
           cp LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
-          cd "${BUNDLE_DIR}" && zip -r "../curate-ipsum-${{ inputs.version }}.mcpb" . -x '*.pyc' '__pycache__/*'
-          cd ..
-          ls -lh "curate-ipsum-${{ inputs.version }}.mcpb"
+          cd "${BUNDLE_DIR}" && zip -r ../curate-ipsum.mcpb . -x '*.pyc' '__pycache__/*'
+
+      - name: Verify MCPB bundle
+        id: verify
+        run: |
+          MCPB_FILE="curate-ipsum.mcpb"
+          echo "=== Bundle contents ==="
+          unzip -l "$MCPB_FILE"
+          echo ""
+          echo "=== Manifest validation ==="
+          MANIFEST=$(unzip -p "$MCPB_FILE" manifest.json)
+          echo "$MANIFEST" | python3 -m json.tool
+          NAME=$(echo "$MANIFEST" | python3 -c "import json,sys; print(json.load(sys.stdin).get('name',''))")
+          VERSION=$(echo "$MANIFEST" | python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))")
+          if [ -z "$NAME" ] || [ -z "$VERSION" ]; then
+            echo "::error::Manifest missing required fields (name or version)"
+            exit 1
+          fi
+          echo "✅ Manifest valid: $NAME v$VERSION"
+          SHA256=$(sha256sum "$MCPB_FILE" | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $SHA256"
 
       - uses: actions/upload-artifact@v4
         with:
           name: mcpb-bundle
-          path: "curate-ipsum-${{ inputs.version }}.mcpb"
+          path: curate-ipsum.mcpb
           retention-days: 90

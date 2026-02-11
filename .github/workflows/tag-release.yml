@@ -90,6 +90,25 @@ jobs:
           cp LICENSE "${BUNDLE_DIR}/" 2>/dev/null || true
           cd "${BUNDLE_DIR}" && zip -r ../mcpb/curate-ipsum.mcpb . -x '*.pyc' '__pycache__/*'
 
+      - name: Verify MCPB bundle
+        run: |
+          MCPB_FILE="mcpb/curate-ipsum.mcpb"
+          echo "=== Bundle contents ==="
+          unzip -l "$MCPB_FILE"
+          echo ""
+          echo "=== Manifest validation ==="
+          MANIFEST=$(unzip -p "$MCPB_FILE" manifest.json)
+          echo "$MANIFEST" | python3 -m json.tool
+          NAME=$(echo "$MANIFEST" | python3 -c "import json,sys; print(json.load(sys.stdin).get('name',''))")
+          VERSION=$(echo "$MANIFEST" | python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))")
+          if [ -z "$NAME" ] || [ -z "$VERSION" ]; then
+            echo "::error::Manifest missing required fields (name or version)"
+            exit 1
+          fi
+          echo "✅ Manifest valid: $NAME v$VERSION"
+          SHA256=$(sha256sum "$MCPB_FILE" | cut -d' ' -f1)
+          echo "MCPB SHA256: $SHA256"
+
       - uses: actions/upload-artifact@v4
         with:
           name: dist
