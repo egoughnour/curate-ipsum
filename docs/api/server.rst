@@ -3,10 +3,10 @@ Server & Tools
 
 MCP server entry point and tool implementations.
 
-.. automodule:: server
+.. automodule:: curate_ipsum.server
    :members:
    :show-inheritance:
 
-.. automodule:: tools
+.. automodule:: curate_ipsum.tools
    :members:
    :show-inheritance:

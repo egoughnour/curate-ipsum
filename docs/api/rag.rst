@@ -3,18 +3,18 @@ RAG Pipeline
 
 Vector store, embedding providers, and graph-expanded semantic search.
 
-.. automodule:: rag
+.. automodule:: curate_ipsum.rag
    :members:
    :show-inheritance:
 
-.. automodule:: rag.vector_store
+.. automodule:: curate_ipsum.rag.vector_store
    :members:
    :show-inheritance:
 
-.. automodule:: rag.embedding_provider
+.. automodule:: curate_ipsum.rag.embedding_provider
    :members:
    :show-inheritance:
 
-.. automodule:: rag.search
+.. automodule:: curate_ipsum.rag.search
    :members:
    :show-inheritance:

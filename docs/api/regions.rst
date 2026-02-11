@@ -3,10 +3,10 @@ Regions
 
 Hierarchical code region model (file → class → function → lines).
 
-.. automodule:: regions
+.. automodule:: curate_ipsum.regions
    :members:
    :show-inheritance:
 
-.. automodule:: regions.models
+.. automodule:: curate_ipsum.regions.models
    :members:
    :show-inheritance:

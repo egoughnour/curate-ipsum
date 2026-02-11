@@ -4,46 +4,46 @@ Graph Analysis
 Call graph extraction, spectral partitioning, Kameda reachability, and
 hierarchical decomposition.
 
-.. automodule:: graph
+.. automodule:: curate_ipsum.graph
    :members:
    :show-inheritance:
 
-.. automodule:: graph.models
+.. automodule:: curate_ipsum.graph.models
    :members:
    :show-inheritance:
 
-.. automodule:: graph.extractor
+.. automodule:: curate_ipsum.graph.extractor
    :members:
    :show-inheritance:
 
-.. automodule:: graph.ast_extractor
+.. automodule:: curate_ipsum.graph.ast_extractor
    :members:
    :show-inheritance:
 
-.. automodule:: graph.asr_extractor
+.. automodule:: curate_ipsum.graph.asr_extractor
    :members:
    :show-inheritance:
 
-.. automodule:: graph.dependency_extractor
+.. automodule:: curate_ipsum.graph.dependency_extractor
    :members:
    :show-inheritance:
 
-.. automodule:: graph.spectral
+.. automodule:: curate_ipsum.graph.spectral
    :members:
    :show-inheritance:
 
-.. automodule:: graph.partitioner
+.. automodule:: curate_ipsum.graph.partitioner
    :members:
    :show-inheritance:
 
-.. automodule:: graph.planarity
+.. automodule:: curate_ipsum.graph.planarity
    :members:
    :show-inheritance:
 
-.. automodule:: graph.kameda
+.. automodule:: curate_ipsum.graph.kameda
    :members:
    :show-inheritance:
 
-.. automodule:: graph.hierarchy
+.. automodule:: curate_ipsum.graph.hierarchy
    :members:
    :show-inheritance:

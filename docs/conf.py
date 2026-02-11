@@ -5,8 +5,13 @@ from __future__ import annotations
 
 import importlib.metadata
 import re
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+# -- Path setup --------------------------------------------------------------
+# Make the project root importable so autodoc can find curate_ipsum.*
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # -- Project information -----------------------------------------------------
 

@@ -4,34 +4,34 @@ Verification
 Z3 and angr backends, CEGAR orchestrator, verification types, and harness
 builder.
 
-.. automodule:: verification
+.. automodule:: curate_ipsum.verification
    :members:
    :show-inheritance:
 
-.. automodule:: verification.types
+.. automodule:: curate_ipsum.verification.types
    :members:
    :show-inheritance:
 
-.. automodule:: verification.backend
+.. automodule:: curate_ipsum.verification.backend
    :members:
    :show-inheritance:
 
-.. automodule:: verification.backends.z3_backend
+.. automodule:: curate_ipsum.verification.backends.z3_backend
    :members:
    :show-inheritance:
 
-.. automodule:: verification.backends.angr_docker
+.. automodule:: curate_ipsum.verification.backends.angr_docker
    :members:
    :show-inheritance:
 
-.. automodule:: verification.backends.mock
+.. automodule:: curate_ipsum.verification.backends.mock
    :members:
    :show-inheritance:
 
-.. automodule:: verification.orchestrator
+.. automodule:: curate_ipsum.verification.orchestrator
    :members:
    :show-inheritance:
 
-.. automodule:: verification.harness.builder
+.. automodule:: curate_ipsum.verification.harness.builder
    :members:
    :show-inheritance:
