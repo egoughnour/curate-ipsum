@@ -8,7 +8,7 @@
 [![MCP Registry](https://img.shields.io/badge/MCP-Registry-blue?style=flat-square&logo=anthropic&logoColor=white)](https://registry.mcp.so/servers/io.github.egoughnour/curate-ipsum)
 [![Claude Desktop](https://img.shields.io/badge/Claude-Desktop-orange?style=flat-square&logo=anthropic&logoColor=white)](https://github.com/egoughnour/curate-ipsum/releases/latest/download/curate-ipsum.mcpb)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/pypi/pyversions/curate-ipsum)](https://pypi.org/project/curate-ipsum/)
+[![Python](https://img.shields.io/pypi/pyversions/curate-ipsum?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/curate-ipsum/)
 
 [![Top Language](https://img.shields.io/github/languages/top/egoughnour/curate-ipsum?style=flat-square&color=3379ef)](https://github.com/egoughnour/curate-ipsum)
 [![Code Size](https://img.shields.io/github/languages/code-size/egoughnour/curate-ipsum?style=flat-square&color=3379ef)](https://github.com/egoughnour/curate-ipsum)
