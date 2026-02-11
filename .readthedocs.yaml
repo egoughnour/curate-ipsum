@@ -10,6 +10,9 @@ build:
   commands:
     # Install docs dependencies (sphinx, theme, extensions)
     - python -m pip install sphinx furo myst-parser sphinx-copybutton
+    # Install lightweight runtime deps needed for autodoc import chains;
+    # heavy/optional deps (mcp, z3, angr, …) stay in autodoc_mock_imports.
+    - python -m pip install pydantic
     # Install project without heavy deps — autodoc_mock_imports handles the rest
     - python -m pip install --no-deps -e .
     # Build HTML docs
