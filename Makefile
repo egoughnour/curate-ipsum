@@ -99,6 +99,7 @@ endif
 	  d := json.loads(p.read_text()), \
 	  d.__setitem__('version', '$(VERSION)'), \
 	  [pkg.__setitem__('version', '$(VERSION)') for pkg in d.get('packages', [])], \
+	  [pkg.__setitem__('identifier', 'https://github.com/egoughnour/curate-ipsum/releases/download/v$(VERSION)/curate-ipsum.mcpb') for pkg in d.get('packages', []) if pkg.get('registryType') == 'mcpb'], \
 	  p.write_text(json.dumps(d, indent=2) + '\n') \
 	) for f in ('server.json', 'manifest.json')]; \
 	sy = pathlib.Path('smithery.yaml'); \

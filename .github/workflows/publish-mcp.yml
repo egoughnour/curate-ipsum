@@ -111,25 +111,31 @@ jobs:
             echo "::warning::server.json version (${JSON_VERSION}) differs from release (${{ inputs.version }})"
           fi
 
-      - name: Inject MCPB hash into server.json
+      - name: Inject MCPB hash and versioned URL into server.json
         run: |
           MCPB_SHA256="${{ needs.mcpb.outputs.sha256 }}"
-          if [ -n "$MCPB_SHA256" ]; then
-            python3 -c "
+          RELEASE_VERSION="${{ inputs.version }}"
+          python3 -c "
           import json
           d = json.load(open('server.json'))
           for pkg in d.get('packages', []):
               if pkg.get('registryType') == 'mcpb':
-                  pkg['fileSha256'] = '${MCPB_SHA256}'
+                  # Pin the download URL to this release tag
+                  pkg['identifier'] = 'https://github.com/egoughnour/curate-ipsum/releases/download/v${RELEASE_VERSION}/curate-ipsum.mcpb'
+                  sha = '${MCPB_SHA256}'
+                  if sha:
+                      pkg['fileSha256'] = sha
           with open('server.json', 'w') as f:
               json.dump(d, f, indent=2)
               f.write('\n')
           "
+          echo "Injected release URL: v${RELEASE_VERSION}"
+          if [ -n "$MCPB_SHA256" ]; then
             echo "Injected fileSha256: $MCPB_SHA256"
-            python3 -m json.tool server.json
           else
             echo "::warning::No MCPB SHA256 available; publishing without hash"
           fi
+          python3 -m json.tool server.json
 
       - name: Install mcp-publisher
         id: install

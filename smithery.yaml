@@ -2,7 +2,7 @@
 # https://smithery.ai/docs/build/project-config/smithery-yaml
 
 name: curate-ipsum
-version: "2.2.0"
+version: "2.3.0"
 description: >
   Graph-spectral framework for verified code synthesis through belief revision,
   mutation testing orchestration, and CEGIS/CEGAR verification loops.

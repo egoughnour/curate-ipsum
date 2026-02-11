@@ -7,12 +7,12 @@
     "url": "https://github.com/egoughnour/curate-ipsum",
     "source": "github"
   },
-  "version": "2.2.0",
+  "version": "2.3.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "curate-ipsum",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "transport": {
         "type": "stdio"
       },
@@ -56,7 +56,7 @@
     },
     {
       "registryType": "mcpb",
-      "identifier": "https://github.com/egoughnour/curate-ipsum/releases/latest/download/curate-ipsum.mcpb",
+      "identifier": "https://github.com/egoughnour/curate-ipsum/releases/download/v2.3.0/curate-ipsum.mcpb",
       "transport": {
         "type": "stdio"
       },
@@ -76,7 +76,7 @@
           "isSecret": false
         }
       ],
-      "version": "2.2.0"
+      "version": "2.3.0"
     }
   ]
 }
