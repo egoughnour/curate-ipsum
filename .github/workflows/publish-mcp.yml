@@ -1,9 +1,11 @@
 name: Publish MCP
 
-# Builds and publishes the MCP server bundle via three channels:
+# Builds and publishes the MCP server bundle:
 #   1. Docker image to GHCR (always)
-#   2. Official MCP Registry via mcp-publisher (if available)
-#   3. Smithery registry (if SMITHERY_ENABLED=true)
+#   2. Official MCP Registry via mcp-publisher (OIDC auth)
+#   3. MCPB bundle artifact (with SHA256 for registry integrity)
+#
+# Smithery: register manually at https://smithery.ai/new (CLI requires Node.js)
 #
 # Can be triggered manually or called from the tag-release workflow.
 #
@@ -149,31 +151,13 @@ jobs:
         if: steps.install.outputs.skip != 'true'
         run: mcp-publisher publish
 
-  # ── Publish to Smithery MCP registry (optional) ─────────────────────────────
-  smithery:
-    needs: docker
-    runs-on: ubuntu-latest
-    if: ${{ vars.SMITHERY_ENABLED == 'true' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Smithery CLI
-        run: npm install -g @smithery/cli@latest
-
-      - name: Publish to Smithery
-        run: |
-          # --transport stdio: local/stdio server (not hosted shttp)
-          # 'publish' replaces deprecated 'deploy'
-          smithery publish \
-            --name @egoughnour/curate-ipsum \
-            --transport stdio \
-            --key "$SMITHERY_API_KEY"
-        env:
-          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+  # ── Smithery MCP registry ────────────────────────────────────────────────────
+  # Smithery CLI (deploy/publish) requires a Node.js build step even for
+  # --transport stdio, so it cannot publish Python servers via CI.
+  #
+  # Register manually at https://smithery.ai/new as a Local/stdio server.
+  # The smithery.yaml in the repo root provides the metadata (config schema,
+  # start command, version).  Smithery reads it from GitHub directly.
 
   # ── Build MCPB bundle artifact ──────────────────────────────────────────────
   mcpb:
