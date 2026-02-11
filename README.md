@@ -4,10 +4,16 @@
 
 **A graph-spectral MCP server for verified code synthesis through belief revision**
 
-[![PyPI](https://img.shields.io/pypi/v/curate-ipsum)](https://pypi.org/project/curate-ipsum/)
+[![PyPI](https://img.shields.io/pypi/v/curate-ipsum?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/curate-ipsum/)
+[![MCP Registry](https://img.shields.io/badge/MCP-Registry-blue?style=flat-square&logo=anthropic&logoColor=white)](https://registry.mcp.so/servers/io.github.egoughnour/curate-ipsum)
+[![Claude Desktop](https://img.shields.io/badge/Claude-Desktop-orange?style=flat-square&logo=anthropic&logoColor=white)](https://github.com/egoughnour/curate-ipsum/releases/latest/download/curate-ipsum.mcpb)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/pypi/pyversions/curate-ipsum)](https://pypi.org/project/curate-ipsum/)
-[![CI](https://github.com/egoughnour/curate-ipsum/actions/workflows/ci.yml/badge.svg)](https://github.com/egoughnour/curate-ipsum/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/egoughnour/curate-ipsum)](LICENSE)
+
+[![Top Language](https://img.shields.io/github/languages/top/egoughnour/curate-ipsum?style=flat-square&color=3379ef)](https://github.com/egoughnour/curate-ipsum)
+[![Code Size](https://img.shields.io/github/languages/code-size/egoughnour/curate-ipsum?style=flat-square&color=3379ef)](https://github.com/egoughnour/curate-ipsum)
+[![Last Commit](https://img.shields.io/github/last-commit/egoughnour/curate-ipsum?style=flat-square&color=2579ef&logo=github)](https://github.com/egoughnour/curate-ipsum/commits/main)
+[![Repo Size](https://img.shields.io/github/repo-size/egoughnour/curate-ipsum?style=flat-square&color=3379ef)](https://github.com/egoughnour/curate-ipsum)
 
 Curate-Ipsum bridges the gap between LLM-generated code (fast, plausible, unverified) and formally verified patches (slow, correct, trustworthy). It treats mutation testing as one component of a larger system for maintaining robust, self-healing codebase metadata that supports reachability analysis, symbolic execution, and automated test generation.
 
