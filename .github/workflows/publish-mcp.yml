@@ -4,7 +4,6 @@ name: Publish MCP
 #   1. Docker image to GHCR (always)
 #   2. Official MCP Registry via mcp-publisher (OIDC auth)
 #   3. MCPB bundle artifact (with SHA256 for registry integrity)
-#   4. Smithery registry via REST API (bypasses Node.js CLI)
 #
 # Can be triggered manually or called from the tag-release workflow.
 #
@@ -155,118 +154,6 @@ jobs:
       - name: Publish to MCP Registry
         if: steps.install.outputs.skip != 'true'
         run: mcp-publisher publish
-
-  # ── Publish to Smithery via REST API ────────────────────────────────────────
-  # The Smithery CLI requires a Node.js build step and cannot publish Python
-  # servers.  We bypass it entirely with curl against the Smithery REST API,
-  # uploading the MCPB bundle and a JSON payload built from repo metadata.
-  smithery:
-    needs: mcpb
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # Only run when the repository variable SMITHERY_ENABLED is 'true'
-    if: ${{ vars.SMITHERY_ENABLED == 'true' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: mcpb-bundle
-          path: .
-
-      - name: Create/verify Smithery server (idempotent)
-        env:
-          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
-        run: |
-          HTTP_CODE=$(curl -s -o /tmp/smithery-create.json -w '%{http_code}' \
-            -X PUT \
-            "https://api.smithery.ai/servers/egoughnour/curate-ipsum" \
-            -H "Authorization: Bearer ${SMITHERY_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d '{"displayName":"Curate-Ipsum","description":"Code synthesis through belief revision, mutation testing, and verification"}')
-          echo "Server create/verify: HTTP ${HTTP_CODE}"
-          cat /tmp/smithery-create.json | python3 -m json.tool 2>/dev/null || true
-          if [ "$HTTP_CODE" -ge 400 ] && [ "$HTTP_CODE" -ne 409 ]; then
-            echo "::warning::Smithery server create returned ${HTTP_CODE} (may already exist via web)"
-          fi
-
-      - name: Build deploy payload
-        run: |
-          python3 -c "import yaml" 2>/dev/null || pip install pyyaml --quiet
-          python3 << 'PYEOF'
-          import json, yaml
-
-          # Read config schema from smithery.yaml
-          with open("smithery.yaml") as f:
-              smithery = yaml.safe_load(f)
-          config_schema = smithery.get("configSchema", {})
-          version = smithery.get("version", "0.0.0")
-          description = smithery.get("description", "").strip()
-
-          # Read tools from manifest.json for the server card
-          with open("manifest.json") as f:
-              manifest = json.load(f)
-          tools = []
-          for t in manifest.get("tools", []):
-              tools.append({
-                  "name": t["name"],
-                  "description": t.get("description", ""),
-                  "inputSchema": {"type": "object"},
-              })
-
-          import subprocess
-          commit = subprocess.run(
-              ["git", "rev-parse", "HEAD"],
-              capture_output=True, text=True
-          ).stdout.strip()
-          branch = subprocess.run(
-              ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-              capture_output=True, text=True
-          ).stdout.strip()
-
-          payload = {
-              "type": "stdio",
-              "runtime": "node",
-              "hasAuthAdapter": False,
-              "configSchema": config_schema,
-              "serverCard": {
-                  "serverInfo": {
-                      "name": manifest.get("name", "curate-ipsum"),
-                      "version": version,
-                      "description": description,
-                  },
-                  "tools": tools,
-                  "resources": [],
-                  "prompts": [],
-              },
-              "source": {"commit": commit, "branch": branch},
-          }
-
-          with open("smithery-payload.json", "w") as f:
-              json.dump(payload, f)
-          print(json.dumps(payload, indent=2))
-          PYEOF
-
-      - name: Deploy to Smithery
-        env:
-          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
-        run: |
-          HTTP_CODE=$(curl -s -o /tmp/smithery-deploy.json -w '%{http_code}' \
-            -X PUT \
-            "https://api.smithery.ai/servers/egoughnour/curate-ipsum/deployments" \
-            -H "Authorization: Bearer ${SMITHERY_API_KEY}" \
-            -F "payload=<smithery-payload.json" \
-            -F "bundle=@curate-ipsum.mcpb")
-          echo "Deploy response: HTTP ${HTTP_CODE}"
-          cat /tmp/smithery-deploy.json | python3 -m json.tool 2>/dev/null || true
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::error::Smithery deploy failed with HTTP ${HTTP_CODE}"
-            exit 1
-          fi
-          DEPLOY_ID=$(python3 -c "import json; print(json.load(open('/tmp/smithery-deploy.json')).get('deploymentId','unknown'))")
-          echo "✓ Deployment accepted: ${DEPLOY_ID}"
-          echo "  Track: https://smithery.ai/server/egoughnour/curate-ipsum/deployments"
 
   # ── Build MCPB bundle artifact ──────────────────────────────────────────────
   mcpb:
